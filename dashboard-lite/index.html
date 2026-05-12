@@ -57,8 +57,9 @@
               <li class="steps__item" data-step="3">Analytics</li>
               <li class="steps__item" data-step="4">Charts</li>
               <li class="steps__item" data-step="5">Strategy</li>
-              <li class="steps__item" data-step="6">Backtest</li>
-              <li class="steps__item" data-step="7">Performance</li>
+              <li class="steps__item" data-step="6">Signal / execute</li>
+              <li class="steps__item" data-step="7">Backtest</li>
+              <li class="steps__item" data-step="8">Performance</li>
             </ol>
           </section>
 
@@ -140,16 +141,34 @@
             <div class="strategy-panels" id="strategyPanels"></div>
           </section>
 
-          <!-- Step 6 Backtest -->
+          <!-- Step 6 Signal & execute (API phases 4–6) -->
+          <section class="panel fade-in" id="stepSignalExecute" hidden>
+            <h2 class="panel__h">Step 6 — Live signal & execution</h2>
+            <p class="panel__sub" id="signalExecuteSubtitle">
+              Reads <code>current_signal</code>, <code>signal_checks</code>, and <code>risk_gate</code> from the snapshot; approve sends
+              <code>POST /api/execute</code> (re-validates on server, single position per symbol, journal CSV).
+            </p>
+            <div class="grid grid--metrics" id="signalExecutePanel"></div>
+            <div class="exec-actions">
+              <label class="exec-actions__label"
+                >Approved by
+                <input type="text" id="approvedByInput" class="exec-actions__input" value="operator" maxlength="64" />
+              </label>
+              <button type="button" class="btn-execute" id="btnExecute" disabled>Approve &amp; send to MT5</button>
+              <span class="pill pill--live" id="executeStatus" aria-live="polite"></span>
+            </div>
+          </section>
+
+          <!-- Step 7 Backtest -->
           <section class="panel fade-in" id="stepBacktest" hidden>
-            <h2 class="panel__h">Step 6 — Backtesting panel</h2>
+            <h2 class="panel__h">Step 7 — Backtesting panel</h2>
             <p class="panel__sub" id="backtestSubtitle">Select a strategy to view mock backtest output.</p>
             <div class="grid grid--bt" id="backtestMetrics"></div>
           </section>
 
-          <!-- Step 7 Performance -->
+          <!-- Step 8 Performance -->
           <section class="panel fade-in" id="stepPerformance" hidden>
-            <h2 class="panel__h">Step 7 — Performance visualization</h2>
+            <h2 class="panel__h">Step 8 — Performance visualization</h2>
             <div class="grid grid--perf">
               <div class="chart-card chart-card--wide">
                 <h3 class="chart-card__h">Equity curve (mock)</h3>

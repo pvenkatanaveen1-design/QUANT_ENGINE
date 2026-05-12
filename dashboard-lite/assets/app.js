@@ -144,6 +144,9 @@
     lastPack: null,
   };
 
+  /** @type {ReturnType<typeof setInterval>|null} */
+  let livePollTimer = null;
+
   const PAGE = new URLSearchParams(location.search);
   const API_BASE = (PAGE.get("api") || "http://127.0.0.1:8766").replace(/\/$/, "");
   const API_SYMBOL = PAGE.get("symbol") || "EURUSD";
@@ -202,6 +205,162 @@
    * @param {number} regimeId
    * @returns {Promise<{ source: string, snapshot?: any, mock?: any }>}
    */
+  function stopLivePoll() {
+    if (livePollTimer) {
+      clearInterval(livePollTimer);
+      livePollTimer = null;
+    }
+  }
+
+  /** @param {string|undefined|null} lastUpdateIso */
+  function liveDataFreshness(lastUpdateIso) {
+    if (!lastUpdateIso) return " 🔴";
+    const t = Date.parse(String(lastUpdateIso));
+    if (Number.isNaN(t)) return " 🔴";
+    const ageSec = (Date.now() - t) / 1000;
+    return ageSec < 30 ? " 🟢" : " 🔴";
+  }
+
+  function formatLiveScalar(v) {
+    if (v === null || v === undefined) return "—";
+    return String(v);
+  }
+
+  /** @param {any} snapshot */
+  function updateLivePill(snapshot) {
+    const pill = $("#livePill");
+    if (!pill || !snapshot || !snapshot.meta) return;
+    const meta = snapshot.meta;
+    const fresh = liveDataFreshness(snapshot.last_update);
+    const price = formatLiveScalar(snapshot.last_price);
+    const sp = formatLiveScalar(snapshot.spread);
+    const lq = formatLiveScalar(snapshot.quadrant);
+    pill.textContent = `MT5 · ${meta.symbol} · px ${price} · spr ${sp} · live ${lq}${fresh}`;
+  }
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function fmtSignalLine(sig) {
+    if (!sig) return "—";
+    return `${sig.direction} ${sig.strategy} @ ${sig.entry_price} · SL ${sig.stop_loss} · TP ${sig.take_profit} · R:R ${sig.rr_ratio}`;
+  }
+
+  /** Live signal, selector, risk — Step 6 */
+  function renderSignalExecute(snapshot) {
+    const panel = $("#signalExecutePanel");
+    const btn = $("#btnExecute");
+    const st = $("#executeStatus");
+    if (!panel) return;
+    if (!snapshot || !snapshot.meta) {
+      panel.innerHTML = "";
+      if (btn) btn.disabled = true;
+      if (st) st.textContent = "";
+      return;
+    }
+    if (!snapshot.mt5_connected) {
+      panel.innerHTML = `<div class="metric-card metric-card--wide"><div class="metric-card__label">MT5</div><div class="metric-card__value">Offline — start terminal and <code>dashboard_api/server.py</code>.</div></div>`;
+      if (btn) btn.disabled = true;
+      if (st) st.textContent = "";
+      return;
+    }
+
+    const sess = snapshot.session || "—";
+    const sel = snapshot.strategy_selection || {};
+    const stratLines = (snapshot.strategy_scores || [])
+      .slice(0, 6)
+      .map((r) => `${r.name}: ${r.score}`)
+      .join(" · ");
+    const sig = snapshot.current_signal;
+    const chk = snapshot.signal_checks || {};
+    const risk = snapshot.risk_gate || {};
+    const lot = snapshot.lot_size;
+
+    const stratUi = (sel.strategies || []).map((x) => `${x.name}=${x.status}`).join(", ");
+
+    const chkRows = Object.keys(chk).map((k) => [`Check · ${k}`, chk[k] ? "ok" : "no"]);
+    const riskRows = risk.checks ? Object.keys(risk.checks).map((k) => [`Risk · ${k}`, risk.checks[k] ? "ok" : "no"]) : [];
+
+    const cards = [
+      ["Session (UTC)", sess],
+      ["Selector · trade_allowed", `${sel.trade_allowed ? "yes" : "no"} · ${escHtml(sel.reason || "—")}`],
+      ["Selector · strategies", escHtml(stratUi || "—")],
+      ["Strategy scores (top)", escHtml(stratLines || "—")],
+      ["Suggested signal", escHtml(fmtSignalLine(sig))],
+      ...chkRows,
+      ...riskRows,
+      ["Risk · approved", risk.approved ? "yes" : "no"],
+      ["Risk · blocked_reason", escHtml(risk.blocked_reason || "—")],
+      ["Lot (risk sized)", lot != null ? String(lot) : "—"],
+    ];
+
+    panel.innerHTML = cards
+      .map(
+        ([label, val]) =>
+          `<div class="metric-card"><div class="metric-card__label">${escHtml(label)}</div><div class="metric-card__value">${val}</div></div>`
+      )
+      .join("");
+
+    const canExec = !!sig && !!risk.approved && !!snapshot.mt5_connected;
+    if (btn) btn.disabled = !canExec;
+  }
+
+  async function postExecute() {
+    const pack = state.lastPack;
+    const st = $("#executeStatus");
+    const snap = pack && pack.snapshot;
+    const inp = $("#approvedByInput");
+    const ab = (inp && inp.value.trim()) || "operator";
+    if (!snap || !snap.current_signal) {
+      if (st) st.textContent = "No signal on snapshot.";
+      return;
+    }
+    if (st) st.textContent = "Sending…";
+    try {
+      const res = await fetch(`${API_BASE}/api/execute`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ symbol: API_SYMBOL, signal: snap.current_signal, approved_by: ab }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (res.ok && j.success) {
+        const tk = j.execution && j.execution.ticket != null ? j.execution.ticket : "—";
+        if (st) st.textContent = "OK · ticket " + tk;
+      } else {
+        const msg = j.error || (j.execution && j.execution.comment) || res.statusText || "?";
+        if (st) st.textContent = "HTTP " + res.status + ": " + msg;
+      }
+    } catch (e) {
+      if (st) st.textContent = "Network error: " + e;
+    }
+  }
+
+  function startLivePoll() {
+    stopLivePoll();
+    livePollTimer = setInterval(async () => {
+      const q = state.quadrant;
+      const rid = state.regimeId;
+      if (!q || rid == null || !state.lastPack || state.lastPack.source !== "mt5") return;
+      const pack = await fetchRegimeData(q, rid);
+      if (pack.source !== "mt5" || !pack.snapshot || !pack.snapshot.regime_detail) {
+        stopLivePoll();
+        return;
+      }
+      state.lastPack = pack;
+      const nm = REGIME_NAMES[rid] || `ID ${rid}`;
+      renderMetricsMt5(pack.snapshot);
+      renderSignalExecute(pack.snapshot);
+      renderChartsMt5(pack.snapshot.regime_detail);
+      renderStrategies(q, rid, nm, pack.snapshot.regime_detail);
+      if (state.strategyId) selectStrategy(state.strategyId);
+    }, 10000);
+  }
+
   async function fetchRegimeData(_quadrant, regimeId) {
     try {
       const u = new URL(`${API_BASE}/api/snapshot`);
@@ -245,8 +404,9 @@
   }
 
   function hideBelowRegime() {
+    stopLivePoll();
     state.lastPack = null;
-    ["stepAnalytics", "stepCharts", "stepStrategy", "stepBacktest", "stepPerformance"].forEach((id) => {
+    ["stepAnalytics", "stepCharts", "stepStrategy", "stepSignalExecute", "stepBacktest", "stepPerformance"].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.hidden = true;
     });
@@ -258,6 +418,7 @@
     $("#strategyPanels").innerHTML = "";
     if ($("#strategyContext")) $("#strategyContext").textContent = "";
     $("#backtestMetrics").innerHTML = "";
+    renderSignalExecute(null);
   }
 
   function showSectionsInitial() {
@@ -328,7 +489,7 @@
     const nm = REGIME_NAMES[regimeId] || `ID ${regimeId}`;
     $("#pageTitle").textContent = `R${String(regimeId).padStart(2, "0")} · ${nm}`;
 
-    ["stepAnalytics", "stepCharts", "stepStrategy", "stepBacktest", "stepPerformance"].forEach((id) => {
+    ["stepAnalytics", "stepCharts", "stepStrategy", "stepSignalExecute", "stepBacktest", "stepPerformance"].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.hidden = false;
     });
@@ -341,22 +502,24 @@
     const pill = $("#livePill");
 
     if (pack.source === "mt5" && pack.snapshot && pack.snapshot.regime_detail) {
-      const meta = pack.snapshot.meta;
-      pill.textContent = `MT5 · ${meta.symbol} ${meta.tf_minutes}m · ${meta.bars_loaded} bars`;
       $("#analyticsSubtitle").textContent =
         `${q} · R${String(regimeId).padStart(2, "0")} ${nm} — scorecard from MT5 (MFE study, not dollar P&L).`;
       renderMetricsMt5(pack.snapshot);
       renderChartsMt5(pack.snapshot.regime_detail);
       renderStrategies(q, regimeId, nm, pack.snapshot.regime_detail);
+      renderSignalExecute(pack.snapshot);
       $("#backtestSubtitle").textContent =
         "Strategy panel uses MT5 scorecard rows (trades, wr_1r…wr_4r). Equity charts below are illustrative unless you add a full backtest P&L engine.";
+      startLivePoll();
     } else {
+      stopLivePoll();
       pill.textContent = "Demo — run: python dashboard_api/server.py (port 8766)";
       $("#analyticsSubtitle").textContent =
         `${q} · R${String(regimeId).padStart(2, "0")} ${nm} — demo (API offline or error).`;
       renderMetricsDemo(pack.mock, q, regimeId, nm);
       renderChartsDemo(q, pack.mock, regimeId);
       renderStrategies(q, regimeId, nm, null);
+      renderSignalExecute(null);
       $("#backtestSubtitle").textContent = `Mock backtest for ${nm} — pick a strategy card.`;
     }
 
@@ -367,6 +530,22 @@
     const rd = snapshot.regime_detail;
     const meta = snapshot.meta;
     if (!rd || !meta) return;
+    const fresh = liveDataFreshness(snapshot.last_update);
+    const liveCards = [
+      ["Live · MT5 tick + H1 (200)", snapshot.mt5_connected ? "connected" : "offline"],
+      ["Last price (ask)", formatLiveScalar(snapshot.last_price)],
+      ["Spread (pips, est.)", formatLiveScalar(snapshot.spread)],
+      ["ADX (14) · H1", formatLiveScalar(snapshot.adx_14)],
+      ["ATR (14) · H1", formatLiveScalar(snapshot.atr_14)],
+      ["ATR percentile (20-bar)", formatLiveScalar(snapshot.atr_pct)],
+      ["EMA 50 · H1", formatLiveScalar(snapshot.ema50)],
+      ["EMA 200 · H1", formatLiveScalar(snapshot.ema200)],
+      ["Live headline Q1–Q4", formatLiveScalar(snapshot.quadrant)],
+      ["Live headline label", formatLiveScalar(snapshot.label)],
+      ["Live confidence (0–100)", formatLiveScalar(snapshot.confidence)],
+      ["Direction (EMA stack)", formatLiveScalar(snapshot.direction)],
+      ["Last update (UTC)", formatLiveScalar(snapshot.last_update) + fresh],
+    ];
     const strats = rd.strategies || [];
     const sumTrades = strats.reduce((a, s) => a + s.trades, 0);
     let best = strats[0];
@@ -374,11 +553,12 @@
       if (s.rank_score > (best ? best.rank_score : -1)) best = s;
     });
     const cards = [
+      ...liveCards,
       ["Symbol · timeframe", `${meta.symbol} · ${meta.tf_minutes}m`],
       ["Bars loaded", String(meta.bars_loaded)],
       ["Bars this regime", String(rd.bars_in_regime)],
       ["% of sample", `${rd.pct_of_sample}%`],
-      ["Quadrant", rd.quadrant],
+      ["Taxonomy quadrant (this regime)", rd.quadrant],
       ["Total trades (4 specs)", String(sumTrades)],
       best
         ? ["Best rank_score", `${best.rank_score} (${best.strategy_key})`]
@@ -391,6 +571,8 @@
           `<div class="metric-card"><div class="metric-card__label">${label}</div><div class="metric-card__value">${val}</div></div>`
       )
       .join("");
+    updateLivePill(snapshot);
+    renderSignalExecute(snapshot);
   }
 
   function renderMetricsDemo(d, quadrant, regimeId, regimeName) {
@@ -675,14 +857,14 @@
       if (row) {
         renderBacktestScorecard(row);
         renderPerformanceMt5(row, pack.snapshot.regime_detail);
-        setStepHighlight(7);
+        setStepHighlight(8);
         return;
       }
     }
     const bt = mockBacktest(state.quadrant, strategyId, state.regimeId);
     renderBacktest(bt);
     renderPerformance(state.quadrant, strategyId, state.regimeId, bt);
-    setStepHighlight(6);
+    setStepHighlight(7);
   }
 
   function renderBacktestScorecard(row) {
@@ -922,6 +1104,9 @@
 
     document.querySelectorAll(".quad-card").forEach((btn) => {
       btn.addEventListener("click", () => onQuadrantPick(btn.dataset.quadrant));
+    });
+    $("#btnExecute")?.addEventListener("click", () => {
+      postExecute();
     });
   }
 

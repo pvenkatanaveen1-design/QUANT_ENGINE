@@ -7,6 +7,8 @@ MT5-backed JSON API for dashboard-lite (stdlib only — no Flask).
 
   GET http://127.0.0.1:8766/api/snapshot?symbol=EURUSD&tf_minutes=60&bars=12000&regime_id=7
 
+  POST http://127.0.0.1:8766/api/execute  (JSON: symbol, signal, approved_by)
+
 CORS: * — safe for local dev only.
 """
 
@@ -14,6 +16,7 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -21,6 +24,230 @@ from urllib.parse import parse_qs, urlparse
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+from forex_regime.live_detector import detect as live_detect
+
+
+def _append_execution_journal(row: dict) -> None:
+    import csv
+
+    path = ROOT / "reports" / "execution_journal.csv"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    exists = path.exists()
+    keys = sorted(row.keys())
+    with path.open("a", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=keys)
+        if not exists:
+            w.writeheader()
+        w.writerow(row)
+
+
+def _enrich_quant_engine(out: dict, mt5, symbol: str, live: dict) -> None:
+    """Phase 2–5: selector, suggested signal, risk gate (mutates out)."""
+    from forex_regime.risk.risk_gate import check_all
+    from forex_regime.session_util import utc_session_label
+    from forex_regime.signals.signal_generator import (
+        build_signal_checks,
+        generate_signal,
+        signal_to_dict,
+    )
+    from forex_regime.strategy_selector import get_active_strategies, get_strategy_scores
+
+    session = utc_session_label()
+    out["session"] = session
+    quad = str(live.get("quadrant") or "Q4").upper()
+    conf = float(live.get("confidence") or 0.0)
+    spr = live.get("spread")
+
+    sig_obj = None
+    try:
+        if live.get("mt5_connected"):
+            sig_obj = generate_signal(live, mt5, symbol)
+    except Exception:
+        sig_obj = None
+
+    sig_d = signal_to_dict(sig_obj)
+    checks = build_signal_checks(sig_obj, live, session)
+    out["signal_checks"] = checks
+    out["current_signal"] = sig_d
+
+    sig_met = {}
+    if sig_obj is not None:
+        sig_met[sig_obj.strategy] = True
+
+    try:
+        out["strategy_scores"] = get_strategy_scores(quad, conf, spr, session, symbol=symbol)
+        out["strategy_selection"] = get_active_strategies(
+            quad, conf, spr, session, symbol=symbol, signal_conditions_met=sig_met or None
+        )
+    except Exception:
+        out["strategy_scores"] = []
+        out["strategy_selection"] = {
+            "trade_allowed": False,
+            "reason": "selector error",
+            "size_multiplier": 0.0,
+            "strategies": [],
+        }
+
+    equity = 0.0
+    try:
+        ai = mt5.account_info()
+        if ai is not None:
+            equity = float(getattr(ai, "equity", 0) or 0)
+    except Exception:
+        pass
+
+    risk = check_all(
+        sig_d,
+        account_equity=equity,
+        daily_dd_pct=0.0,
+        spread=spr,
+        session=session,
+        news_blackout=False,
+        trades_today=0,
+        kill_switch_active=False,
+    )
+    out["risk_gate"] = risk
+    out["lot_size"] = float(risk.get("lot_size") or 0.0)
+
+
+def _live_fallback_dict() -> dict:
+    """Safe live payload if live_detect is unavailable or raises."""
+    return {
+        "last_price": None,
+        "spread": None,
+        "adx_14": None,
+        "atr_14": None,
+        "atr_pct": None,
+        "ema50": None,
+        "ema200": None,
+        "quadrant": None,
+        "confidence": None,
+        "label": None,
+        "direction": None,
+        "mt5_connected": False,
+        "last_update": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+
+
+def _parse_iso_utc(s: str | None) -> datetime | None:
+    if not s:
+        return None
+    t = str(s).strip()
+    if t.endswith("Z"):
+        t = t[:-1] + "+00:00"
+    try:
+        return datetime.fromisoformat(t).astimezone(timezone.utc)
+    except ValueError:
+        return None
+
+
+def run_execute(body: dict) -> tuple[int, dict]:
+    """POST /api/execute — re-validate signal, risk, single-position, journal."""
+    from forex_regime.execution.order_sender import send_order
+    from forex_regime.live_detector import detect as live_detect
+    from forex_regime.mt5_setup import initialize_mt5, shutdown_mt5
+    from forex_regime.risk.risk_gate import check_all
+    from forex_regime.session_util import utc_session_label
+    from forex_regime.signals.signal_generator import generate_signal, signal_to_dict
+
+    client = body.get("signal")
+    if not isinstance(client, dict):
+        return 400, {"success": False, "error": "missing signal object"}
+
+    symbol = str(body.get("symbol") or client.get("symbol") or "EURUSD")
+    approved_by = str(body.get("approved_by") or "operator")
+
+    sig_time = _parse_iso_utc(client.get("timestamp"))
+    if sig_time is not None:
+        age = (datetime.now(timezone.utc) - sig_time).total_seconds()
+        if age > 60 or age < -10:
+            return 400, {"success": False, "error": "stale_signal", "age_sec": age}
+
+    mt5 = initialize_mt5(ROOT)
+    try:
+        if not mt5.symbol_select(symbol, True):
+            return 502, {"success": False, "error": "symbol_select failed"}
+        try:
+            live = live_detect(symbol, mt5_module=mt5)
+        except Exception:
+            live = _live_fallback_dict()
+
+        if not live.get("mt5_connected"):
+            return 503, {"success": False, "error": "mt5 not connected"}
+
+        fresh = generate_signal(live, mt5, symbol)
+        if fresh is None:
+            return 409, {"success": False, "error": "no fresh signal"}
+
+        fd = signal_to_dict(fresh)
+        assert fd is not None
+
+        def r2(x) -> float | None:
+            try:
+                return round(float(x), 2)
+            except (TypeError, ValueError):
+                return None
+
+        if str(client.get("direction") or "").upper() != str(fd["direction"]).upper():
+            return 409, {"success": False, "error": "direction_mismatch"}
+        if str(client.get("strategy") or "") != str(fd["strategy"]):
+            return 409, {"success": False, "error": "strategy_mismatch"}
+        ce = r2(client.get("entry_price"))
+        fe = r2(fd["entry_price"])
+        if ce is None or fe is None or ce != fe:
+            return 409, {"success": False, "error": "entry_mismatch", "client_entry": ce, "fresh_entry": fe}
+
+        session = utc_session_label()
+        equity = 0.0
+        try:
+            ai = mt5.account_info()
+            if ai is not None:
+                equity = float(getattr(ai, "equity", 0) or 0)
+        except Exception:
+            pass
+
+        risk = check_all(
+            fd,
+            account_equity=equity,
+            daily_dd_pct=0.0,
+            spread=live.get("spread"),
+            session=session,
+            news_blackout=False,
+            trades_today=0,
+            kill_switch_active=False,
+        )
+        if not risk.get("approved"):
+            return 403, {"success": False, "error": "risk_blocked", "risk_gate": risk}
+
+        lot = float(risk.get("lot_size") or 0.0)
+        if lot <= 0:
+            return 403, {"success": False, "error": "zero_lot", "risk_gate": risk}
+
+        pos = mt5.positions_get(symbol=symbol)
+        if pos is not None and len(pos) > 0:
+            return 409, {"success": False, "error": "position_exists"}
+
+        cmt = f"QE:{approved_by}"[:31]
+        exec_res = send_order(mt5, fd, lot, comment=cmt)
+        now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        _append_execution_journal(
+            {
+                "ts_utc": now_iso,
+                "symbol": symbol,
+                "strategy": fd["strategy"],
+                "direction": fd["direction"],
+                "lot": lot,
+                "ticket": exec_res.get("ticket"),
+                "success": exec_res.get("success"),
+                "retcode": exec_res.get("retcode"),
+                "approved_by": approved_by,
+                "comment": exec_res.get("comment"),
+            }
+        )
+        return 200, {"success": bool(exec_res.get("success")), "execution": exec_res, "risk_gate": risk}
+    finally:
+        shutdown_mt5(mt5)
 
 
 def _json_handler(obj):
@@ -72,6 +299,11 @@ def build_snapshot(
         df = rates_to_dataframe(raw).sort_values("time").reset_index(drop=True)
         if df.empty:
             return {"error": "no OHLC data from MT5"}
+        live = _live_fallback_dict()
+        try:
+            live = live_detect(symbol, mt5_module=mt5)
+        except Exception:
+            pass
         p = Regime52Params()
         df = prepare_regime_and_signals(df, p)
         tbl = add_rank_columns(
@@ -99,6 +331,8 @@ def build_snapshot(
             "quadrant_bars": q_bar,
             "total_bars": n_all,
         }
+        out.update(live)
+        _enrich_quant_engine(out, mt5, symbol, live)
 
         if regime_id is None:
             return out
@@ -185,7 +419,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _cors(self) -> None:
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
 
     def do_OPTIONS(self) -> None:  # noqa: N802
@@ -241,11 +475,36 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def do_POST(self) -> None:  # noqa: N802
+        parsed = urlparse(self.path)
+        if parsed.path != "/api/execute":
+            self.send_error(404, "Not Found")
+            return
+        length = int(self.headers.get("Content-Length", "0") or "0")
+        raw = self.rfile.read(max(0, length)) if length > 0 else b"{}"
+        try:
+            body = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            body = {}
+
+        try:
+            status, payload = run_execute(body if isinstance(body, dict) else {})
+        except Exception as e:
+            status = 502
+            payload = {"success": False, "error": str(e), "error_type": type(e).__name__}
+
+        out = json.dumps(_json_handler(payload), indent=None).encode()
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self._cors()
+        self.end_headers()
+        self.wfile.write(out)
+
 
 def main() -> int:
     host = "127.0.0.1"
     port = 8766
-    print(f"Regime MT5 API  http://{host}:{port}/api/snapshot  (MT5 must be running)")
+    print(f"Regime MT5 API  http://{host}:{port}/api/snapshot  POST /api/execute  (MT5 must be running)")
     HTTPServer((host, port), Handler).serve_forever()
     return 0
 

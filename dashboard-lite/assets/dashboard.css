@@ -597,6 +597,56 @@ code {
   }
 }
 
+.exec-actions {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+}
+
+.exec-actions__label {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.exec-actions__input {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 0.4rem 0.65rem;
+  max-width: 14rem;
+}
+
+.btn-execute {
+  background: var(--success);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.55rem 1.15rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+
+.btn-execute:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-execute:not(:disabled):hover {
+  filter: brightness(1.08);
+}
+
+.metric-card--wide {
+  grid-column: 1 / -1;
+}
+
 .overlay {
   position: fixed;
   inset: 0;
