@@ -41,14 +41,207 @@
 
       <div class="shell">
         <header class="topbar">
-          <button type="button" class="icon-btn" id="menuToggle" aria-label="Open menu">☰</button>
-          <h1 class="topbar__title" id="pageTitle">Regime Engine</h1>
-          <div class="topbar__meta">
-            <span class="pill pill--live" id="livePill">Demo data</span>
+          <div class="topbar__row">
+            <button type="button" class="icon-btn" id="menuToggle" aria-label="Open menu">☰</button>
+            <h1 class="topbar__title" id="pageTitle">Regime Engine</h1>
+            <div class="topbar__actions" id="topbarActions">
+              <label class="topbar__label" for="symbolSelect">Pair</label>
+              <select id="symbolSelect" class="topbar__select" title="Currency pair / symbol (MT5)">
+                <option value="EURUSD">EURUSD</option>
+                <option value="GBPUSD">GBPUSD</option>
+                <option value="USDJPY">USDJPY</option>
+                <option value="AUDUSD">AUDUSD</option>
+                <option value="USDCAD">USDCAD</option>
+                <option value="USDCHF">USDCHF</option>
+                <option value="NZDUSD">NZDUSD</option>
+                <option value="EURJPY">EURJPY</option>
+                <option value="GBPJPY">GBPJPY</option>
+                <option value="XAUUSD">XAUUSD</option>
+                <option value="__custom__">Other…</option>
+              </select>
+              <input
+                type="text"
+                id="symbolCustom"
+                class="topbar__input-symbol"
+                placeholder="CUSTOM"
+                maxlength="32"
+                autocomplete="off"
+                title="Used when Pair is Other…"
+                hidden
+              />
+              <button type="button" class="btn-pdf" id="btnPdfReport" title="Full 52-regime PDF: warm MT5 once, then 53 small PDF chunks merged in the browser">
+                PDF report
+              </button>
+              <span class="pill" id="pdfStatus" aria-live="polite"></span>
+            </div>
+            <div class="topbar__meta">
+              <span class="pill pill--live" id="livePill">MT5 — waiting…</span>
+            </div>
+          </div>
+          <div class="pdf-diagnostics" id="pdfDiagnostics" hidden>
+            <span class="pdf-diagnostics__head" id="pdfDiagnosticsHead"></span>
+            <pre class="pdf-diagnostics__pre" id="pdfDiagnosticsBody"></pre>
           </div>
         </header>
 
         <main class="main" id="viewEngine">
+          <section class="research" id="researchPanel" aria-label="Research report configuration">
+            <div class="research__toolbar">
+              <div class="research__toolbar-left">
+                <h2 class="research__title">Research report configuration</h2>
+                <p class="research__subtitle">
+                  Editable payload → <code>POST /api/report/warm</code> (stored on session as
+                  <code>GET …/client-request</code>). Scorecard still uses the regime engine unchanged; calendar-range / strategy risk fields are persisted for orchestration &amp; future PDF layers.
+                </p>
+              </div>
+              <div class="research__toolbar-actions">
+                <label class="research__label"
+                  >Pair
+                  <select id="researchSymbolSelect" class="research__select" title="Symbol sent in JSON"></select>
+                </label>
+                <input
+                  type="text"
+                  id="researchSymbolCustom"
+                  class="research__input research__input--sym"
+                  placeholder="Custom symbol"
+                  maxlength="32"
+                  autocomplete="off"
+                  hidden
+                />
+                <button type="button" class="btn-research-primary" id="btnResearchGenerate" title="POST JSON below, then chunked 52-regime PDF merge">
+                  Generate PDF
+                </button>
+                <span class="pill" id="researchGenStatus" aria-live="polite"></span>
+              </div>
+            </div>
+
+            <p class="research__warn research__warn--info" id="researchHeavyWarn" hidden></p>
+
+            <div class="research__grid">
+              <details class="research__details">
+                <summary>1 · Regime configuration</summary>
+                <div class="research__fields">
+                  <label class="research__label"
+                    >Regime ID
+                    <select id="researchRegimeSelect" class="research__select"></select>
+                  </label>
+                  <label class="research__label"
+                    >Regime name
+                    <input type="text" id="researchRegimeName" class="research__input" readonly />
+                  </label>
+                  <label class="research__label"
+                    >Quadrant
+                    <input type="text" id="researchQuadrant" class="research__input" readonly />
+                  </label>
+                  <label class="research__label"
+                    >Confidence (from last load)
+                    <input type="text" id="researchConfidence" class="research__input" placeholder="—" />
+                  </label>
+                  <label class="research__label"
+                    >Bars (global default)
+                    <input type="number" id="researchBars" class="research__input" min="100" step="100" />
+                  </label>
+                  <label class="research__label"
+                    >ATR SL mult
+                    <input type="number" id="researchAtrSl" class="research__input" min="0.1" step="0.1" />
+                  </label>
+                  <label class="research__label"
+                    >Max bars (R-multiple scan)
+                    <input type="number" id="researchMaxBars" class="research__input" min="5" step="1" />
+                  </label>
+                  <label class="research__label"
+                    >Historical range note
+                    <input type="text" id="researchHistRange" class="research__input" placeholder="e.g. last N bars / custom" />
+                  </label>
+                  <label class="research__label"
+                    >Start date (UTC)
+                    <input type="date" id="researchDateStart" class="research__input" />
+                  </label>
+                  <label class="research__label"
+                    >End date (UTC)
+                    <input type="date" id="researchDateEnd" class="research__input" />
+                  </label>
+                  <label class="research__check">
+                    <input type="checkbox" id="researchOptVolume" /> Include volume analysis (report flag)
+                  </label>
+                  <label class="research__check">
+                    <input type="checkbox" id="researchOptInstitutional" checked /> Include institutional analysis
+                  </label>
+                  <label class="research__check">
+                    <input type="checkbox" id="researchOptEquity" /> Include equity curve (report flag)
+                  </label>
+                  <button type="button" class="btn-research-secondary" id="btnResearchLoadFlow">
+                    Load regime &amp; confidence from current flow
+                  </button>
+                </div>
+              </details>
+
+              <details class="research__details">
+                <summary>2 · Timeframes (multi-select + bars per TF)</summary>
+                <p class="research__hint">
+                  Each enabled row becomes one MT5/scorecard pass when you run multi-TF PDF (sequential). Very large bars × low TF = long runs.
+                </p>
+                <div class="research__table-wrap">
+                  <table class="research__table" id="researchTfTable">
+                    <thead>
+                      <tr>
+                        <th>Use</th>
+                        <th>TF</th>
+                        <th>tf_minutes</th>
+                        <th>Bars</th>
+                      </tr>
+                    </thead>
+                    <tbody id="researchTfTbody"></tbody>
+                  </table>
+                </div>
+              </details>
+
+              <details class="research__details">
+                <summary>3 · Strategies (selected regime)</summary>
+                <p class="research__hint" id="researchStrategyHint">Select a regime and click “Load from flow” or change regime to fetch scorecard rows from the API.</p>
+                <div class="research__table-wrap research__table-wrap--wide">
+                  <table class="research__table" id="researchStrategyTable">
+                    <thead>
+                      <tr>
+                        <th>On</th>
+                        <th>Name</th>
+                        <th>Key</th>
+                        <th>Signal</th>
+                        <th>Side</th>
+                        <th>Risk %</th>
+                        <th>R:R</th>
+                        <th>ATR mult</th>
+                        <th>Pos size</th>
+                      </tr>
+                    </thead>
+                    <tbody id="researchStrategyTbody"></tbody>
+                  </table>
+                </div>
+                <button type="button" class="btn-research-secondary" id="btnResearchRefreshStrategies">
+                  Refresh strategies from API
+                </button>
+              </details>
+
+              <details class="research__details">
+                <summary>4 · Request preview (live JSON)</summary>
+                <pre class="research__json" id="researchJsonPreview"></pre>
+              </details>
+
+              <details class="research__details">
+                <summary>5 · Report progress</summary>
+                <ol class="research__steps" id="researchProgressList">
+                  <li data-step="mt5">Connecting MT5 / queue</li>
+                  <li data-step="hist">Fetching history &amp; scorecard</li>
+                  <li data-step="reg">Regime classification</li>
+                  <li data-step="strat">Strategy / bundle</li>
+                  <li data-step="charts">PDF chunks (charts)</li>
+                  <li data-step="pdf">Merging &amp; download</li>
+                </ol>
+                <p class="research__progress-detail" id="researchProgressDetail" aria-live="polite"></p>
+              </details>
+            </div>
+          </section>
+
           <section class="panel panel--intro">
             <h2 class="panel__h">Flow</h2>
             <ol class="steps">
@@ -99,8 +292,14 @@
 
           <!-- Step 3 Analytics -->
           <section class="panel fade-in" id="stepAnalytics" hidden>
-            <h2 class="panel__h">Step 3 — Regime analytics</h2>
+            <h2 class="panel__h">Step 3 — Regime analytics (all strategies in this regime)</h2>
             <p class="panel__sub" id="analyticsSubtitle">Pick a quadrant, then a regime id.</p>
+            <div class="analysis-actions exec-actions">
+              <button type="button" class="btn-analysis" id="btnAnalysis" title="Re-fetch MT5 snapshot and refresh all panels">
+                Run analysis
+              </button>
+              <span class="pill pill--live" id="analysisStatus" aria-live="polite"></span>
+            </div>
             <div class="grid grid--metrics" id="metricCards"></div>
           </section>
 
@@ -113,15 +312,15 @@
                 <div class="chart-card__canvas"><canvas id="chartPie"></canvas></div>
               </div>
               <div class="chart-card">
-                <h3 class="chart-card__h">Historical regime mix (mock)</h3>
+                <h3 class="chart-card__h">Historical regime mix</h3>
                 <div class="chart-card__canvas"><canvas id="chartLine"></canvas></div>
               </div>
               <div class="chart-card">
-                <h3 class="chart-card__h">Monthly bar (mock)</h3>
+                <h3 class="chart-card__h">Monthly bar</h3>
                 <div class="chart-card__canvas"><canvas id="chartBar"></canvas></div>
               </div>
               <div class="chart-card">
-                <h3 class="chart-card__h">Intensity heatmap (mock)</h3>
+                <h3 class="chart-card__h">Intensity heatmap</h3>
                 <div class="heatmap" id="heatmap"></div>
               </div>
               <div class="chart-card chart-card--wide">
@@ -161,17 +360,17 @@
 
           <!-- Step 7 Backtest -->
           <section class="panel fade-in" id="stepBacktest" hidden>
-            <h2 class="panel__h">Step 7 — Backtesting panel</h2>
-            <p class="panel__sub" id="backtestSubtitle">Select a strategy to view mock backtest output.</p>
+            <h2 class="panel__h">Step 7 — Strategy backtest (selected Rxx-Syy only)</h2>
+            <p class="panel__sub" id="backtestSubtitle">Select a strategy to view MT5 scorecard metrics.</p>
             <div class="grid grid--bt" id="backtestMetrics"></div>
           </section>
 
           <!-- Step 8 Performance -->
           <section class="panel fade-in" id="stepPerformance" hidden>
-            <h2 class="panel__h">Step 8 — Performance visualization</h2>
+            <h2 class="panel__h">Step 8 — Strategy performance charts (same selection)</h2>
             <div class="grid grid--perf">
               <div class="chart-card chart-card--wide">
-                <h3 class="chart-card__h">Equity curve (mock)</h3>
+                <h3 class="chart-card__h">MFE win-rate bars</h3>
                 <div class="chart-card__canvas chart-card__canvas--tall"><canvas id="chartEquity"></canvas></div>
               </div>
               <div class="chart-card">
@@ -179,11 +378,11 @@
                 <div class="chart-card__canvas"><canvas id="chartTrades"></canvas></div>
               </div>
               <div class="chart-card">
-                <h3 class="chart-card__h">R-multiple histogram (mock)</h3>
+                <h3 class="chart-card__h">MFE radar</h3>
                 <div class="chart-card__canvas"><canvas id="chartHist"></canvas></div>
               </div>
               <div class="chart-card chart-card--wide">
-                <h3 class="chart-card__h">Monthly returns (mock)</h3>
+                <h3 class="chart-card__h">Scorecard blend</h3>
                 <div class="table-wrap">
                   <table class="data-table" id="monthlyTable"></table>
                 </div>

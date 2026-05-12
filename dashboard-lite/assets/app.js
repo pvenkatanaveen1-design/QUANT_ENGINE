@@ -80,6 +80,26 @@
     return m;
   })();
 
+  /** Timeframe catalog for Research panel (minutes, UI label, default bars). Edit this array to change the grid — no other literals. */
+  const RESEARCH_TF_CATALOG = [
+    { tf_minutes: 1, label: "1m", defaultBars: 30000 },
+    { tf_minutes: 2, label: "2m", defaultBars: 25000 },
+    { tf_minutes: 5, label: "5m", defaultBars: 20000 },
+    { tf_minutes: 10, label: "10m", defaultBars: 15000 },
+    { tf_minutes: 15, label: "15m", defaultBars: 12000 },
+    { tf_minutes: 30, label: "30m", defaultBars: 10000 },
+    { tf_minutes: 60, label: "1H", defaultBars: 8000 },
+    { tf_minutes: 120, label: "2H", defaultBars: 6000 },
+    { tf_minutes: 180, label: "3H", defaultBars: 5000 },
+    { tf_minutes: 240, label: "4H", defaultBars: 4000 },
+  ];
+
+  /** @type {{ strategy_key: string, strategy_title: string, signal_kind: string, side_rule: number, risk_pct: string, rr_ratio: string, atr_multiplier: string, position_size: string, enabled: boolean }[]} */
+  let researchStrategiesDraft = [];
+
+  let researchPreviewScheduled = false;
+  let researchSymbolSync = false;
+
   /**
    * Mirrors _BLUEPRINTS in regimes52/strategies/registry.py (title + signal_kind + side only for UI).
    */
@@ -140,71 +160,32 @@
     regimeId: null,
     strategyId: null,
     charts: {},
-    /** @type {{ source: string, snapshot?: any, mock?: any }|null} */
+    /** @type {{ source: string, snapshot?: any, error?: string }|null} */
     lastPack: null,
   };
 
   /** @type {ReturnType<typeof setInterval>|null} */
   let livePollTimer = null;
+  /** @type {ReturnType<typeof setInterval>|null} */
+  let liveStripTimer = null;
 
   const PAGE = new URLSearchParams(location.search);
   const API_BASE = (PAGE.get("api") || "http://127.0.0.1:8766").replace(/\/$/, "");
-  const API_SYMBOL = PAGE.get("symbol") || "EURUSD";
+  let API_SYMBOL = (PAGE.get("symbol") || "EURUSD").trim().toUpperCase() || "EURUSD";
   const API_TF = parseInt(PAGE.get("tf") || "60", 10);
   const API_BARS = parseInt(PAGE.get("bars") || "12000", 10);
 
-  function hashSeed(str) {
-    let h = 0;
-    for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
-    return Math.abs(h);
+  function getActiveSymbol() {
+    const sel = /** @type {HTMLSelectElement|null} */ (document.getElementById("symbolSelect"));
+    const cust = /** @type {HTMLInputElement|null} */ (document.getElementById("symbolCustom"));
+    if (sel && sel.value === "__custom__" && cust) {
+      const raw = (cust.value || "").trim().toUpperCase();
+      return raw || API_SYMBOL;
+    }
+    if (sel && sel.value && sel.value !== "__custom__") return sel.value;
+    return API_SYMBOL;
   }
 
-  function regimeRKey(quadrant, regimeId) {
-    return (quadrant || "") + "#" + String(regimeId);
-  }
-
-  /** @param {number} regimeId */
-  function mockAnalytics(quadrant, regimeId) {
-    const s = hashSeed(regimeRKey(quadrant, regimeId));
-    const r = (a, b) => a + ((s % 1000) / 1000) * (b - a);
-    return {
-      bullCount: Math.round(r(1200, 8900)),
-      bearCount: Math.round(r(800, 5200)),
-      sidewaysCount: Math.round(r(900, 6100)),
-      confidencePct: Math.round(r(62, 94) * 10) / 10,
-      winRatioPct: Math.round(r(48, 72) * 10) / 10,
-      histFreqPerYr: Math.round(r(18, 48) * 10) / 10,
-      avgDurationBars: Math.round(r(8, 95)),
-      volScore: Math.round(r(22, 88) * 10) / 10,
-    };
-  }
-
-  function mockBacktest(quadrant, strategyId, regimeId) {
-    const s = hashSeed(regimeRKey(quadrant, regimeId) + "|" + (strategyId || ""));
-    const r = (a, b) => a + ((s % 997) / 997) * (b - a);
-    const initial = 100000;
-    const roi = r(-8, 22);
-    const final = Math.round(initial * (1 + roi / 100));
-    return {
-      initialCapital: initial,
-      finalCapital: final,
-      pnl: final - initial,
-      roiPct: Math.round(roi * 100) / 100,
-      winRatePct: Math.round(r(42, 68) * 10) / 10,
-      totalTrades: Math.round(r(120, 980)),
-      wins: Math.round(r(55, 420)),
-      losses: Math.round(r(40, 390)),
-      maxDrawdownPct: Math.round(r(4.5, 22) * 10) / 10,
-      sharpe: Math.round(r(0.35, 2.1) * 100) / 100,
-      riskReward: Math.round(r(0.7, 2.4) * 100) / 100,
-    };
-  }
-
-  /**
-   * @param {string} _quadrant
-   * @param {number} regimeId
-   * @returns {Promise<{ source: string, snapshot?: any, mock?: any }>}
-   */
   function stopLivePoll() {
     if (livePollTimer) {
       clearInterval(livePollTimer);
@@ -238,12 +219,41 @@
     pill.textContent = `MT5 · ${meta.symbol} · px ${price} · spr ${sp} · live ${lq}${fresh}`;
   }
 
+  async function fetchLiveStrip(symbol) {
+    try {
+      const sym = symbol != null && String(symbol).trim() !== "" ? String(symbol).trim() : getActiveSymbol();
+      const url = `${API_BASE}/api/snapshot?symbol=${encodeURIComponent(sym)}&tf_minutes=60&bars=5`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const snap = await res.json();
+      if (snap.error) throw new Error(snap.error || snap.error_type || "snapshot error");
+      updateLiveStrip(snap);
+    } catch (e) {
+      console.warn("[live-strip] failed:", e);
+      updateLiveStrip(null);
+    }
+  }
+
+  function updateLiveStrip(snap) {
+    if (!snap || !snap.mt5_connected) {
+      const pill = document.getElementById("livePill");
+      if (pill) pill.textContent = "MT5 disconnected 🔴";
+      return;
+    }
+    updateLivePill(snap);
+    liveDataFreshness(snap.last_update);
+  }
+
   function escHtml(s) {
     return String(s)
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
+  }
+
+  function escAttr(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;");
   }
 
   function fmtSignalLine(sig) {
@@ -325,7 +335,7 @@
       const res = await fetch(`${API_BASE}/api/execute`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ symbol: API_SYMBOL, signal: snap.current_signal, approved_by: ab }),
+        body: JSON.stringify({ symbol: getActiveSymbol(), signal: snap.current_signal, approved_by: ab }),
       });
       const j = await res.json().catch(() => ({}));
       if (res.ok && j.success) {
@@ -356,36 +366,137 @@
       renderMetricsMt5(pack.snapshot);
       renderSignalExecute(pack.snapshot);
       renderChartsMt5(pack.snapshot.regime_detail);
-      renderStrategies(q, rid, nm, pack.snapshot.regime_detail);
-      if (state.strategyId) selectStrategy(state.strategyId);
+      renderStrategies(q, rid, nm, pack.snapshot.regime_detail, state.strategyId);
+      if (state.strategyId) selectStrategy(state.strategyId, { scroll: false });
     }, 10000);
   }
 
   async function fetchRegimeData(_quadrant, regimeId) {
     try {
       const u = new URL(`${API_BASE}/api/snapshot`);
-      u.searchParams.set("symbol", API_SYMBOL);
+      u.searchParams.set("symbol", getActiveSymbol());
       u.searchParams.set("tf_minutes", String(API_TF));
       u.searchParams.set("bars", String(API_BARS));
       u.searchParams.set("regime_id", String(regimeId));
-      const res = await fetch(u.toString());
-      const snap = await res.json();
-      if (!res.ok || snap.error) {
-        throw new Error(snap.error || snap.error_type || `HTTP ${res.status}`);
+      const opts = {};
+      if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
+        opts.signal = AbortSignal.timeout(180000);
+      }
+      const res = await fetch(u.toString(), opts);
+      let snap = null;
+      try {
+        snap = await res.json();
+      } catch (_) {
+        throw new Error(`Bad JSON from API (HTTP ${res.status}) — is ${API_BASE} the dashboard server?`);
+      }
+      if (!snap || typeof snap !== "object") {
+        throw new Error("Invalid snapshot response");
+      }
+      if (!res.ok) {
+        throw new Error(
+          [snap.error, snap.error_type, `HTTP ${res.status}`].filter(Boolean).join(" · ") || `HTTP ${res.status}`
+        );
+      }
+      if (typeof snap.error === "string" && snap.error.trim().length > 0) {
+        throw new Error(snap.error.trim());
       }
       return { source: "mt5", snapshot: snap };
     } catch (e) {
-      console.warn("[dashboard] MT5 API unavailable, using demo data:", e);
+      const msg = String(e && e.message ? e.message : e);
+      console.warn("[dashboard] snapshot fetch failed:", e);
       return {
-        source: "demo",
-        mock: mockAnalytics(_quadrant, regimeId),
-        error: String(e),
+        source: "error",
+        error: msg,
+        snapshot: null,
       };
+    }
+  }
+
+  /**
+   * Apply MT5 snapshot to dashboard after fetch. preferredStrategyId keeps strategy tab when re-running analysis.
+   */
+  function applyRegimeSnapshotPack(pack, q, regimeId, nm, preferredStrategyId) {
+    if (pack.source === "mt5" && pack.snapshot && pack.snapshot.regime_detail) {
+      $("#analyticsSubtitle").textContent =
+        `${q} · R${String(regimeId).padStart(2, "0")} ${nm} — scorecard from MT5 (MFE study, not dollar P&L).`;
+      renderMetricsMt5(pack.snapshot);
+      renderChartsMt5(pack.snapshot.regime_detail);
+      renderStrategies(q, regimeId, nm, pack.snapshot.regime_detail, preferredStrategyId);
+      renderSignalExecute(pack.snapshot);
+      $("#backtestSubtitle").textContent =
+        "Pick a strategy below — Steps 7–8 show its MT5 scorecard (MFE). Step 3–4 stay on regime-wide stats. Re-run analysis refreshes all.";
+      startLivePoll();
+    } else {
+      stopLivePoll();
+      const err = (pack && pack.error) || "MT5 snapshot failed";
+      $("#analyticsSubtitle").textContent =
+        `${q} · R${String(regimeId).padStart(2, "0")} ${nm} — MT5 data unavailable.`;
+      $("#metricCards").innerHTML = `<div class="metric-card"><div class="metric-card__label">Dashboard server</div><div class="metric-card__value">${escHtml(err)}</div></div>`;
+      destroyCharts();
+      const hm = $("#heatmap");
+      if (hm) hm.innerHTML = "";
+      renderStrategies(q, regimeId, nm, null, null);
+      renderSignalExecute(null);
+      $("#backtestSubtitle").textContent =
+        "Scorecard needs the Python dashboard server (MT5 in the same session). Start server.py, then reload.";
+      renderPerformanceEmpty();
+      $("#monthlyTable").innerHTML = "";
+      $("#backtestMetrics").innerHTML = "";
+      setStepHighlight(3);
+      return;
+    }
+  }
+
+  async function runAnalysis() {
+    const q = state.quadrant;
+    const rid = state.regimeId;
+    const st = $("#analysisStatus");
+    const btn = $("#btnAnalysis");
+    if (!q || rid == null) {
+      if (st) st.textContent = "Select quadrant + regime first.";
+      return;
+    }
+    const nm = REGIME_NAMES[rid] || `ID ${rid}`;
+    const keepSid = state.strategyId;
+    if (btn) btn.disabled = true;
+    if (st) st.textContent = "Fetching MT5 snapshot…";
+    $("#analyticsSubtitle").textContent = `${q} · Regime ${rid} (${nm}) — refreshing…`;
+    try {
+      const pack = await fetchRegimeData(q, rid);
+      state.lastPack = pack;
+      applyRegimeSnapshotPack(pack, q, rid, nm, keepSid);
+      setSnapshotStatusMessage(pack);
+    } catch (e) {
+      if (st) st.textContent = "Error: " + e;
+    } finally {
+      if (btn) btn.disabled = false;
     }
   }
 
   function $(sel) {
     return document.querySelector(sel);
+  }
+
+  /** Update Step 3 status pill after snapshot fetch (regime pick or Run analysis). */
+  function setSnapshotStatusMessage(pack) {
+    const st = $("#analysisStatus");
+    if (!st) return;
+    if (pack.source === "mt5" && pack.snapshot && pack.snapshot.regime_detail) {
+      st.textContent = "Regime data ready · " + new Date().toLocaleTimeString();
+    } else if (pack.source === "error") {
+      st.textContent = "Failed: " + (pack.error || "Unknown error").slice(0, 160);
+    } else if (pack.source === "mt5" && pack.snapshot && !pack.snapshot.regime_detail) {
+      st.textContent = "Failed: response has no regime_detail (check regime_id / server).";
+    } else {
+      st.textContent = "Failed: unexpected response from API.";
+    }
+  }
+
+  function scrollPanelIntoView(id) {
+    const el = document.getElementById(id);
+    if (el && typeof el.scrollIntoView === "function") {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   }
 
   function destroyCharts() {
@@ -499,31 +610,11 @@
 
     const pack = await fetchRegimeData(q, regimeId);
     state.lastPack = pack;
-    const pill = $("#livePill");
-
+    applyRegimeSnapshotPack(pack, q, regimeId, nm, null);
+    setSnapshotStatusMessage(pack);
     if (pack.source === "mt5" && pack.snapshot && pack.snapshot.regime_detail) {
-      $("#analyticsSubtitle").textContent =
-        `${q} · R${String(regimeId).padStart(2, "0")} ${nm} — scorecard from MT5 (MFE study, not dollar P&L).`;
-      renderMetricsMt5(pack.snapshot);
-      renderChartsMt5(pack.snapshot.regime_detail);
-      renderStrategies(q, regimeId, nm, pack.snapshot.regime_detail);
-      renderSignalExecute(pack.snapshot);
-      $("#backtestSubtitle").textContent =
-        "Strategy panel uses MT5 scorecard rows (trades, wr_1r…wr_4r). Equity charts below are illustrative unless you add a full backtest P&L engine.";
-      startLivePoll();
-    } else {
-      stopLivePoll();
-      pill.textContent = "Demo — run: python dashboard_api/server.py (port 8766)";
-      $("#analyticsSubtitle").textContent =
-        `${q} · R${String(regimeId).padStart(2, "0")} ${nm} — demo (API offline or error).`;
-      renderMetricsDemo(pack.mock, q, regimeId, nm);
-      renderChartsDemo(q, pack.mock, regimeId);
-      renderStrategies(q, regimeId, nm, null);
-      renderSignalExecute(null);
-      $("#backtestSubtitle").textContent = `Mock backtest for ${nm} — pick a strategy card.`;
+      scrollPanelIntoView("stepAnalytics");
     }
-
-    setStepHighlight(4);
   }
 
   function renderMetricsMt5(snapshot) {
@@ -573,25 +664,6 @@
       .join("");
     updateLivePill(snapshot);
     renderSignalExecute(snapshot);
-  }
-
-  function renderMetricsDemo(d, quadrant, regimeId, regimeName) {
-    const cards = [
-      ["Bull occurrences", d.bullCount.toLocaleString()],
-      ["Bear occurrences", d.bearCount.toLocaleString()],
-      ["Sideways / range", d.sidewaysCount.toLocaleString()],
-      ["Regime confidence", `${d.confidencePct}%`],
-      ["Win ratio (mock)", `${d.winRatioPct}%`],
-      ["Hist. frequency / yr", `${d.histFreqPerYr}`],
-      ["Avg duration (bars)", `${d.avgDurationBars}`],
-      ["Volatility score", `${d.volScore}`],
-    ];
-    $("#metricCards").innerHTML = cards
-      .map(
-        ([label, val]) =>
-          `<div class="metric-card"><div class="metric-card__label">${label}</div><div class="metric-card__value">${val}</div></div>`
-      )
-      .join("");
   }
 
   function renderChartsMt5(rd) {
@@ -691,102 +763,7 @@
     }
   }
 
-  function renderChartsDemo(quadrant, d, regimeId) {
-    destroyCharts();
-    if (typeof Chart === "undefined") {
-      console.warn("Chart.js not loaded — check CDN or use local chart.umd.min.js");
-      return;
-    }
-
-    const rk = regimeRKey(quadrant, regimeId);
-    const bull = d.bullCount;
-    const bear = d.bearCount;
-    const side = d.sidewaysCount;
-    const pieEl = document.getElementById("chartPie");
-    if (pieEl) {
-      state.charts.pie = new Chart(pieEl.getContext("2d"), {
-        type: "doughnut",
-        data: {
-          labels: ["Bull", "Bear", "Sideways"],
-          datasets: [
-            {
-              data: [bull, bear, side],
-              backgroundColor: ["#3fb950", "#f85149", "#8b949e"],
-              borderWidth: 0,
-            },
-          ],
-        },
-        options: { plugins: { legend: { labels: { color: "#8b949e" } } }, animation: { duration: 400 } },
-      });
-    }
-
-    const lineEl = document.getElementById("chartLine");
-    if (lineEl) {
-      const labels = Array.from({ length: 24 }, (_, i) => `T${i + 1}`);
-      const seed = hashSeed(rk + "line");
-      const mix = labels.map((_, i) => 30 + ((seed >> (i % 8)) & 15) + (i % 7) * 2);
-      state.charts.line = new Chart(lineEl.getContext("2d"), {
-        type: "line",
-        data: {
-          labels,
-          datasets: [
-            {
-              label: "Regime stress index (mock)",
-              data: mix,
-              borderColor: "#58a6ff",
-              backgroundColor: "rgba(88,166,255,0.1)",
-              fill: true,
-              tension: 0.35,
-            },
-          ],
-        },
-        options: {
-          scales: {
-            x: { ticks: { color: "#8b949e", maxRotation: 0 }, grid: { color: "#30363d" } },
-            y: { ticks: { color: "#8b949e" }, grid: { color: "#30363d" } },
-          },
-          plugins: { legend: { labels: { color: "#8b949e" } } },
-        },
-      });
-    }
-
-    const barEl = document.getElementById("chartBar");
-    if (barEl) {
-      const months = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
-      const seed = hashSeed(rk + "bar");
-      const vals = months.map((_, i) => 40 + ((seed >> i) & 31));
-      state.charts.bar = new Chart(barEl.getContext("2d"), {
-        type: "bar",
-        data: {
-          labels: months,
-          datasets: [{ label: "Monthly (mock)", data: vals, backgroundColor: "rgba(63,185,80,0.55)", borderRadius: 4 }],
-        },
-        options: {
-          scales: {
-            x: { ticks: { color: "#8b949e" }, grid: { display: false } },
-            y: { ticks: { color: "#8b949e" }, grid: { color: "#30363d" } },
-          },
-          plugins: { legend: { display: false } },
-        },
-      });
-    }
-
-    const hm = $("#heatmap");
-    if (hm) {
-      hm.innerHTML = "";
-      const seed = hashSeed(rk + "heat");
-      for (let i = 0; i < 12 * 8; i++) {
-        const cell = document.createElement("div");
-        cell.className = "heatmap__cell";
-        const inten = ((seed + i * 17) % 100) / 100;
-        cell.style.background = `rgba(88, 166, 255, ${0.15 + inten * 0.85})`;
-        cell.title = `Intensity ${(inten * 100).toFixed(0)}%`;
-        hm.appendChild(cell);
-      }
-    }
-  }
-
-  function renderStrategies(quadrant, regimeId, regimeName, regimeDetail) {
+  function renderStrategies(quadrant, regimeId, regimeName, regimeDetail, preferredStrategyId) {
     const base = strategiesForRegime(regimeId);
     const list = base.map((st) => {
       if (!regimeDetail || !regimeDetail.strategies) return st;
@@ -795,20 +772,24 @@
       const extra = `MT5: trades ${row.trades} · wr₂ ${(row.wr_2r * 100).toFixed(1)}% · rank ${row.rank_score}`;
       return { ...st, desc: `${st.desc}\n${extra}` };
     });
+    const pickId =
+      preferredStrategyId && list.some((s) => s.id === preferredStrategyId) ? preferredStrategyId : list[0]?.id;
+
     const tabs = $("#strategyTabs");
     const panels = $("#strategyPanels");
     const ctx = $("#strategyContext");
     if (ctx) {
       ctx.textContent =
-        `${quadrant} · R${String(regimeId).padStart(2, "0")} ${regimeName} — four engine strategies (R${String(regimeId).padStart(2, "0")}-S01…S04, same blueprint set as all regimes in ${quadrant}).`;
+        `${quadrant} · R${String(regimeId).padStart(2, "0")} ${regimeName} — four strategies (same blueprint set as all regimes in ${quadrant}). Tap one to open its scorecard in Steps 7–8; regime-wide charts stay in Steps 3–4.`;
     }
     tabs.innerHTML = "";
     panels.innerHTML = "";
 
-    list.forEach((st, idx) => {
+    list.forEach((st) => {
       const tab = document.createElement("button");
       tab.type = "button";
-      tab.className = "tab" + (idx === 0 ? " tab--active" : "");
+      const isActive = st.id === pickId;
+      tab.className = "tab" + (isActive ? " tab--active" : "");
       tab.textContent = st.id;
       tab.title = st.name;
       tab.dataset.strategyId = st.id;
@@ -824,10 +805,11 @@
       tabs.appendChild(tab);
     });
 
-    list.forEach((st, idx) => {
+    list.forEach((st) => {
       const card = document.createElement("button");
       card.type = "button";
-      card.className = "strategy-card" + (idx === 0 ? " strategy-card--selected" : "");
+      const isSel = st.id === pickId;
+      card.className = "strategy-card" + (isSel ? " strategy-card--selected" : "");
       card.dataset.strategyId = st.id;
       card.innerHTML =
         `<div class="strategy-card__key">${st.id}</div>` +
@@ -844,26 +826,46 @@
       panels.appendChild(card);
     });
 
-    if (list.length) selectStrategy(list[0].id);
-    setStepHighlight(5);
+    if (list.length && pickId) selectStrategy(pickId, { scroll: false });
+    if (!list.length) setStepHighlight(5);
   }
 
-  function selectStrategy(strategyId) {
+  function selectStrategy(strategyId, options) {
+    const scroll = !options || options.scroll !== false;
     state.strategyId = strategyId;
     if (!state.quadrant || state.regimeId == null) return;
+    const rid = state.regimeId;
+    const regimeNm = REGIME_NAMES[rid] || `ID ${rid}`;
+    const spec = strategiesForRegime(rid).find((s) => s.id === strategyId);
+    const stratTitle = spec ? spec.name.replace(/\s+—\s+.+$/, "") : strategyId;
     const pack = state.lastPack;
     if (pack && pack.source === "mt5" && pack.snapshot && pack.snapshot.regime_detail) {
       const row = pack.snapshot.regime_detail.strategies.find((s) => s.strategy_key === strategyId);
       if (row) {
+        const ctx = $("#strategyContext");
+        if (ctx) {
+          ctx.textContent =
+            `${state.quadrant} · R${String(rid).padStart(2, "0")} ${regimeNm} — selected ${strategyId} (${stratTitle}). Regime-level metrics: Steps 3–4. This strategy’s MFE scorecard: Steps 7–8.`;
+        }
+        $("#backtestSubtitle").textContent =
+          `${strategyId} · ${stratTitle} — MT5 scorecard for bars where taxonomy = R${String(rid).padStart(2, "0")} and this signal spec fired (MFE vs ATR stop, not $ P&L).`;
         renderBacktestScorecard(row);
         renderPerformanceMt5(row, pack.snapshot.regime_detail);
         setStepHighlight(8);
+        if (scroll) scrollPanelIntoView("stepBacktest");
         return;
       }
     }
-    const bt = mockBacktest(state.quadrant, strategyId, state.regimeId);
-    renderBacktest(bt);
-    renderPerformance(state.quadrant, strategyId, state.regimeId, bt);
+    const ctx = $("#strategyContext");
+    if (ctx) {
+      ctx.textContent =
+        `${state.quadrant} · R${String(rid).padStart(2, "0")} ${regimeNm} — ${strategyId} selected; load regime snapshot to see scorecard.`;
+    }
+    renderPerformanceEmpty();
+    $("#monthlyTable").innerHTML =
+      `<thead><tr><th>Month</th><th>Bars (this regime)</th></tr></thead><tbody><tr><td colspan="2">MT5 scorecard required</td></tr></tbody>`;
+    $("#backtestMetrics").innerHTML =
+      `<div class="bt-metric"><div class="bt-metric__v">—</div><div class="bt-metric__k">No MT5 scorecard — load regime with API online</div></div>`;
     setStepHighlight(7);
   }
 
@@ -982,28 +984,6 @@
       `</tbody>`;
   }
 
-  function renderBacktest(bt) {
-    const rows = [
-      ["Initial capital", `$${bt.initialCapital.toLocaleString()}`],
-      ["Final capital", `$${bt.finalCapital.toLocaleString()}`],
-      ["Total P/L", `$${bt.pnl.toLocaleString()}`],
-      ["ROI", `${bt.roiPct}%`],
-      ["Win rate", `${bt.winRatePct}%`],
-      ["Total trades", String(bt.totalTrades)],
-      ["Winning trades", String(bt.wins)],
-      ["Losing trades", String(bt.losses)],
-      ["Max drawdown", `${bt.maxDrawdownPct}%`],
-      ["Sharpe (mock)", String(bt.sharpe)],
-      ["Risk/reward", String(bt.riskReward)],
-    ];
-    $("#backtestMetrics").innerHTML = rows
-      .map(
-        ([k, v]) =>
-          `<div class="bt-metric"><div class="bt-metric__v">${v}</div><div class="bt-metric__k">${k}</div></div>`
-      )
-      .join("");
-  }
-
   function renderPerformanceEmpty() {
     ["chartEquity", "chartTrades", "chartHist"].forEach((k) => {
       const c = state.charts[k];
@@ -1016,84 +996,678 @@
     });
   }
 
-  function renderPerformance(quadrant, strategyId, regimeId, bt) {
-    if (typeof Chart === "undefined") return;
-    renderPerformanceEmpty();
+  function getApiUnreachableLines() {
+    const lines = [
+      "1) Start API:  cd forex_regime",
+      "   python dashboard_api/server.py   →  listening on port 8766",
+      "",
+      "2) Open UI with:  dashboard-lite\\run.ps1",
+      "   URL must be http://127.0.0.1:8765/  (not a file:// path)",
+      "",
+      "3) API base this page uses:  " + API_BASE,
+    ];
+    if (location.protocol === "file:") {
+      lines.push("", "• You are on file:// — fetch to localhost is often blocked.");
+    }
+    if (location.protocol === "https:" && String(API_BASE).startsWith("http:")) {
+      lines.push("", "• HTTPS page cannot call HTTP API (mixed content).");
+    }
+    return lines;
+  }
 
-    const rk = regimeRKey(quadrant, regimeId);
-    const eq = document.getElementById("chartEquity");
-    if (eq) {
-      const n = 60;
-      const seed = hashSeed(rk + strategyId + "eq");
-      let v = 100;
-      const data = [v];
-      for (let i = 0; i < n; i++) {
-        v += (((seed >> (i % 16)) & 7) - 3) * 0.35 + (bt.roiPct / n) * 0.15;
-        data.push(Math.max(85, v));
+  /**
+   * Small panel under PDF: kind = "clear" | "info" | "ok" | "err"
+   * @param {string[]} lines
+   */
+  function setPdfDiagnostics(kind, head, lines) {
+    const box = document.getElementById("pdfDiagnostics");
+    const h = document.getElementById("pdfDiagnosticsHead");
+    const b = document.getElementById("pdfDiagnosticsBody");
+    if (!box || !h || !b) return;
+    box.classList.remove("pdf-diagnostics--info", "pdf-diagnostics--ok", "pdf-diagnostics--err");
+    if (!kind || kind === "clear") {
+      box.hidden = true;
+      h.textContent = "";
+      b.textContent = "";
+      return;
+    }
+    box.hidden = false;
+    if (kind === "info") box.classList.add("pdf-diagnostics--info");
+    else if (kind === "ok") box.classList.add("pdf-diagnostics--ok");
+    else if (kind === "err") box.classList.add("pdf-diagnostics--err");
+    h.textContent = head || "";
+    b.textContent = Array.isArray(lines) ? lines.filter((x) => x !== undefined).join("\n") : String(lines || "");
+  }
+
+  /** Lightweight reachability check (no MT5). Returns { ok, detail }. */
+  async function probeDashboardApi() {
+    const hOpts = {};
+    if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
+      hOpts.signal = AbortSignal.timeout(15000);
+    }
+    try {
+      const h = await fetch(`${API_BASE}/api/health`, hOpts);
+      if (h.ok) return { ok: true, detail: "" };
+      const t = await h.text().catch(() => "");
+      return {
+        ok: false,
+        detail: `health HTTP ${h.status}${t ? " · " + t.slice(0, 80) : ""}`,
+      };
+    } catch (e) {
+      const msg = e && e.message ? e.message : String(e);
+      return { ok: false, detail: msg };
+    }
+  }
+
+  /**
+   * One MT5 + scorecard pull; returns session JSON (session_id, endpoints, …).
+   * @param {string} sym
+   * @param {number} tf
+   * @param {number} bars
+   */
+  async function fetchReportWarm(sym, tf, bars) {
+    const u = new URL(`${API_BASE}/api/report/warm`);
+    u.searchParams.set("symbol", sym);
+    u.searchParams.set("tf_minutes", String(tf));
+    u.searchParams.set("bars", String(bars));
+    const opts = {};
+    if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
+      opts.signal = AbortSignal.timeout(900000);
+    }
+    const res = await fetch(u.toString(), opts);
+    const ct = (res.headers.get("content-type") || "").toLowerCase();
+    if (!res.ok) {
+      let msg = "HTTP " + res.status;
+      if (ct.includes("json")) {
+        const j = await res.json().catch(() => ({}));
+        msg = (j && j.error) || msg;
       }
-      state.charts.chartEquity = new Chart(eq.getContext("2d"), {
-        type: "line",
-        data: {
-          labels: data.map((_, i) => i),
-          datasets: [
-            { label: "Equity index (mock)", data, borderColor: "#3fb950", backgroundColor: "rgba(63,185,80,0.08)", fill: true },
-          ],
-        },
-        options: {
-          scales: {
-            x: { display: false },
-            y: { ticks: { color: "#8b949e" }, grid: { color: "#30363d" } },
-          },
-          plugins: { legend: { labels: { color: "#8b949e" } } },
-        },
+      throw new Error(msg);
+    }
+    return await res.json();
+  }
+
+  /**
+   * Fetch one PDF chunk from the API (small response — avoids long single HTTP body).
+   * @param {string} url
+   * @param {number} timeoutMs
+   * @returns {Promise<Uint8Array>}
+   */
+  async function fetchPdfChunk(url, timeoutMs) {
+    const opts = {};
+    if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
+      opts.signal = AbortSignal.timeout(timeoutMs);
+    }
+    const res = await fetch(url, opts);
+    const ct = (res.headers.get("content-type") || "").toLowerCase();
+    if (!res.ok) {
+      let msg = "HTTP " + res.status;
+      if (ct.includes("json")) {
+        const j = await res.json().catch(() => ({}));
+        msg = (j && j.error) || msg;
+      }
+      throw new Error(msg);
+    }
+    if (!ct.includes("pdf")) {
+      throw new Error("Expected application/pdf, got " + (ct || "(empty)"));
+    }
+    return new Uint8Array(await res.arrayBuffer());
+  }
+
+  /**
+   * Merge PDF parts in order (browser-side) using pdf-lib ESM.
+   * @param {Uint8Array[]} parts
+   */
+  async function mergePdfParts(parts) {
+    const mod = await import("https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/+esm");
+    const PDFDocument = mod.PDFDocument;
+    const merged = await PDFDocument.create();
+    for (let i = 0; i < parts.length; i++) {
+      const doc = await PDFDocument.load(parts[i]);
+      const idx = doc.getPageIndices();
+      const copied = await merged.copyPages(doc, idx);
+      copied.forEach((p) => merged.addPage(p));
+    }
+    return await merged.save();
+  }
+
+  function getResearchSymbol() {
+    const sel = /** @type {HTMLSelectElement|null} */ (document.getElementById("researchSymbolSelect"));
+    const cust = /** @type {HTMLInputElement|null} */ (document.getElementById("researchSymbolCustom"));
+    if (sel && sel.value === "__custom__" && cust) {
+      const raw = (cust.value || "").trim().toUpperCase();
+      return raw || "EURUSD";
+    }
+    if (sel && sel.value && sel.value !== "__custom__") return sel.value;
+    return getActiveSymbol();
+  }
+
+  function collectStrategyRowsFromDom() {
+    const tbody = document.getElementById("researchStrategyTbody");
+    if (!tbody) return [];
+    /** @type {typeof researchStrategiesDraft} */
+    const out = [];
+    tbody.querySelectorAll("tr[data-sk]").forEach((tr) => {
+      const sk = tr.getAttribute("data-sk") || "";
+      const en = /** @type {HTMLInputElement|null} */ (tr.querySelector("input[data-f=enabled]"));
+      const title = /** @type {HTMLInputElement|null} */ (tr.querySelector("input[data-f=title]"));
+      const sig = /** @type {HTMLInputElement|null} */ (tr.querySelector("input[data-f=signal]"));
+      const side = /** @type {HTMLInputElement|null} */ (tr.querySelector("input[data-f=side]"));
+      const risk = /** @type {HTMLInputElement|null} */ (tr.querySelector("input[data-f=risk]"));
+      const rr = /** @type {HTMLInputElement|null} */ (tr.querySelector("input[data-f=rr]"));
+      const atr = /** @type {HTMLInputElement|null} */ (tr.querySelector("input[data-f=atr]"));
+      const pos = /** @type {HTMLInputElement|null} */ (tr.querySelector("input[data-f=pos]"));
+      out.push({
+        strategy_key: sk,
+        strategy_title: (title && title.value) || "",
+        signal_kind: (sig && sig.value) || "",
+        side_rule: side ? parseInt(side.value, 10) || 0 : 0,
+        risk_pct: (risk && risk.value) || "",
+        rr_ratio: (rr && rr.value) || "",
+        atr_multiplier: (atr && atr.value) || "",
+        position_size: (pos && pos.value) || "",
+        enabled: !!(en && en.checked),
       });
+    });
+    return out;
+  }
+
+  function buildResearchPayload() {
+    const selR = /** @type {HTMLSelectElement|null} */ (document.getElementById("researchRegimeSelect"));
+    const rid = selR ? parseInt(selR.value, 10) || 1 : 1;
+    const sym = getResearchSymbol();
+    const barsGlobal = (() => {
+      const el = /** @type {HTMLInputElement|null} */ (document.getElementById("researchBars"));
+      return el ? parseInt(el.value, 10) || API_BARS : API_BARS;
+    })();
+    /** @type {{ tf_minutes: number, bars: number, label: string, enabled: boolean }[]} */
+    const tfRows = [];
+    RESEARCH_TF_CATALOG.forEach((row, i) => {
+      const cb = /** @type {HTMLInputElement|null} */ (document.querySelector(`input[data-research-tf-use="${i}"]`));
+      const barsInp = /** @type {HTMLInputElement|null} */ (document.querySelector(`input[data-research-tf-bars="${i}"]`));
+      const bars = barsInp ? parseInt(barsInp.value, 10) || row.defaultBars : row.defaultBars;
+      tfRows.push({
+        tf_minutes: row.tf_minutes,
+        bars,
+        label: row.label,
+        enabled: !!(cb && cb.checked),
+      });
+    });
+    const enabledProfiles = tfRows.filter((r) => r.enabled);
+    const timeframes = enabledProfiles.map((r) => ({
+      tf_minutes: r.tf_minutes,
+      bars: r.bars,
+      label: r.label,
+    }));
+    const primaryTf = enabledProfiles[0] ? enabledProfiles[0].tf_minutes : API_TF;
+    return {
+      version: 1,
+      symbol: sym,
+      regime_id: rid,
+      regime_name: REGIME_NAMES[rid] || "",
+      quadrant: REGIME_TO_QUAD[rid] || "",
+      bars: barsGlobal,
+      tf_minutes: primaryTf,
+      atr_sl_mult: (() => {
+        const el = /** @type {HTMLInputElement|null} */ (document.getElementById("researchAtrSl"));
+        const v = el ? parseFloat(el.value) : NaN;
+        return Number.isFinite(v) ? v : 1.5;
+      })(),
+      max_bars: (() => {
+        const el = /** @type {HTMLInputElement|null} */ (document.getElementById("researchMaxBars"));
+        return el ? parseInt(el.value, 10) || 40 : 40;
+      })(),
+      confidence: (() => {
+        const el = /** @type {HTMLInputElement|null} */ (document.getElementById("researchConfidence"));
+        const t = el && el.value.trim();
+        return t || null;
+      })(),
+      historical: {
+        range_note: (() => {
+          const el = /** @type {HTMLInputElement|null} */ (document.getElementById("researchHistRange"));
+          return (el && el.value.trim()) || "";
+        })(),
+        start_date_utc: (() => {
+          const el = /** @type {HTMLInputElement|null} */ (document.getElementById("researchDateStart"));
+          return (el && el.value) || null;
+        })(),
+        end_date_utc: (() => {
+          const el = /** @type {HTMLInputElement|null} */ (document.getElementById("researchDateEnd"));
+          return (el && el.value) || null;
+        })(),
+      },
+      report_options: {
+        volume: !!(/** @type {HTMLInputElement|null} */ (document.getElementById("researchOptVolume")))?.checked,
+        institutional: !!(/** @type {HTMLInputElement|null} */ (document.getElementById("researchOptInstitutional")))?.checked,
+        equity_curve: !!(/** @type {HTMLInputElement|null} */ (document.getElementById("researchOptEquity")))?.checked,
+      },
+      timeframes,
+      strategies: collectStrategyRowsFromDom(),
+      _backend: {
+        warm: "POST /api/report/warm — scorecard uses symbol + first timeframes[] row (tf_minutes, bars); full JSON echoed in session GET …/client-request",
+        dates_volume_equity: "Calendar dates & report_options are stored for orchestration; scorecard still uses bar count until engine supports date-range slicing.",
+      },
+    };
+  }
+
+  function researchPayloadForSingleTf(fullPayload, tfDef) {
+    const p = JSON.parse(JSON.stringify(fullPayload));
+    p.timeframes = [{ tf_minutes: tfDef.tf_minutes, bars: tfDef.bars, label: tfDef.label }];
+    p.tf_minutes = tfDef.tf_minutes;
+    p.bars = tfDef.bars;
+    return p;
+  }
+
+  function updateResearchHeavyWarning() {
+    const el = document.getElementById("researchHeavyWarn");
+    if (!el) return;
+    const p = buildResearchPayload();
+    const tf = p.timeframes || [];
+    let riskScore = 0;
+    tf.forEach((t) => {
+      const bars = t.bars || 0;
+      const m = t.tf_minutes || 60;
+      if (m <= 5 && bars > 15000) riskScore += 2;
+      else if (m <= 15 && bars > 12000) riskScore += 1;
+      if (bars > 25000) riskScore += 1;
+    });
+    if (tf.length > 3) riskScore += 1;
+    if (riskScore >= 2) {
+      el.hidden = false;
+      el.className = "research__warn research__warn--info";
+      el.textContent =
+        "Heavy request: low timeframe(s) with high bar counts and/or many enabled TFs will increase MT5 load and PDF time. Consider lowering bars or fewer TFs.";
+    } else {
+      el.hidden = true;
+      el.textContent = "";
+    }
+  }
+
+  function scheduleResearchPreview() {
+    if (researchPreviewScheduled) return;
+    researchPreviewScheduled = true;
+    requestAnimationFrame(() => {
+      researchPreviewScheduled = false;
+      const pre = document.getElementById("researchJsonPreview");
+      if (pre) {
+        try {
+          pre.textContent = JSON.stringify(buildResearchPayload(), null, 2);
+        } catch (e) {
+          pre.textContent = String(e);
+        }
+      }
+      updateResearchHeavyWarning();
+    });
+  }
+
+  function renderResearchStrategyTbody() {
+    const tbody = document.getElementById("researchStrategyTbody");
+    if (!tbody) return;
+    if (!researchStrategiesDraft.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="research__hint">No rows — pick a regime and refresh.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = researchStrategiesDraft
+      .map(
+        (s, i) => `
+      <tr data-sk="${escHtml(s.strategy_key)}">
+        <td><input type="checkbox" data-f="enabled" ${s.enabled ? "checked" : ""} /></td>
+        <td><input type="text" data-f="title" value="${escAttr(s.strategy_title)}" /></td>
+        <td><code>${escHtml(s.strategy_key)}</code></td>
+        <td><input type="text" data-f="signal" value="${escAttr(s.signal_kind)}" /></td>
+        <td><input type="number" data-f="side" value="${s.side_rule}" step="1" /></td>
+        <td><input type="text" data-f="risk" value="${escAttr(s.risk_pct)}" placeholder="%" /></td>
+        <td><input type="text" data-f="rr" value="${escAttr(s.rr_ratio)}" /></td>
+        <td><input type="text" data-f="atr" value="${escAttr(s.atr_multiplier)}" /></td>
+        <td><input type="text" data-f="pos" value="${escAttr(s.position_size)}" /></td>
+      </tr>`
+      )
+      .join("");
+    tbody.querySelectorAll("input").forEach((inp) => inp.addEventListener("input", scheduleResearchPreview));
+    tbody.querySelectorAll("input[type=checkbox]").forEach((inp) => inp.addEventListener("change", scheduleResearchPreview));
+  }
+
+  async function refreshResearchStrategiesFromApi() {
+    const hint = document.getElementById("researchStrategyHint");
+    const selR = /** @type {HTMLSelectElement|null} */ (document.getElementById("researchRegimeSelect"));
+    const rid = selR ? parseInt(selR.value, 10) || 1 : 1;
+    const sym = getResearchSymbol();
+    const p = buildResearchPayload();
+    const tf0 = p.timeframes && p.timeframes[0];
+    const tfm = tf0 ? tf0.tf_minutes : API_TF;
+    const bars = tf0 ? tf0.bars : p.bars;
+    if (hint) hint.textContent = "Loading snapshot…";
+    try {
+      const u = new URL(`${API_BASE}/api/snapshot`);
+      u.searchParams.set("symbol", sym);
+      u.searchParams.set("tf_minutes", String(tfm));
+      u.searchParams.set("bars", String(bars));
+      u.searchParams.set("regime_id", String(rid));
+      const opts = {};
+      if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
+        opts.signal = AbortSignal.timeout(180000);
+      }
+      const res = await fetch(u.toString(), opts);
+      const snap = await res.json().catch(() => ({}));
+      if (!res.ok || (snap && snap.error)) {
+        throw new Error((snap && snap.error) || "HTTP " + res.status);
+      }
+      const rd = snap.regime_detail;
+      const strats = (rd && rd.strategies) || [];
+      researchStrategiesDraft = strats.map((row) => ({
+        strategy_key: row.strategy_key || "",
+        strategy_title: row.strategy_title || "",
+        signal_kind: row.signal_kind || "",
+        side_rule: row.side_rule != null ? Number(row.side_rule) : 0,
+        risk_pct: "",
+        rr_ratio: "",
+        atr_multiplier: "",
+        position_size: "",
+        enabled: true,
+      }));
+      const confEl = /** @type {HTMLInputElement|null} */ (document.getElementById("researchConfidence"));
+      if (confEl && snap.confidence != null && !confEl.dataset.touched) confEl.value = String(snap.confidence);
+      renderResearchStrategyTbody();
+      if (hint) hint.textContent = "Loaded " + researchStrategiesDraft.length + " strategies from API for R" + String(rid).padStart(2, "0") + ".";
+      scheduleResearchPreview();
+    } catch (e) {
+      researchStrategiesDraft = [];
+      renderResearchStrategyTbody();
+      if (hint) hint.textContent = "Could not load strategies: " + (e && e.message ? e.message : e);
+    }
+  }
+
+  function setResearchProgressStep(activeKey, doneKeys) {
+    document.querySelectorAll("#researchProgressList li").forEach((li) => {
+      const k = li.getAttribute("data-step") || "";
+      li.classList.remove("research__step--active", "research__step--done");
+      if (doneKeys && doneKeys.has(k)) li.classList.add("research__step--done");
+      if (activeKey && k === activeKey) li.classList.add("research__step--active");
+    });
+  }
+
+  /**
+   * @param {Record<string, unknown>} payload
+   */
+  async function fetchReportWarmPost(payload) {
+    const opts = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    };
+    if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
+      opts.signal = AbortSignal.timeout(900000);
+    }
+    const res = await fetch(`${API_BASE}/api/report/warm`, opts);
+    const ct = (res.headers.get("content-type") || "").toLowerCase();
+    if (!res.ok) {
+      let msg = "HTTP " + res.status;
+      if (ct.includes("json")) {
+        const j = await res.json().catch(() => ({}));
+        msg = (j && j.error) || msg;
+      }
+      throw new Error(msg);
+    }
+    return await res.json();
+  }
+
+  /**
+   * @param {string} sid
+   * @param {(chunkIndex: number, chunkTotal: number) => void} [onChunk]
+   */
+  async function runSessionPdfAllChunks(sid, onChunk) {
+    const chunkTo = 180000;
+    const partUrls = [API_BASE + "/api/report/session/" + sid + "/pdf/cover"];
+    for (let r = 1; r <= 52; r++) partUrls.push(API_BASE + "/api/report/session/" + sid + "/pdf/regime/" + r);
+    await import("https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/+esm");
+    const parts = [];
+    for (let i = 0; i < partUrls.length; i++) {
+      if (onChunk) onChunk(i + 1, partUrls.length);
+      parts.push(await fetchPdfChunk(partUrls[i], chunkTo));
+    }
+    return mergePdfParts(parts);
+  }
+
+  function cloneTopSymbolOptionsToResearch() {
+    const top = /** @type {HTMLSelectElement|null} */ (document.getElementById("symbolSelect"));
+    const rs = /** @type {HTMLSelectElement|null} */ (document.getElementById("researchSymbolSelect"));
+    if (!top || !rs) return;
+    rs.innerHTML = top.innerHTML;
+  }
+
+  function syncResearchSymbolFromTopbar() {
+    const top = /** @type {HTMLSelectElement|null} */ (document.getElementById("symbolSelect"));
+    const cust = /** @type {HTMLInputElement|null} */ (document.getElementById("symbolCustom"));
+    const rs = /** @type {HTMLSelectElement|null} */ (document.getElementById("researchSymbolSelect"));
+    const rc = /** @type {HTMLInputElement|null} */ (document.getElementById("researchSymbolCustom"));
+    if (!top || !rs) return;
+    researchSymbolSync = true;
+    rs.value = top.value;
+    if (top.value === "__custom__" && cust && rc) {
+      rc.hidden = false;
+      rc.value = cust.value;
+    } else if (rc) {
+      rc.hidden = true;
+      rc.value = "";
+    }
+    researchSymbolSync = false;
+  }
+
+  function applyTopbarSymbolFromResearch() {
+    const top = /** @type {HTMLSelectElement|null} */ (document.getElementById("symbolSelect"));
+    const cust = /** @type {HTMLInputElement|null} */ (document.getElementById("symbolCustom"));
+    const rs = /** @type {HTMLSelectElement|null} */ (document.getElementById("researchSymbolSelect"));
+    const rc = /** @type {HTMLInputElement|null} */ (document.getElementById("researchSymbolCustom"));
+    if (!top || !rs) return;
+    researchSymbolSync = true;
+    top.value = rs.value;
+    if (rs.value === "__custom__" && cust && rc) {
+      cust.hidden = false;
+      cust.value = rc.value;
+      API_SYMBOL = getResearchSymbol();
+    } else if (cust) {
+      cust.hidden = true;
+      cust.value = "";
+      API_SYMBOL = rs.value;
+    }
+    researchSymbolSync = false;
+    fetchLiveStrip(API_SYMBOL);
+  }
+
+  function initResearchPanel() {
+    cloneTopSymbolOptionsToResearch();
+    syncResearchSymbolFromTopbar();
+
+    const rs = /** @type {HTMLSelectElement|null} */ (document.getElementById("researchSymbolSelect"));
+    const rc = /** @type {HTMLInputElement|null} */ (document.getElementById("researchSymbolCustom"));
+    rs?.addEventListener("change", () => {
+      if (!rc || !rs) return;
+      if (rs.value === "__custom__") {
+        rc.hidden = false;
+        rc.focus();
+      } else {
+        rc.hidden = true;
+        rc.value = "";
+        applyTopbarSymbolFromResearch();
+      }
+      scheduleResearchPreview();
+    });
+    rc?.addEventListener("blur", () => {
+      if (rs && rs.value === "__custom__") applyTopbarSymbolFromResearch();
+    });
+    rc?.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") applyTopbarSymbolFromResearch();
+    });
+
+    const regSel = /** @type {HTMLSelectElement|null} */ (document.getElementById("researchRegimeSelect"));
+    if (regSel && !regSel.options.length) {
+      for (let i = 1; i <= 52; i++) {
+        const o = document.createElement("option");
+        o.value = String(i);
+        o.textContent = "R" + String(i).padStart(2, "0") + " · " + (REGIME_NAMES[i] || "");
+        regSel.appendChild(o);
+      }
+      regSel.value = String(state.regimeId != null ? state.regimeId : 7);
+    }
+    regSel?.addEventListener("change", () => {
+      const rid = parseInt(regSel.value, 10) || 1;
+      const nm = document.getElementById("researchRegimeName");
+      const qu = document.getElementById("researchQuadrant");
+      if (nm) nm.value = REGIME_NAMES[rid] || "";
+      if (qu) qu.value = REGIME_TO_QUAD[rid] || "";
+      scheduleResearchPreview();
+    });
+    regSel?.dispatchEvent(new Event("change"));
+
+    const tbody = document.getElementById("researchTfTbody");
+    if (tbody) {
+      tbody.innerHTML = RESEARCH_TF_CATALOG.map((row, i) => {
+        const on = row.tf_minutes === API_TF;
+        return `<tr>
+          <td><input type="checkbox" data-research-tf-use="${i}" ${on ? "checked" : ""} /></td>
+          <td class="research__tf-label">${row.label}</td>
+          <td>${row.tf_minutes}</td>
+          <td><input type="number" data-research-tf-bars="${i}" min="100" step="100" value="${row.defaultBars}" /></td>
+        </tr>`;
+      }).join("");
+      tbody.querySelectorAll("input").forEach((inp) => inp.addEventListener("input", scheduleResearchPreview));
+      tbody.querySelectorAll("input[type=checkbox]").forEach((inp) => inp.addEventListener("change", scheduleResearchPreview));
     }
 
-    const tr = document.getElementById("chartTrades");
-    if (tr) {
-      state.charts.chartTrades = new Chart(tr.getContext("2d"), {
-        type: "polarArea",
-        data: {
-          labels: ["Win", "Loss", "BE"],
-          datasets: [
-            {
-              data: [bt.wins, bt.losses, Math.max(0, bt.totalTrades - bt.wins - bt.losses)],
-              backgroundColor: ["rgba(63,185,80,0.6)", "rgba(248,81,73,0.6)", "rgba(139,148,158,0.5)"],
-            },
-          ],
-        },
-        options: { plugins: { legend: { position: "bottom", labels: { color: "#8b949e" } } } },
-      });
-    }
+    const rb = /** @type {HTMLInputElement|null} */ (document.getElementById("researchBars"));
+    const ra = /** @type {HTMLInputElement|null} */ (document.getElementById("researchAtrSl"));
+    const rm = /** @type {HTMLInputElement|null} */ (document.getElementById("researchMaxBars"));
+    if (rb) rb.value = String(API_BARS);
+    if (ra) ra.value = "1.5";
+    if (rm) rm.value = "40";
 
-    const hi = document.getElementById("chartHist");
-    if (hi) {
-      const bins = ["<-2R", "-2:-1R", "-1:0", "0:1R", "1:2R", ">2R"];
-      const seed = hashSeed(rk + strategyId + "hist");
-      const vals = bins.map((_, i) => 5 + ((seed >> i) & 25));
-      state.charts.chartHist = new Chart(hi.getContext("2d"), {
-        type: "bar",
-        data: {
-          labels: bins,
-          datasets: [{ label: "# trades", data: vals, backgroundColor: "rgba(210,153,34,0.6)" }],
-        },
-        options: {
-          scales: {
-            x: { ticks: { color: "#8b949e" } },
-            y: { ticks: { color: "#8b949e" }, grid: { color: "#30363d" } },
-          },
-          plugins: { legend: { display: false } },
-        },
-      });
-    }
+    [
+      "researchBars",
+      "researchAtrSl",
+      "researchMaxBars",
+      "researchHistRange",
+      "researchDateStart",
+      "researchDateEnd",
+      "researchConfidence",
+    ].forEach((id) => {
+      document.getElementById(id)?.addEventListener("input", scheduleResearchPreview);
+    });
+    ["researchOptVolume", "researchOptInstitutional", "researchOptEquity"].forEach((id) => {
+      document.getElementById(id)?.addEventListener("change", scheduleResearchPreview);
+    });
 
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
-    const seed = hashSeed(rk + strategyId + "mon");
-    const rets = months.map((_, i) => ((((seed >> i) & 7) - 3) * 0.4).toFixed(2));
-    $("#monthlyTable").innerHTML =
-      `<thead><tr><th>Month</th><th>Return %</th></tr></thead><tbody>` +
-      months.map((m, i) => `<tr><td>${m}</td><td>${rets[i]}%</td></tr>`).join("") +
-      `</tbody>`;
+    document.getElementById("researchConfidence")?.addEventListener("input", (ev) => {
+      const t = /** @type {HTMLInputElement} */ (ev.target);
+      t.dataset.touched = "1";
+    });
+
+    document.getElementById("btnResearchLoadFlow")?.addEventListener("click", () => {
+      const rsel = /** @type {HTMLSelectElement|null} */ (document.getElementById("researchRegimeSelect"));
+      if (state.regimeId != null && rsel) {
+        rsel.value = String(state.regimeId);
+        rsel.dispatchEvent(new Event("change"));
+      }
+      syncResearchSymbolFromTopbar();
+      refreshResearchStrategiesFromApi();
+    });
+
+    document.getElementById("btnResearchRefreshStrategies")?.addEventListener("click", () => refreshResearchStrategiesFromApi());
+
+    document.getElementById("btnResearchGenerate")?.addEventListener("click", async () => {
+      const st = document.getElementById("researchGenStatus");
+      const btn = /** @type {HTMLButtonElement|null} */ (document.getElementById("btnResearchGenerate"));
+      if (location.protocol === "file:") {
+        if (st) st.textContent = "Blocked: file://";
+        return;
+      }
+      const full = buildResearchPayload();
+      const profiles = RESEARCH_TF_CATALOG.map((row, i) => {
+        const cb = /** @type {HTMLInputElement|null} */ (document.querySelector(`input[data-research-tf-use="${i}"]`));
+        const barsInp = /** @type {HTMLInputElement|null} */ (document.querySelector(`input[data-research-tf-bars="${i}"]`));
+        const bars = barsInp ? parseInt(barsInp.value, 10) || row.defaultBars : row.defaultBars;
+        return { tf_minutes: row.tf_minutes, bars, label: row.label, enabled: !!(cb && cb.checked) };
+      }).filter((x) => x.enabled);
+
+      if (!profiles.length) {
+        if (st) st.textContent = "Enable at least one timeframe.";
+        return;
+      }
+
+      if (btn) btn.disabled = true;
+      const detail = document.getElementById("researchProgressDetail");
+      const done = new Set();
+      const sym = getResearchSymbol();
+
+      const probe = await probeDashboardApi();
+      if (!probe.ok) {
+        if (st) st.textContent = "API unreachable.";
+        if (btn) btn.disabled = false;
+        return;
+      }
+
+      stopLivePoll();
+      if (liveStripTimer) {
+        clearInterval(liveStripTimer);
+        liveStripTimer = null;
+      }
+
+      try {
+        setResearchProgressStep("mt5", done);
+        if (detail) detail.textContent = "POST /api/report/warm (sequential per TF)…";
+        const multiParts = [];
+        for (let ti = 0; ti < profiles.length; ti++) {
+          const pr = profiles[ti];
+          if (st) st.textContent = "Warm " + (ti + 1) + "/" + profiles.length + " (" + pr.label + ")…";
+          setResearchProgressStep("hist", done);
+          const payload = researchPayloadForSingleTf(full, pr);
+          const warm = await fetchReportWarmPost(payload);
+          const sid = warm && warm.session_id;
+          if (!sid) throw new Error("No session_id from warm");
+
+          setResearchProgressStep("reg", done);
+          setResearchProgressStep("strat", done);
+          setResearchProgressStep("charts", done);
+          if (detail) detail.textContent = "PDF chunks for " + pr.label + "… (session " + sid.slice(0, 8) + "…)";
+          const pdfBytes = await runSessionPdfAllChunks(sid, (c, tot) => {
+            if (detail) detail.textContent = pr.label + " · PDF " + c + "/" + tot;
+          });
+          multiParts.push(new Uint8Array(pdfBytes));
+          done.add("hist");
+          done.add("reg");
+          done.add("strat");
+          done.add("charts");
+        }
+        setResearchProgressStep("pdf", done);
+        if (detail) detail.textContent = "Merging " + multiParts.length + " PDF volume(s)…";
+        let finalBytes;
+        if (multiParts.length === 1) {
+          finalBytes = multiParts[0];
+        } else {
+          finalBytes = await mergePdfParts(multiParts);
+        }
+        const blob = new Blob([finalBytes], { type: "application/pdf" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `regime52_research_${sym}_${profiles.map((p) => p.label).join("_")}.pdf`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        if (st) st.textContent = "Downloaded · " + new Date().toLocaleTimeString();
+        done.add("pdf");
+        setResearchProgressStep("", new Set(["mt5", "hist", "reg", "strat", "charts", "pdf"]));
+        if (detail) detail.textContent = "Done. Session JSON: GET /api/report/session/<sid>/client-request";
+      } catch (e) {
+        const msg = e && e.message ? e.message : String(e);
+        if (st) st.textContent = "Failed: " + msg.slice(0, 120);
+        if (detail) detail.textContent = msg;
+      } finally {
+        if (liveStripTimer) clearInterval(liveStripTimer);
+        liveStripTimer = setInterval(() => fetchLiveStrip(getActiveSymbol()), 10000);
+        if (btn) btn.disabled = false;
+      }
+    });
+
+    refreshResearchStrategiesFromApi();
+    scheduleResearchPreview();
   }
 
   function init() {
@@ -1108,6 +1682,226 @@
     $("#btnExecute")?.addEventListener("click", () => {
       postExecute();
     });
+    $("#btnAnalysis")?.addEventListener("click", () => {
+      runAnalysis();
+    });
+
+    const symbolSelect = /** @type {HTMLSelectElement|null} */ (document.getElementById("symbolSelect"));
+    const symbolCustom = /** @type {HTMLInputElement|null} */ (document.getElementById("symbolCustom"));
+    if (symbolSelect) {
+      const preset = new Set(
+        Array.from(symbolSelect.options)
+          .map((o) => o.value)
+          .filter((v) => v && v !== "__custom__")
+      );
+      if (preset.has(API_SYMBOL)) {
+        symbolSelect.value = API_SYMBOL;
+      } else {
+        symbolSelect.value = "__custom__";
+        if (symbolCustom) {
+          symbolCustom.hidden = false;
+          symbolCustom.value = API_SYMBOL;
+        }
+      }
+      symbolSelect.addEventListener("change", () => {
+        if (!symbolCustom || !symbolSelect) return;
+        if (symbolSelect.value === "__custom__") {
+          symbolCustom.hidden = false;
+          symbolCustom.focus();
+        } else {
+          symbolCustom.hidden = true;
+          symbolCustom.value = "";
+          API_SYMBOL = symbolSelect.value;
+          fetchLiveStrip(API_SYMBOL);
+        }
+        if (!researchSymbolSync) syncResearchSymbolFromTopbar();
+        scheduleResearchPreview();
+      });
+      symbolCustom?.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          API_SYMBOL = getActiveSymbol();
+          fetchLiveStrip(API_SYMBOL);
+          if (!researchSymbolSync) syncResearchSymbolFromTopbar();
+          scheduleResearchPreview();
+        }
+      });
+      symbolCustom?.addEventListener("blur", () => {
+        if (symbolSelect.value === "__custom__") {
+          API_SYMBOL = getActiveSymbol();
+          fetchLiveStrip(API_SYMBOL);
+          if (!researchSymbolSync) syncResearchSymbolFromTopbar();
+          scheduleResearchPreview();
+        }
+      });
+    }
+
+    $("#btnPdfReport")?.addEventListener("click", async () => {
+      const sym = getActiveSymbol();
+      API_SYMBOL = sym;
+      const st = $("#pdfStatus");
+      const btn = /** @type {HTMLButtonElement|null} */ (document.getElementById("btnPdfReport"));
+      if (btn) btn.disabled = true;
+      setPdfDiagnostics("info", "PDF export — starting", [
+        "Symbol: " + sym + "  ·  timeframe: " + API_TF + "m  ·  bars: " + API_BARS,
+        "",
+        "Flow: one MT5 warm → 53 small PDF chunks (cover + regimes 1..52) → merge in the browser.",
+        "Per-regime JSON (same shape as dashboard regime_detail, 4 strategies):",
+        "  GET " + API_BASE + "/api/report/session/<sid>/bundle/regime/7",
+        "Multiple timeframes: each (symbol, tf, bars) needs its own warm (separate session_id).",
+      ]);
+      if (location.protocol === "file:") {
+        if (st) st.textContent = "Blocked: file://";
+        setPdfDiagnostics("err", "Wrong way to open the dashboard", [
+          "The page is loaded as file:// — most browsers block calls to http://127.0.0.1:8766 from there.",
+          "",
+          "Fix:",
+          "  • Open dashboard-lite and run:  .\\run.ps1",
+          "  • In the browser use:  http://127.0.0.1:8765/",
+        ]);
+        if (btn) btn.disabled = false;
+        return;
+      }
+      if (st) st.textContent = "Checking API…";
+      setPdfDiagnostics("info", "Step 1 — API reachability", [
+        "Request: GET " + API_BASE + "/api/health",
+        "No MT5 yet — this only checks that Python server.py is running.",
+      ]);
+      const probe = await probeDashboardApi();
+      if (!probe.ok) {
+        if (st) st.textContent = "Failed · see panel below";
+        const lines = [
+          "What went wrong:  " + probe.detail,
+          "",
+          "Checklist:",
+          ...getApiUnreachableLines(),
+        ];
+        if (/\b404\b/.test(probe.detail)) {
+          lines.push("", "• HTTP 404: this API build has no /api/health — pull latest code and restart server.py.");
+        }
+        setPdfDiagnostics("err", "Cannot reach the dashboard API", lines);
+        if (btn) btn.disabled = false;
+        return;
+      }
+      stopLivePoll();
+      if (liveStripTimer) {
+        clearInterval(liveStripTimer);
+        liveStripTimer = null;
+      }
+      try {
+      if (st) st.textContent = "Warming session (MT5)…";
+      setPdfDiagnostics("info", "Step 2 — Warm (one MT5 + scorecard)", [
+        "Request: GET " + API_BASE + "/api/report/warm?symbol=…&tf_minutes=…&bars=…",
+        "Can take several minutes (same work as before, but no matplotlib yet).",
+        "While warm runs, other MT5 API calls wait in line (by design — MT5 is not thread-safe).",
+        "",
+        "If this fails: check MT5, symbol in Market Watch, server.py terminal; restart API after update.",
+      ]);
+      let warm;
+      try {
+        warm = await fetchReportWarm(sym, API_TF, API_BARS);
+      } catch (e) {
+        const msg = e && e.message ? e.message : String(e);
+        if (st) st.textContent = "Failed · see panel below";
+        const hint =
+          /failed to fetch|networkerror|load failed/i.test(msg)
+            ? [
+                "",
+                "If MT5 looks fine in the UI: the API may have dropped the connection (often fixed by restarting server.py after the MT5-serialize patch).",
+                "Also try a smaller ?bars=4000 and watch the Python terminal for tracebacks during warm.",
+              ]
+            : [];
+        setPdfDiagnostics("err", "Warm request failed", [
+          "What went wrong:  " + msg,
+          "",
+          "Typical causes: MT5 offline, symbol missing, Python crash during scorecard, or stale API process.",
+          ...hint,
+        ]);
+        return;
+      }
+      const sid = warm && warm.session_id ? warm.session_id : "";
+      if (!sid) {
+        if (st) st.textContent = "Failed · no session_id";
+        setPdfDiagnostics("err", "Unexpected warm response", ["No session_id in JSON.", JSON.stringify(warm).slice(0, 400)]);
+        return;
+      }
+
+      const chunkTo = 180000;
+      const partUrls = [API_BASE + "/api/report/session/" + sid + "/pdf/cover"];
+      for (let r = 1; r <= 52; r++) partUrls.push(API_BASE + "/api/report/session/" + sid + "/pdf/regime/" + r);
+
+      const parts = [];
+      try {
+        if (st) st.textContent = "PDF 0/53 (loading pdf-lib + cover)…";
+        setPdfDiagnostics("info", "Step 3 — PDF chunks (small HTTP bodies)", [
+          "Session: " + sid.slice(0, 8) + "…",
+          "Each slice ~ short request — avoids one giant response that drops with “Failed to fetch”.",
+          "",
+          "Example JSON (regime + 4 strategies):",
+          API_BASE + "/api/report/session/" + sid + "/bundle/regime/1",
+        ]);
+        await import("https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/+esm");
+
+        for (let i = 0; i < partUrls.length; i++) {
+          if (st) st.textContent = "PDF " + (i + 1) + "/53…";
+          setPdfDiagnostics("info", "Step 3 — fetching chunk " + (i + 1) + "/53", [
+            "GET " + partUrls[i],
+            "Timeout per chunk: " + Math.round(chunkTo / 1000) + "s",
+            "",
+            "Troubleshooting: if a single chunk fails, read server.py traceback (matplotlib/MT5).",
+            "Smaller sample: add ?bars=4000 to this page’s URL and retry.",
+          ]);
+          try {
+            parts.push(await fetchPdfChunk(partUrls[i], chunkTo));
+          } catch (chunkErr) {
+            const cm = chunkErr && chunkErr.message ? chunkErr.message : String(chunkErr);
+            throw new Error("Chunk " + (i + 1) + "/53 failed: " + cm + "\nURL: " + partUrls[i]);
+          }
+        }
+
+        if (st) st.textContent = "Merging PDF…";
+        setPdfDiagnostics("info", "Step 4 — merge in browser", ["Combining " + parts.length + " PDFs with pdf-lib…"]);
+        const mergedBytes = await mergePdfParts(parts);
+        const blob = new Blob([mergedBytes], { type: "application/pdf" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `regime52_${sym}_${API_TF}m.pdf`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        if (st) st.textContent = "Downloaded · " + new Date().toLocaleTimeString();
+        setPdfDiagnostics("ok", "PDF download triggered (chunked + merged)", [
+          "If the file did not appear: check download bar / pop-up blocker.",
+          "Expected filename:  regime52_" + sym + "_" + API_TF + "m.pdf",
+          "",
+          "Inspect raw regime payloads: GET …/bundle/regime/{1..52}",
+        ]);
+      } catch (e) {
+        const msg = e && e.message ? e.message : String(e);
+        if (st) st.textContent = "Failed · see panel below";
+        const lines = [
+          "What went wrong:  " + msg,
+          "",
+          "If a chunk failed mid-run: fix that regime or check VPN/proxy/antivirus.",
+          "Fallback: old monolithic (one long HTTP) — GET /api/report/pdf?symbol=… (may still timeout).",
+        ];
+        if (/failed to fetch|networkerror|load failed/i.test(msg)) {
+          lines.push("", "• CDN blocked? pdf-lib loads from jsdelivr; allow it or host pdf-lib locally.");
+        }
+        setPdfDiagnostics("err", "Chunked PDF did not finish", lines);
+      }
+      } finally {
+        if (liveStripTimer) clearInterval(liveStripTimer);
+        liveStripTimer = setInterval(() => fetchLiveStrip(getActiveSymbol()), 10000);
+        if (btn) btn.disabled = false;
+      }
+    });
+
+    initResearchPanel();
+
+    setPdfDiagnostics("clear");
+    fetchLiveStrip(getActiveSymbol());
+    if (liveStripTimer) clearInterval(liveStripTimer);
+    liveStripTimer = setInterval(() => fetchLiveStrip(getActiveSymbol()), 10000);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
