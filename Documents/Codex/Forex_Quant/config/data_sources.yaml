@@ -1,0 +1,14 @@
+sources:
+  local_csv:
+    source_name: local_csv
+    raw_path: data/raw
+    cleaned_path: data/cleaned
+    required_columns:
+      - time
+      - open
+      - high
+      - low
+      - close
+      - tick_volume
+      - spread
+

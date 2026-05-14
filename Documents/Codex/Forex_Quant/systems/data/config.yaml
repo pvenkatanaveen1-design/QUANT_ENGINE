@@ -1,0 +1,15 @@
+raw_path: data/raw
+cleaned_path: data/cleaned
+report_path: data/cleaned
+required_columns:
+  - time
+  - open
+  - high
+  - low
+  - close
+  - tick_volume
+  - spread
+max_spread_percentile_warning: 90
+gap_detection_lookback: 20
+stale_data_minutes: 60
+

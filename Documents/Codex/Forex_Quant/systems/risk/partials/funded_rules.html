@@ -1,0 +1,11 @@
+<div class="label">Funded Rules</div>
+<div class="mt-3 overflow-x-auto">
+  <table class="table-compact">
+    <tbody>
+      {% for key, value in funded.items() %}
+        <tr><th>{{ key }}</th><td>{{ value }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+

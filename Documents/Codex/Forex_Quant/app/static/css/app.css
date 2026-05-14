@@ -1,0 +1,119 @@
+.nav-link {
+  display: block;
+  border-radius: 6px;
+  padding: 0.625rem 0.75rem;
+  color: rgb(63 63 70);
+}
+
+.nav-link:hover {
+  background: rgb(244 244 245);
+  color: rgb(9 9 11);
+}
+
+.panel {
+  border: 1px solid rgb(228 228 231);
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 1px 2px rgba(9, 9, 11, 0.04);
+}
+
+.label,
+.metric-label {
+  color: rgb(161 161 170);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.metric-value {
+  color: rgb(24 24 27);
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.input {
+  border: 1px solid rgb(212 212 216);
+  background: white;
+  color: rgb(24 24 27);
+  border-radius: 6px;
+  padding: 0.5rem 0.625rem;
+}
+
+.button {
+  border-radius: 6px;
+  background: rgb(37 99 235);
+  color: white;
+  font-weight: 700;
+  padding: 0.5rem 0.75rem;
+}
+
+.button:hover {
+  background: rgb(29 78 216);
+}
+
+.table,
+.table-compact {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.table th,
+.table td,
+.table-compact th,
+.table-compact td {
+  border-bottom: 1px solid rgb(228 228 231);
+  padding: 0.625rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.table th,
+.table-compact th {
+  color: rgb(82 82 91);
+  font-weight: 700;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-green {
+  background: rgb(220 252 231);
+  border-color: rgb(187 247 208);
+  color: rgb(22 101 52);
+}
+
+.status-amber {
+  background: rgb(254 243 199);
+  border-color: rgb(253 230 138);
+  color: rgb(146 64 14);
+}
+
+.status-red {
+  background: rgb(254 226 226);
+  border-color: rgb(254 202 202);
+  color: rgb(153 27 27);
+}
+
+.status-blue {
+  background: rgb(219 234 254);
+  border-color: rgb(191 219 254);
+  color: rgb(30 64 175);
+}
+
+.status-gray {
+  background: rgb(244 244 245);
+  border-color: rgb(228 228 231);
+  color: rgb(63 63 70);
+}

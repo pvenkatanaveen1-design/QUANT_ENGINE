@@ -1,0 +1,11 @@
+<div id="data-load-result" class="mt-3">
+  {% if result.ok %}
+    <div class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+      {{ result.message }} {{ result.symbol }} {{ result.timeframe }}: {{ result.rows_out }} / {{ result.rows_in }} rows kept.
+    </div>
+  {% else %}
+    <div class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+      {{ result.message }} {{ result.error }}
+    </div>
+  {% endif %}
+</div>

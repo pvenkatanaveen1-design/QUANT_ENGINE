@@ -1,0 +1,21 @@
+{% extends "app/templates/base.html" %}
+{% block title %}Settings | Quanta Forex{% endblock %}
+{% block content %}
+<div class="space-y-5">
+  <div>
+    <h1 class="text-2xl font-semibold">Settings</h1>
+    <p class="mt-1 text-sm text-zinc-500">Safe YAML inspection. Live trading flags are blocked.</p>
+  </div>
+  <section class="panel">
+    <div class="flex flex-wrap gap-2">
+      {% for file in files %}
+        <a class="status-pill status-gray" href="/settings?system={{ file.system }}">{{ file.system }}</a>
+      {% endfor %}
+    </div>
+  </section>
+  <section class="panel">
+    {% include "systems/settings/partials/settings_editor.html" %}
+  </section>
+</div>
+{% endblock %}
+

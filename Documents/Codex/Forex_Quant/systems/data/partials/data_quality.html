@@ -1,0 +1,19 @@
+<div class="label">Quality Report</div>
+<div class="mt-2 flex flex-wrap items-center gap-2">
+  <span class="status-pill {% if report.status == 'ok' %}status-green{% elif report.status == 'critical' %}status-red{% else %}status-amber{% endif %}">{{ report.status }}</span>
+  {% if report.status == "critical" %}
+    <span class="text-sm text-red-700">Regime and backtest should not run on this data.</span>
+  {% endif %}
+</div>
+<div class="mt-3 overflow-x-auto">
+  <table class="table-compact">
+    <thead><tr><th>Severity</th><th>Code</th><th>Count</th><th>Message</th></tr></thead>
+    <tbody>
+      {% for issue in report.issues %}
+        <tr><td>{{ issue.severity }}</td><td>{{ issue.code }}</td><td>{{ issue.count }}</td><td>{{ issue.message }}</td></tr>
+      {% else %}
+        <tr><td colspan="4" class="text-zinc-400">No report yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

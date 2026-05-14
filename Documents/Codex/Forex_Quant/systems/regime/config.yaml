@@ -1,0 +1,38 @@
+feature_lookbacks:
+  atr_period: 14
+  trend_efficiency_period: 30
+  volatility_percentile_lookback: 252
+  swing_lookback: 20
+base_regime_thresholds:
+  high_vol_percentile: 70
+  extreme_vol_percentile: 90
+  trend_efficiency_min: 0.35
+  trend_efficiency_range_max: 0.25
+  adx_trend_min: 22
+  adx_range_max: 18
+  jump_shock_z: 3.0
+modifier_priority:
+  - M10
+  - M07
+  - M08
+  - M13
+  - M12
+  - M09
+  - M11
+  - M02
+  - M04
+  - M05
+  - M03
+  - M06
+  - M01
+session_modifier_mapping:
+  Asia: M03
+  London_Open: M04
+  London_NY_Overlap: M05
+  NY_Late: M06
+  Rollover: M06
+no_trade_severity_rules:
+  spread_stress: M10
+  news_lock: M07
+  data_quality_bad: Q4
+

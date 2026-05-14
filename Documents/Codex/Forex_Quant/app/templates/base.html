@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Quanta Forex{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <link rel="stylesheet" href="/static/css/app.css">
+  </head>
+  <body class="bg-zinc-100 text-zinc-950">
+    <div class="min-h-screen grid grid-cols-1 md:grid-cols-[248px_1fr]">
+      <aside class="border-b border-zinc-200 bg-white md:border-b-0 md:border-r">
+        <div class="px-5 py-4 border-b border-zinc-200">
+          <div class="text-lg font-semibold tracking-wide">Quanta Forex</div>
+          <div class="mt-2 status-pill status-red">Live Trading Disabled</div>
+        </div>
+        <nav class="p-3 text-sm">
+          <a class="nav-link" href="/">Monitor</a>
+          <a class="nav-link" href="/data">Data</a>
+          <a class="nav-link" href="/regimes">Regimes</a>
+          <a class="nav-link" href="/strategies">Strategies</a>
+          <a class="nav-link" href="/backtester">Backtester</a>
+          <a class="nav-link" href="/risk">Risk</a>
+          <a class="nav-link" href="/decisions">Decisions</a>
+          <a class="nav-link" href="/settings">Settings</a>
+        </nav>
+      </aside>
+      <main>
+        <header class="border-b border-zinc-200 bg-white px-4 py-3 md:px-5">
+          <div
+            id="system-summary"
+            hx-get="/partials/system-summary"
+            hx-trigger="load, every 5s"
+            hx-swap="outerHTML">
+            <div class="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+              <span class="status-pill status-gray">Loading system status...</span>
+              <span class="status-pill status-red">Live trading disabled</span>
+            </div>
+          </div>
+        </header>
+        <section class="p-4 md:p-6">
+          {% block content %}{% endblock %}
+        </section>
+      </main>
+    </div>
+    <script src="/static/js/app.js"></script>
+  </body>
+</html>

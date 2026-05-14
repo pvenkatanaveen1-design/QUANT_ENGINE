@@ -1,0 +1,20 @@
+systems:
+  - name: Data
+    page_url: /data
+  - name: Regime
+    page_url: /regimes
+  - name: Strategy Router
+    page_url: /strategies
+  - name: Strategy Templates
+    page_url: /strategies
+  - name: Research/Backtest
+    page_url: /backtester
+  - name: Risk
+    page_url: /risk
+  - name: Execution
+    page_url: /decisions
+  - name: Journal
+    page_url: /decisions
+  - name: Monitoring
+    page_url: /
+

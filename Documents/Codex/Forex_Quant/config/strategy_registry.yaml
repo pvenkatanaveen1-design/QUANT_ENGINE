@@ -1,0 +1,1669 @@
+﻿# Strategy registry generated from the 52-regime blueprint.
+# These are names/placeholders only. Keep enabled=false until logic, tests, and forward validation exist.
+version: 0.1
+total_strategies: 208
+strategies:
+  - id: Q1_M01_S01
+    name: "EMA pullback"
+    regime_id: Q1_M01
+    regime_logic: "Trend, low vol, clean spread"
+    slot: primary
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q1_M01_S02
+    name: "Donchian continuation"
+    regime_id: Q1_M01
+    regime_logic: "Trend, low vol, clean spread"
+    slot: secondary
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q1_M01_S03
+    name: "break-retest"
+    regime_id: Q1_M01
+    regime_logic: "Trend, low vol, clean spread"
+    slot: confirmation
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q1_M01_S04
+    name: "time-series momentum"
+    regime_id: Q1_M01
+    regime_logic: "Trend, low vol, clean spread"
+    slot: fallback
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q2_M01_S01
+    name: "ATR breakout"
+    regime_id: Q2_M01
+    regime_logic: "Trend, high vol, clean spread"
+    slot: primary
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q2_M01_S02
+    name: "momentum continuation"
+    regime_id: Q2_M01
+    regime_logic: "Trend, high vol, clean spread"
+    slot: secondary
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q2_M01_S03
+    name: "volatility pullback"
+    regime_id: Q2_M01
+    regime_logic: "Trend, high vol, clean spread"
+    slot: confirmation
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q2_M01_S04
+    name: "trailing runner"
+    regime_id: Q2_M01
+    regime_logic: "Trend, high vol, clean spread"
+    slot: fallback
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q3_M01_S01
+    name: "Bollinger fade"
+    regime_id: Q3_M01
+    regime_logic: "Range, low vol, clean spread"
+    slot: primary
+    family: mean_reversion
+    status: not_tested
+    enabled: false
+  - id: Q3_M01_S02
+    name: "RSI range fade"
+    regime_id: Q3_M01
+    regime_logic: "Range, low vol, clean spread"
+    slot: secondary
+    family: mean_reversion
+    status: not_tested
+    enabled: false
+  - id: Q3_M01_S03
+    name: "support/resistance fade"
+    regime_id: Q3_M01
+    regime_logic: "Range, low vol, clean spread"
+    slot: confirmation
+    family: mean_reversion
+    status: not_tested
+    enabled: false
+  - id: Q3_M01_S04
+    name: "VWAP/session mean fade"
+    regime_id: Q3_M01
+    regime_logic: "Range, low vol, clean spread"
+    slot: fallback
+    family: mean_reversion
+    status: not_tested
+    enabled: false
+  - id: Q4_M01_S01
+    name: "no trade"
+    regime_id: Q4_M01
+    regime_logic: "Clean but unclear structure"
+    slot: primary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M01_S02
+    name: "wait for Q1-Q3"
+    regime_id: Q4_M01
+    regime_logic: "Clean but unclear structure"
+    slot: secondary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M01_S03
+    name: "reduce exposure"
+    regime_id: Q4_M01
+    regime_logic: "Clean but unclear structure"
+    slot: confirmation
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M01_S04
+    name: "observe only"
+    regime_id: Q4_M01
+    regime_logic: "Clean but unclear structure"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q1_M02_S01
+    name: "trend continuation after squeeze"
+    regime_id: Q1_M02
+    regime_logic: "Trend pauses with compressed volatility"
+    slot: primary
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q1_M02_S02
+    name: "EMA pullback"
+    regime_id: Q1_M02
+    regime_logic: "Trend pauses with compressed volatility"
+    slot: secondary
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q1_M02_S03
+    name: "inside-bar break"
+    regime_id: Q1_M02
+    regime_logic: "Trend pauses with compressed volatility"
+    slot: confirmation
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q1_M02_S04
+    name: "Donchian break"
+    regime_id: Q1_M02
+    regime_logic: "Trend pauses with compressed volatility"
+    slot: fallback
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q2_M02_S01
+    name: "ATR expansion breakout"
+    regime_id: Q2_M02
+    regime_logic: "Compression then expansion in trend"
+    slot: primary
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q2_M02_S02
+    name: "stop-entry breakout"
+    regime_id: Q2_M02
+    regime_logic: "Compression then expansion in trend"
+    slot: secondary
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q2_M02_S03
+    name: "volatility-scaled momentum"
+    regime_id: Q2_M02
+    regime_logic: "Compression then expansion in trend"
+    slot: confirmation
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q2_M02_S04
+    name: "trail-only runner"
+    regime_id: Q2_M02
+    regime_logic: "Compression then expansion in trend"
+    slot: fallback
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q3_M02_S01
+    name: "range fade"
+    regime_id: Q3_M02
+    regime_logic: "Tight range and low volatility"
+    slot: primary
+    family: mean_reversion
+    status: not_tested
+    enabled: false
+  - id: Q3_M02_S02
+    name: "mean reversion"
+    regime_id: Q3_M02
+    regime_logic: "Tight range and low volatility"
+    slot: secondary
+    family: mean_reversion
+    status: not_tested
+    enabled: false
+  - id: Q3_M02_S03
+    name: "boundary scalp"
+    regime_id: Q3_M02
+    regime_logic: "Tight range and low volatility"
+    slot: confirmation
+    family: mean_reversion
+    status: not_tested
+    enabled: false
+  - id: Q3_M02_S04
+    name: "no trade until edge proven"
+    regime_id: Q3_M02
+    regime_logic: "Tight range and low volatility"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M02_S01
+    name: "wait"
+    regime_id: Q4_M02
+    regime_logic: "Compression with unstable signals"
+    slot: primary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M02_S02
+    name: "no trade"
+    regime_id: Q4_M02
+    regime_logic: "Compression with unstable signals"
+    slot: secondary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M02_S03
+    name: "alert only"
+    regime_id: Q4_M02
+    regime_logic: "Compression with unstable signals"
+    slot: confirmation
+    family: general
+    status: not_tested
+    enabled: false
+  - id: Q4_M02_S04
+    name: "classify after breakout"
+    regime_id: Q4_M02
+    regime_logic: "Compression with unstable signals"
+    slot: fallback
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q1_M03_S01
+    name: "small trend continuation"
+    regime_id: Q1_M03
+    regime_logic: "Slow trend during Asia"
+    slot: primary
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q1_M03_S02
+    name: "carry drift"
+    regime_id: Q1_M03
+    regime_logic: "Slow trend during Asia"
+    slot: secondary
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q1_M03_S03
+    name: "EMA pullback"
+    regime_id: Q1_M03
+    regime_logic: "Slow trend during Asia"
+    slot: confirmation
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q1_M03_S04
+    name: "no-trade if spread wide"
+    regime_id: Q1_M03
+    regime_logic: "Slow trend during Asia"
+    slot: fallback
+    family: general
+    status: not_tested
+    enabled: false
+  - id: Q2_M03_S01
+    name: "reduced-size momentum"
+    regime_id: Q2_M03
+    regime_logic: "High vol during Asia"
+    slot: primary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q2_M03_S02
+    name: "event-driven continuation"
+    regime_id: Q2_M03
+    regime_logic: "High vol during Asia"
+    slot: secondary
+    family: news
+    status: not_tested
+    enabled: false
+  - id: Q2_M03_S03
+    name: "no trade"
+    regime_id: Q2_M03
+    regime_logic: "High vol during Asia"
+    slot: confirmation
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q2_M03_S04
+    name: "trail existing only"
+    regime_id: Q2_M03
+    regime_logic: "High vol during Asia"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q3_M03_S01
+    name: "Asian range fade"
+    regime_id: Q3_M03
+    regime_logic: "Classic Asia range"
+    slot: primary
+    family: mean_reversion
+    status: not_tested
+    enabled: false
+  - id: Q3_M03_S02
+    name: "Bollinger fade"
+    regime_id: Q3_M03
+    regime_logic: "Classic Asia range"
+    slot: secondary
+    family: mean_reversion
+    status: not_tested
+    enabled: false
+  - id: Q3_M03_S03
+    name: "liquidity boundary fade"
+    regime_id: Q3_M03
+    regime_logic: "Classic Asia range"
+    slot: confirmation
+    family: mean_reversion
+    status: not_tested
+    enabled: false
+  - id: Q3_M03_S04
+    name: "time stop"
+    regime_id: Q3_M03
+    regime_logic: "Classic Asia range"
+    slot: fallback
+    family: general
+    status: not_tested
+    enabled: false
+  - id: Q4_M03_S01
+    name: "no trade"
+    regime_id: Q4_M03
+    regime_logic: "Thin liquidity or random movement"
+    slot: primary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M03_S02
+    name: "reduce risk"
+    regime_id: Q4_M03
+    regime_logic: "Thin liquidity or random movement"
+    slot: secondary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M03_S03
+    name: "wait for London"
+    regime_id: Q4_M03
+    regime_logic: "Thin liquidity or random movement"
+    slot: confirmation
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M03_S04
+    name: "close weak trades"
+    regime_id: Q4_M03
+    regime_logic: "Thin liquidity or random movement"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q1_M04_S01
+    name: "break-retest"
+    regime_id: Q1_M04
+    regime_logic: "Trend into London open"
+    slot: primary
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q1_M04_S02
+    name: "opening range continuation"
+    regime_id: Q1_M04
+    regime_logic: "Trend into London open"
+    slot: secondary
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q1_M04_S03
+    name: "EMA pullback"
+    regime_id: Q1_M04
+    regime_logic: "Trend into London open"
+    slot: confirmation
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q1_M04_S04
+    name: "sweep continuation"
+    regime_id: Q1_M04
+    regime_logic: "Trend into London open"
+    slot: fallback
+    family: liquidity
+    status: not_tested
+    enabled: false
+  - id: Q2_M04_S01
+    name: "opening range breakout"
+    regime_id: Q2_M04
+    regime_logic: "High-vol London expansion"
+    slot: primary
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q2_M04_S02
+    name: "ATR breakout"
+    regime_id: Q2_M04
+    regime_logic: "High-vol London expansion"
+    slot: secondary
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q2_M04_S03
+    name: "momentum impulse"
+    regime_id: Q2_M04
+    regime_logic: "High-vol London expansion"
+    slot: confirmation
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q2_M04_S04
+    name: "partial exits"
+    regime_id: Q2_M04
+    regime_logic: "High-vol London expansion"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q3_M04_S01
+    name: "Asia high/low sweep reversal"
+    regime_id: Q3_M04
+    regime_logic: "London tests Asia range but no trend"
+    slot: primary
+    family: liquidity
+    status: not_tested
+    enabled: false
+  - id: Q3_M04_S02
+    name: "failed breakout fade"
+    regime_id: Q3_M04
+    regime_logic: "London tests Asia range but no trend"
+    slot: secondary
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q3_M04_S03
+    name: "range expansion fade"
+    regime_id: Q3_M04
+    regime_logic: "London tests Asia range but no trend"
+    slot: confirmation
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q3_M04_S04
+    name: "wait-confirmation"
+    regime_id: Q3_M04
+    regime_logic: "London tests Asia range but no trend"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M04_S01
+    name: "wait"
+    regime_id: Q4_M04
+    regime_logic: "First 5-15 min noisy or spread unstable"
+    slot: primary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M04_S02
+    name: "no trade"
+    regime_id: Q4_M04
+    regime_logic: "First 5-15 min noisy or spread unstable"
+    slot: secondary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M04_S03
+    name: "observe sweep"
+    regime_id: Q4_M04
+    regime_logic: "First 5-15 min noisy or spread unstable"
+    slot: confirmation
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M04_S04
+    name: "trade only after confirmation"
+    regime_id: Q4_M04
+    regime_logic: "First 5-15 min noisy or spread unstable"
+    slot: fallback
+    family: general
+    status: not_tested
+    enabled: false
+  - id: Q1_M05_S01
+    name: "trend continuation"
+    regime_id: Q1_M05
+    regime_logic: "Trend with strong liquidity"
+    slot: primary
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q1_M05_S02
+    name: "pullback continuation"
+    regime_id: Q1_M05
+    regime_logic: "Trend with strong liquidity"
+    slot: secondary
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q1_M05_S03
+    name: "breakout retest"
+    regime_id: Q1_M05
+    regime_logic: "Trend with strong liquidity"
+    slot: confirmation
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q1_M05_S04
+    name: "pyramiding only if allowed"
+    regime_id: Q1_M05
+    regime_logic: "Trend with strong liquidity"
+    slot: fallback
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q2_M05_S01
+    name: "momentum breakout"
+    regime_id: Q2_M05
+    regime_logic: "Large directional volatility"
+    slot: primary
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q2_M05_S02
+    name: "ATR trailing"
+    regime_id: Q2_M05
+    regime_logic: "Large directional volatility"
+    slot: secondary
+    family: general
+    status: not_tested
+    enabled: false
+  - id: Q2_M05_S03
+    name: "volatility pullback"
+    regime_id: Q2_M05
+    regime_logic: "Large directional volatility"
+    slot: confirmation
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q2_M05_S04
+    name: "reduced position sizing"
+    regime_id: Q2_M05
+    regime_logic: "Large directional volatility"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q3_M05_S01
+    name: "range fade if no breakout"
+    regime_id: Q3_M05
+    regime_logic: "Range starts breaking or rejecting"
+    slot: primary
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q3_M05_S02
+    name: "failed breakout"
+    regime_id: Q3_M05
+    regime_logic: "Range starts breaking or rejecting"
+    slot: secondary
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q3_M05_S03
+    name: "session mean reversion"
+    regime_id: Q3_M05
+    regime_logic: "Range starts breaking or rejecting"
+    slot: confirmation
+    family: mean_reversion
+    status: not_tested
+    enabled: false
+  - id: Q3_M05_S04
+    name: "no trade if mixed"
+    regime_id: Q3_M05
+    regime_logic: "Range starts breaking or rejecting"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M05_S01
+    name: "no trade"
+    regime_id: Q4_M05
+    regime_logic: "News/event overlap confusion"
+    slot: primary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M05_S02
+    name: "close risk"
+    regime_id: Q4_M05
+    regime_logic: "News/event overlap confusion"
+    slot: secondary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M05_S03
+    name: "wait for spread normalization"
+    regime_id: Q4_M05
+    regime_logic: "News/event overlap confusion"
+    slot: confirmation
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M05_S04
+    name: "observe only"
+    regime_id: Q4_M05
+    regime_logic: "News/event overlap confusion"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q1_M06_S01
+    name: "trail existing"
+    regime_id: Q1_M06
+    regime_logic: "Existing trend late session"
+    slot: primary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q1_M06_S02
+    name: "no new entry"
+    regime_id: Q1_M06
+    regime_logic: "Existing trend late session"
+    slot: secondary
+    family: general
+    status: not_tested
+    enabled: false
+  - id: Q1_M06_S03
+    name: "time-based exit"
+    regime_id: Q1_M06
+    regime_logic: "Existing trend late session"
+    slot: confirmation
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q1_M06_S04
+    name: "small continuation only if tested"
+    regime_id: Q1_M06
+    regime_logic: "Existing trend late session"
+    slot: fallback
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q2_M06_S01
+    name: "no new entry"
+    regime_id: Q2_M06
+    regime_logic: "High vol late session"
+    slot: primary
+    family: general
+    status: not_tested
+    enabled: false
+  - id: Q2_M06_S02
+    name: "reduce risk"
+    regime_id: Q2_M06
+    regime_logic: "High vol late session"
+    slot: secondary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q2_M06_S03
+    name: "trail"
+    regime_id: Q2_M06
+    regime_logic: "High vol late session"
+    slot: confirmation
+    family: general
+    status: not_tested
+    enabled: false
+  - id: Q2_M06_S04
+    name: "close before rollover"
+    regime_id: Q2_M06
+    regime_logic: "High vol late session"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q3_M06_S01
+    name: "small mean reversion only if spread normal"
+    regime_id: Q3_M06
+    regime_logic: "Low-vol late range"
+    slot: primary
+    family: mean_reversion
+    status: not_tested
+    enabled: false
+  - id: Q3_M06_S02
+    name: "time exit"
+    regime_id: Q3_M06
+    regime_logic: "Low-vol late range"
+    slot: secondary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q3_M06_S03
+    name: "no trade"
+    regime_id: Q3_M06
+    regime_logic: "Low-vol late range"
+    slot: confirmation
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q3_M06_S04
+    name: "close weak trades"
+    regime_id: Q3_M06
+    regime_logic: "Low-vol late range"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M06_S01
+    name: "no trade"
+    regime_id: Q4_M06
+    regime_logic: "Rollover spread/liquidity stress"
+    slot: primary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M06_S02
+    name: "kill new orders"
+    regime_id: Q4_M06
+    regime_logic: "Rollover spread/liquidity stress"
+    slot: secondary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M06_S03
+    name: "close risky trades"
+    regime_id: Q4_M06
+    regime_logic: "Rollover spread/liquidity stress"
+    slot: confirmation
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M06_S04
+    name: "wait"
+    regime_id: Q4_M06
+    regime_logic: "Rollover spread/liquidity stress"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q1_M07_S01
+    name: "reduce size"
+    regime_id: Q1_M07
+    regime_logic: "Trend before major news"
+    slot: primary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q1_M07_S02
+    name: "no new trade"
+    regime_id: Q1_M07
+    regime_logic: "Trend before major news"
+    slot: secondary
+    family: general
+    status: not_tested
+    enabled: false
+  - id: Q1_M07_S03
+    name: "tighten/partial exit"
+    regime_id: Q1_M07
+    regime_logic: "Trend before major news"
+    slot: confirmation
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q1_M07_S04
+    name: "wait"
+    regime_id: Q1_M07
+    regime_logic: "Trend before major news"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q2_M07_S01
+    name: "no trade"
+    regime_id: Q2_M07
+    regime_logic: "Volatile trend before news"
+    slot: primary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q2_M07_S02
+    name: "reduce exposure"
+    regime_id: Q2_M07
+    regime_logic: "Volatile trend before news"
+    slot: secondary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q2_M07_S03
+    name: "close risky positions"
+    regime_id: Q2_M07
+    regime_logic: "Volatile trend before news"
+    slot: confirmation
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q2_M07_S04
+    name: "wait"
+    regime_id: Q2_M07
+    regime_logic: "Volatile trend before news"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q3_M07_S01
+    name: "no trade"
+    regime_id: Q3_M07
+    regime_logic: "Range before news"
+    slot: primary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q3_M07_S02
+    name: "cancel pending orders"
+    regime_id: Q3_M07
+    regime_logic: "Range before news"
+    slot: secondary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q3_M07_S03
+    name: "wait"
+    regime_id: Q3_M07
+    regime_logic: "Range before news"
+    slot: confirmation
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q3_M07_S04
+    name: "observe breakout levels"
+    regime_id: Q3_M07
+    regime_logic: "Range before news"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M07_S01
+    name: "hard no trade"
+    regime_id: Q4_M07
+    regime_logic: "Event risk dominant"
+    slot: primary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M07_S02
+    name: "news lock"
+    regime_id: Q4_M07
+    regime_logic: "Event risk dominant"
+    slot: secondary
+    family: news
+    status: not_tested
+    enabled: false
+  - id: Q4_M07_S03
+    name: "kill new orders"
+    regime_id: Q4_M07
+    regime_logic: "Event risk dominant"
+    slot: confirmation
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M07_S04
+    name: "exit if rules require"
+    regime_id: Q4_M07
+    regime_logic: "Event risk dominant"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q1_M08_S01
+    name: "continuation after retest"
+    regime_id: Q1_M08
+    regime_logic: "News confirms trend after spread normalizes"
+    slot: primary
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q1_M08_S02
+    name: "EMA pullback"
+    regime_id: Q1_M08
+    regime_logic: "News confirms trend after spread normalizes"
+    slot: secondary
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q1_M08_S03
+    name: "breakout continuation"
+    regime_id: Q1_M08
+    regime_logic: "News confirms trend after spread normalizes"
+    slot: confirmation
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q1_M08_S04
+    name: "reduced size"
+    regime_id: Q1_M08
+    regime_logic: "News confirms trend after spread normalizes"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q2_M08_S01
+    name: "momentum continuation"
+    regime_id: Q2_M08
+    regime_logic: "Strong news impulse"
+    slot: primary
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q2_M08_S02
+    name: "ATR breakout"
+    regime_id: Q2_M08
+    regime_logic: "Strong news impulse"
+    slot: secondary
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q2_M08_S03
+    name: "trailing runner"
+    regime_id: Q2_M08
+    regime_logic: "Strong news impulse"
+    slot: confirmation
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q2_M08_S04
+    name: "reduced size"
+    regime_id: Q2_M08
+    regime_logic: "Strong news impulse"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q3_M08_S01
+    name: "fade only after volatility normalizes"
+    regime_id: Q3_M08
+    regime_logic: "News spike returns to range"
+    slot: primary
+    family: mean_reversion
+    status: not_tested
+    enabled: false
+  - id: Q3_M08_S02
+    name: "failed breakout fade"
+    regime_id: Q3_M08
+    regime_logic: "News spike returns to range"
+    slot: secondary
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q3_M08_S03
+    name: "z-score mean reversion"
+    regime_id: Q3_M08
+    regime_logic: "News spike returns to range"
+    slot: confirmation
+    family: mean_reversion
+    status: not_tested
+    enabled: false
+  - id: Q3_M08_S04
+    name: "wait"
+    regime_id: Q3_M08
+    regime_logic: "News spike returns to range"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M08_S01
+    name: "no trade"
+    regime_id: Q4_M08
+    regime_logic: "Spread/jump still unstable"
+    slot: primary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M08_S02
+    name: "wait for normalization"
+    regime_id: Q4_M08
+    regime_logic: "Spread/jump still unstable"
+    slot: secondary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M08_S03
+    name: "observe only"
+    regime_id: Q4_M08
+    regime_logic: "Spread/jump still unstable"
+    slot: confirmation
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M08_S04
+    name: "kill new orders"
+    regime_id: Q4_M08
+    regime_logic: "Spread/jump still unstable"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q1_M09_S01
+    name: "sweep pullback entry"
+    regime_id: Q1_M09
+    regime_logic: "Sweep against trend then continuation"
+    slot: primary
+    family: liquidity
+    status: not_tested
+    enabled: false
+  - id: Q1_M09_S02
+    name: "break-retest"
+    regime_id: Q1_M09
+    regime_logic: "Sweep against trend then continuation"
+    slot: secondary
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q1_M09_S03
+    name: "trend continuation"
+    regime_id: Q1_M09
+    regime_logic: "Sweep against trend then continuation"
+    slot: confirmation
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q1_M09_S04
+    name: "stop below sweep"
+    regime_id: Q1_M09
+    regime_logic: "Sweep against trend then continuation"
+    slot: fallback
+    family: liquidity
+    status: not_tested
+    enabled: false
+  - id: Q2_M09_S01
+    name: "sweep continuation"
+    regime_id: Q2_M09
+    regime_logic: "Sweep then high-vol impulse"
+    slot: primary
+    family: liquidity
+    status: not_tested
+    enabled: false
+  - id: Q2_M09_S02
+    name: "ATR momentum"
+    regime_id: Q2_M09
+    regime_logic: "Sweep then high-vol impulse"
+    slot: secondary
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q2_M09_S03
+    name: "reduced size"
+    regime_id: Q2_M09
+    regime_logic: "Sweep then high-vol impulse"
+    slot: confirmation
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q2_M09_S04
+    name: "fast partials"
+    regime_id: Q2_M09
+    regime_logic: "Sweep then high-vol impulse"
+    slot: fallback
+    family: general
+    status: not_tested
+    enabled: false
+  - id: Q3_M09_S01
+    name: "sweep reversal"
+    regime_id: Q3_M09
+    regime_logic: "Sweep at range edge"
+    slot: primary
+    family: liquidity
+    status: not_tested
+    enabled: false
+  - id: Q3_M09_S02
+    name: "failed breakout fade"
+    regime_id: Q3_M09
+    regime_logic: "Sweep at range edge"
+    slot: secondary
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q3_M09_S03
+    name: "Bollinger fade"
+    regime_id: Q3_M09
+    regime_logic: "Sweep at range edge"
+    slot: confirmation
+    family: mean_reversion
+    status: not_tested
+    enabled: false
+  - id: Q3_M09_S04
+    name: "range target"
+    regime_id: Q3_M09
+    regime_logic: "Sweep at range edge"
+    slot: fallback
+    family: mean_reversion
+    status: not_tested
+    enabled: false
+  - id: Q4_M09_S01
+    name: "wait"
+    regime_id: Q4_M09
+    regime_logic: "Sweep without confirmation or bad spread"
+    slot: primary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M09_S02
+    name: "no trade"
+    regime_id: Q4_M09
+    regime_logic: "Sweep without confirmation or bad spread"
+    slot: secondary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M09_S03
+    name: "require next-bar confirmation"
+    regime_id: Q4_M09
+    regime_logic: "Sweep without confirmation or bad spread"
+    slot: confirmation
+    family: general
+    status: not_tested
+    enabled: false
+  - id: Q4_M09_S04
+    name: "observe only"
+    regime_id: Q4_M09
+    regime_logic: "Sweep without confirmation or bad spread"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q1_M10_S01
+    name: "no new trade"
+    regime_id: Q1_M10
+    regime_logic: "Trend but execution cost high"
+    slot: primary
+    family: general
+    status: not_tested
+    enabled: false
+  - id: Q1_M10_S02
+    name: "reduce size"
+    regime_id: Q1_M10
+    regime_logic: "Trend but execution cost high"
+    slot: secondary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q1_M10_S03
+    name: "wait for spread normal"
+    regime_id: Q1_M10
+    regime_logic: "Trend but execution cost high"
+    slot: confirmation
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q1_M10_S04
+    name: "trail existing"
+    regime_id: Q1_M10
+    regime_logic: "Trend but execution cost high"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q2_M10_S01
+    name: "no trade"
+    regime_id: Q2_M10
+    regime_logic: "High volatility and high spread"
+    slot: primary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q2_M10_S02
+    name: "kill new orders"
+    regime_id: Q2_M10
+    regime_logic: "High volatility and high spread"
+    slot: secondary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q2_M10_S03
+    name: "close by rules"
+    regime_id: Q2_M10
+    regime_logic: "High volatility and high spread"
+    slot: confirmation
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q2_M10_S04
+    name: "wait"
+    regime_id: Q2_M10
+    regime_logic: "High volatility and high spread"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q3_M10_S01
+    name: "no trade"
+    regime_id: Q3_M10
+    regime_logic: "Range but spread ruins edge"
+    slot: primary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q3_M10_S02
+    name: "skip scalps"
+    regime_id: Q3_M10
+    regime_logic: "Range but spread ruins edge"
+    slot: secondary
+    family: general
+    status: not_tested
+    enabled: false
+  - id: Q3_M10_S03
+    name: "wait"
+    regime_id: Q3_M10
+    regime_logic: "Range but spread ruins edge"
+    slot: confirmation
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q3_M10_S04
+    name: "observe only"
+    regime_id: Q3_M10
+    regime_logic: "Range but spread ruins edge"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M10_S01
+    name: "kill switch candidate"
+    regime_id: Q4_M10
+    regime_logic: "Cost/liquidity stress dominant"
+    slot: primary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M10_S02
+    name: "no trade"
+    regime_id: Q4_M10
+    regime_logic: "Cost/liquidity stress dominant"
+    slot: secondary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M10_S03
+    name: "data warning"
+    regime_id: Q4_M10
+    regime_logic: "Cost/liquidity stress dominant"
+    slot: confirmation
+    family: general
+    status: not_tested
+    enabled: false
+  - id: Q4_M10_S04
+    name: "broker warning"
+    regime_id: Q4_M10
+    regime_logic: "Cost/liquidity stress dominant"
+    slot: fallback
+    family: general
+    status: not_tested
+    enabled: false
+  - id: Q1_M11_S01
+    name: "smaller pullback"
+    regime_id: Q1_M11
+    regime_logic: "Trend mature but controlled"
+    slot: primary
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q1_M11_S02
+    name: "trail"
+    regime_id: Q1_M11
+    regime_logic: "Trend mature but controlled"
+    slot: secondary
+    family: general
+    status: not_tested
+    enabled: false
+  - id: Q1_M11_S03
+    name: "partial exit"
+    regime_id: Q1_M11
+    regime_logic: "Trend mature but controlled"
+    slot: confirmation
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q1_M11_S04
+    name: "no fresh breakout chase"
+    regime_id: Q1_M11
+    regime_logic: "Trend mature but controlled"
+    slot: fallback
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q2_M11_S01
+    name: "trailing stop"
+    regime_id: Q2_M11
+    regime_logic: "Volatile exhaustion"
+    slot: primary
+    family: general
+    status: not_tested
+    enabled: false
+  - id: Q2_M11_S02
+    name: "reversal only after confirmation"
+    regime_id: Q2_M11
+    regime_logic: "Volatile exhaustion"
+    slot: secondary
+    family: general
+    status: not_tested
+    enabled: false
+  - id: Q2_M11_S03
+    name: "no chase"
+    regime_id: Q2_M11
+    regime_logic: "Volatile exhaustion"
+    slot: confirmation
+    family: general
+    status: not_tested
+    enabled: false
+  - id: Q2_M11_S04
+    name: "reduce size"
+    regime_id: Q2_M11
+    regime_logic: "Volatile exhaustion"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q3_M11_S01
+    name: "mean reversion"
+    regime_id: Q3_M11
+    regime_logic: "Exhaustion into range"
+    slot: primary
+    family: mean_reversion
+    status: not_tested
+    enabled: false
+  - id: Q3_M11_S02
+    name: "range fade"
+    regime_id: Q3_M11
+    regime_logic: "Exhaustion into range"
+    slot: secondary
+    family: mean_reversion
+    status: not_tested
+    enabled: false
+  - id: Q3_M11_S03
+    name: "divergence fade if tested"
+    regime_id: Q3_M11
+    regime_logic: "Exhaustion into range"
+    slot: confirmation
+    family: mean_reversion
+    status: not_tested
+    enabled: false
+  - id: Q3_M11_S04
+    name: "time stop"
+    regime_id: Q3_M11
+    regime_logic: "Exhaustion into range"
+    slot: fallback
+    family: general
+    status: not_tested
+    enabled: false
+  - id: Q4_M11_S01
+    name: "no trade"
+    regime_id: Q4_M11
+    regime_logic: "Exhaustion plus instability"
+    slot: primary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M11_S02
+    name: "wait"
+    regime_id: Q4_M11
+    regime_logic: "Exhaustion plus instability"
+    slot: secondary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M11_S03
+    name: "protect profits"
+    regime_id: Q4_M11
+    regime_logic: "Exhaustion plus instability"
+    slot: confirmation
+    family: general
+    status: not_tested
+    enabled: false
+  - id: Q4_M11_S04
+    name: "reclassify"
+    regime_id: Q4_M11
+    regime_logic: "Exhaustion plus instability"
+    slot: fallback
+    family: general
+    status: not_tested
+    enabled: false
+  - id: Q1_M12_S01
+    name: "full trend continuation"
+    regime_id: Q1_M12
+    regime_logic: "Higher and lower timeframe trend agree"
+    slot: primary
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q1_M12_S02
+    name: "pullback"
+    regime_id: Q1_M12
+    regime_logic: "Higher and lower timeframe trend agree"
+    slot: secondary
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q1_M12_S03
+    name: "break-retest"
+    regime_id: Q1_M12
+    regime_logic: "Higher and lower timeframe trend agree"
+    slot: confirmation
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q1_M12_S04
+    name: "time-series momentum"
+    regime_id: Q1_M12
+    regime_logic: "Higher and lower timeframe trend agree"
+    slot: fallback
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q2_M12_S01
+    name: "ATR breakout"
+    regime_id: Q2_M12
+    regime_logic: "Multi-timeframe trend plus high vol"
+    slot: primary
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q2_M12_S02
+    name: "reduced-size momentum"
+    regime_id: Q2_M12
+    regime_logic: "Multi-timeframe trend plus high vol"
+    slot: secondary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q2_M12_S03
+    name: "trailing runner"
+    regime_id: Q2_M12
+    regime_logic: "Multi-timeframe trend plus high vol"
+    slot: confirmation
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q2_M12_S04
+    name: "volatility pullback"
+    regime_id: Q2_M12
+    regime_logic: "Multi-timeframe trend plus high vol"
+    slot: fallback
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q3_M12_S01
+    name: "range fade"
+    regime_id: Q3_M12
+    regime_logic: "Multiple timeframes range-bound"
+    slot: primary
+    family: mean_reversion
+    status: not_tested
+    enabled: false
+  - id: Q3_M12_S02
+    name: "mean reversion"
+    regime_id: Q3_M12
+    regime_logic: "Multiple timeframes range-bound"
+    slot: secondary
+    family: mean_reversion
+    status: not_tested
+    enabled: false
+  - id: Q3_M12_S03
+    name: "boundary reversal"
+    regime_id: Q3_M12
+    regime_logic: "Multiple timeframes range-bound"
+    slot: confirmation
+    family: mean_reversion
+    status: not_tested
+    enabled: false
+  - id: Q3_M12_S04
+    name: "smaller targets"
+    regime_id: Q3_M12
+    regime_logic: "Multiple timeframes range-bound"
+    slot: fallback
+    family: general
+    status: not_tested
+    enabled: false
+  - id: Q4_M12_S01
+    name: "no trade"
+    regime_id: Q4_M12
+    regime_logic: "Timeframes conflict"
+    slot: primary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M12_S02
+    name: "wait for alignment"
+    regime_id: Q4_M12
+    regime_logic: "Timeframes conflict"
+    slot: secondary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M12_S03
+    name: "reduce risk"
+    regime_id: Q4_M12
+    regime_logic: "Timeframes conflict"
+    slot: confirmation
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M12_S04
+    name: "observe only"
+    regime_id: Q4_M12
+    regime_logic: "Timeframes conflict"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q1_M13_S01
+    name: "USD-aligned continuation"
+    regime_id: Q1_M13
+    regime_logic: "Trend aligns with USD/macro flow"
+    slot: primary
+    family: macro_correlation
+    status: not_tested
+    enabled: false
+  - id: Q1_M13_S02
+    name: "pullback"
+    regime_id: Q1_M13
+    regime_logic: "Trend aligns with USD/macro flow"
+    slot: secondary
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q1_M13_S03
+    name: "basket-confirmed breakout"
+    regime_id: Q1_M13
+    regime_logic: "Trend aligns with USD/macro flow"
+    slot: confirmation
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q1_M13_S04
+    name: "reduced correlated exposure"
+    regime_id: Q1_M13
+    regime_logic: "Trend aligns with USD/macro flow"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q2_M13_S01
+    name: "momentum continuation"
+    regime_id: Q2_M13
+    regime_logic: "Strong USD shock or risk-off trend"
+    slot: primary
+    family: trend_momentum
+    status: not_tested
+    enabled: false
+  - id: Q2_M13_S02
+    name: "ATR breakout"
+    regime_id: Q2_M13
+    regime_logic: "Strong USD shock or risk-off trend"
+    slot: secondary
+    family: breakout
+    status: not_tested
+    enabled: false
+  - id: Q2_M13_S03
+    name: "reduced basket risk"
+    regime_id: Q2_M13
+    regime_logic: "Strong USD shock or risk-off trend"
+    slot: confirmation
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q2_M13_S04
+    name: "trail"
+    regime_id: Q2_M13
+    regime_logic: "Strong USD shock or risk-off trend"
+    slot: fallback
+    family: general
+    status: not_tested
+    enabled: false
+  - id: Q3_M13_S01
+    name: "pair-neutral mean reversion"
+    regime_id: Q3_M13
+    regime_logic: "Range but cross-pair correlation abnormal"
+    slot: primary
+    family: mean_reversion
+    status: not_tested
+    enabled: false
+  - id: Q3_M13_S02
+    name: "reduce exposure"
+    regime_id: Q3_M13
+    regime_logic: "Range but cross-pair correlation abnormal"
+    slot: secondary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q3_M13_S03
+    name: "no trade if basket risk high"
+    regime_id: Q3_M13
+    regime_logic: "Range but cross-pair correlation abnormal"
+    slot: confirmation
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q3_M13_S04
+    name: "observe"
+    regime_id: Q3_M13
+    regime_logic: "Range but cross-pair correlation abnormal"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M13_S01
+    name: "no trade"
+    regime_id: Q4_M13
+    regime_logic: "Correlation shock unstable"
+    slot: primary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M13_S02
+    name: "close correlated risk"
+    regime_id: Q4_M13
+    regime_logic: "Correlation shock unstable"
+    slot: secondary
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M13_S03
+    name: "kill new basket trades"
+    regime_id: Q4_M13
+    regime_logic: "Correlation shock unstable"
+    slot: confirmation
+    family: defensive
+    status: not_tested
+    enabled: false
+  - id: Q4_M13_S04
+    name: "wait"
+    regime_id: Q4_M13
+    regime_logic: "Correlation shock unstable"
+    slot: fallback
+    family: defensive
+    status: not_tested
+    enabled: false

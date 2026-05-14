@@ -1,0 +1,32 @@
+{% extends "app/templates/base.html" %}
+{% block title %}Strategies | Quanta Forex{% endblock %}
+{% block content %}
+<div class="space-y-5">
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-semibold">Strategy Router</h1>
+      <p class="mt-1 text-sm text-zinc-500">{{ summary.total }} names, {{ summary.regimes }} regimes, live blocked</p>
+    </div>
+    <form class="flex gap-2" hx-get="/partials/regime-playbook" hx-target="#regime-playbook" hx-swap="outerHTML">
+      <input class="input w-28" name="regime_id" value="{{ selected.regime_id }}">
+      <button class="button" type="submit">Show</button>
+    </form>
+  </div>
+  <section class="panel">
+    {% include "systems/strategy_router/partials/regime_playbook.html" %}
+  </section>
+  <section class="panel">
+    <div class="label">Registry</div>
+    <div class="mt-3 max-h-[560px] overflow-auto">
+      <table class="table-compact">
+        <thead><tr><th>ID</th><th>Regime</th><th>Slot</th><th>Name</th><th>Family</th><th>Logic</th><th>Status</th><th>Enabled</th><th>Live</th></tr></thead>
+        <tbody>
+          {% for item in registry %}
+            <tr><td>{{ item.id }}</td><td>{{ item.regime_id }}</td><td>{{ item.slot }}</td><td>{{ item.name }}</td><td>{{ item.family }}</td><td>{{ item.logic_status }}</td><td>{{ item.status }}</td><td>{{ item.enabled }}</td><td>{{ item.live_allowed }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}
