@@ -1,0 +1,31 @@
+{
+  "regime": "Q3",
+  "label": "Range Low Volatility",
+  "confidence": 54,
+  "direction": "NEUTRAL",
+  "session": "ASIA",
+  "indicators": {
+    "adx": 18.5899,
+    "rsi": "\u2014",
+    "atr_ratio": 0.0,
+    "current_price": 1.37088,
+    "structure": "\u2014"
+  },
+  "voters": {
+    "indicator": {
+      "vote": "Q3",
+      "confidence": 54,
+      "adx": 18.5899,
+      "atr_pct": 0.0
+    },
+    "structure": {
+      "vote": "\u2014",
+      "confidence": 0,
+      "note": "n/a"
+    },
+    "session": {
+      "vote": "ASIA",
+      "confidence": 50
+    }
+  }
+}

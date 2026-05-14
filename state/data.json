@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "symbol": "USDCAD",
+    "tf_minutes": 60,
+    "bars_requested": 12000,
+    "bars_loaded": 12000,
+    "source": "mt5"
+  },
+  "delivery_targets": {},
+  "account": {
+    "balance": 100000.0,
+    "equity": 100000.0,
+    "profit": 0.0,
+    "is_demo": true
+  },
+  "tick": {
+    "bid": 1.37088,
+    "ask": 1.37088
+  }
+}

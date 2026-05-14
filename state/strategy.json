@@ -1,0 +1,31 @@
+{
+  "strategy_name": "alpha_sweep",
+  "score": 7,
+  "max_score": 10,
+  "rrr_target": "\u2014",
+  "description": "Confidence 50\u201369: reduced size (50% of quadrant multiplier)",
+  "reasons": [
+    [
+      "Regime",
+      true
+    ],
+    [
+      "Risk/reward",
+      false
+    ],
+    [
+      "Signal score",
+      false
+    ],
+    [
+      "Session",
+      false
+    ],
+    [
+      "Spread",
+      true
+    ]
+  ],
+  "size_multiplier": 0.5,
+  "score_pct": 66
+}

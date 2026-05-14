@@ -21,6 +21,9 @@
           <button type="button" class="nav-item nav-item--active" data-route="engine">
             <span class="nav-item__i">⬡</span> Regime Engine
           </button>
+          <button type="button" class="nav-item" data-route="practical" title="MT5 API tester — snapshot query + raw JSON response">
+            <span class="nav-item__i">◇</span> Practical regime
+          </button>
           <button type="button" class="nav-item nav-item--disabled" disabled title="Placeholder">
             <span class="nav-item__i">▦</span> Dashboard
           </button>
@@ -69,7 +72,7 @@
                 title="Used when Pair is Other…"
                 hidden
               />
-              <button type="button" class="btn-pdf" id="btnPdfReport" title="Full 52-regime PDF: warm MT5 once, then 53 small PDF chunks merged in the browser">
+              <button type="button" class="btn-pdf" id="btnPdfReport" title="Snapshot PDF: one POST to the API runs MT5 scorecard + ReportLab, then downloads immediately">
                 PDF report
               </button>
               <span class="pill" id="pdfStatus" aria-live="polite"></span>
@@ -84,7 +87,8 @@
           </div>
         </header>
 
-        <main class="main" id="viewEngine">
+        <main class="main">
+          <div id="routeEngine" class="route-view route-view--active">
           <section class="research" id="researchPanel" aria-label="Research report configuration">
             <div class="research__toolbar">
               <div class="research__toolbar-left">
@@ -198,7 +202,10 @@
 
               <details class="research__details">
                 <summary>3 · Strategies (selected regime)</summary>
-                <p class="research__hint" id="researchStrategyHint">Select a regime and click “Load from flow” or change regime to fetch scorecard rows from the API.</p>
+                <p class="research__hint" id="researchStrategyHint">
+                  Defaults match the main dashboard: same <code>?symbol</code>, <code>?tf</code>, <code>?bars</code>, plus
+                  <code>?regime_id</code>, <code>?atr_sl_mult</code>, <code>?max_bars</code> when set. Four strategies per regime load from the MT5 scorecard (trades, WR@R, rank); fall back to quadrant blueprints if the API is offline.
+                </p>
                 <div class="research__table-wrap research__table-wrap--wide">
                   <table class="research__table" id="researchStrategyTable">
                     <thead>
@@ -208,10 +215,17 @@
                         <th>Key</th>
                         <th>Signal</th>
                         <th>Side</th>
+                        <th>Trades</th>
+                        <th>WR 1R</th>
+                        <th>WR 2R</th>
+                        <th>WR 3R</th>
+                        <th>WR 4R</th>
+                        <th>Rank</th>
+                        <th>Blend</th>
                         <th>Risk %</th>
                         <th>R:R</th>
-                        <th>ATR mult</th>
-                        <th>Pos size</th>
+                        <th>ATR</th>
+                        <th>Pos</th>
                       </tr>
                     </thead>
                     <tbody id="researchStrategyTbody"></tbody>
@@ -389,6 +403,250 @@
               </div>
             </div>
           </section>
+          </div>
+
+          <div id="routePractical" class="route-view" hidden>
+            <section class="practical" aria-label="Practical regime — API tester">
+              <header class="practical__header">
+                <h2 class="practical__title">Practical regime</h2>
+                <p class="practical__lead">
+                  Quant desk view on live MT5 <code>GET /api/snapshot</code>: a <strong>trader cockpit</strong> (live gauges + regime vs
+                  strategy vs action), optional <code>strategy_key</code> so the API returns a <strong>practical_focus</strong> payload (one
+                  scorecard row + matching selector scores + regime count for that id only), gate checklist, history charts, deltas vs
+                  last response in this tab, and honest limits where the wire has no transition matrix.
+                </p>
+              </header>
+
+              <div class="practical__meta" id="practicalApiMeta" aria-label="Request endpoint">
+                <div class="practical__meta-grid">
+                  <div class="practical__meta-item">
+                    <span class="practical__meta-label">Method</span>
+                    <span class="practical__meta-value" id="practicalMethod">GET</span>
+                  </div>
+                  <div class="practical__meta-item">
+                    <span class="practical__meta-label">Path</span>
+                    <span class="practical__meta-value"><code>/api/snapshot</code></span>
+                  </div>
+                  <div class="practical__meta-item practical__meta-item--wide">
+                    <span class="practical__meta-label">Full URL</span>
+                    <code class="practical__meta-url" id="practicalFullUrl"></code>
+                  </div>
+                  <div class="practical__meta-item practical__meta-item--wide">
+                    <span class="practical__meta-label">API base</span>
+                    <code class="practical__meta-url" id="practicalApiBase"></code>
+                  </div>
+                </div>
+              </div>
+
+              <details class="practical__details" open>
+                <summary class="practical__summary">Request — same layout idea as Postman (params + raw body)</summary>
+                <p class="practical__hint">
+                  This is a <strong>GET</strong>: there is no POST body. The <em>params</em> grid and <em>raw JSON</em> below are two
+                  views of the same query object (edit either). <strong>Send</strong> calls <code>GET /api/snapshot</code>.
+                  Include <code>regime_id</code> plus <code>strategy_key</code> (e.g. <code>R07-S01</code>) so the server returns a
+                  <strong>practical_focus</strong> payload: one scorecard row, aligned selector scores, and regime bar count for that id only.
+                </p>
+                <div class="practical__pickers">
+                  <label class="practical__label"
+                    >Regime ID (1–52)
+                    <select id="practicalRegimeSelect" class="practical__select"></select>
+                  </label>
+                  <label class="practical__label"
+                    >Strategy (4 per regime)
+                    <select id="practicalStrategySelect" class="practical__select practical__select--strat"></select>
+                  </label>
+                  <button type="button" class="btn-practical-secondary" id="btnPracticalSyncPickers">Sync pickers → JSON</button>
+                </div>
+                <div class="practical__postman-split">
+                  <div class="practical__postman-col">
+                    <h4 class="practical__postman-h">Params</h4>
+                    <p class="practical__hint practical__hint--tight">Query string fields (editable).</p>
+                    <div id="practicalRequestFormHost" class="practical__req-form-host" aria-label="Snapshot query fields"></div>
+                  </div>
+                  <div class="practical__postman-col">
+                    <h4 class="practical__postman-h">Raw (JSON)</h4>
+                    <p class="practical__hint practical__hint--tight">Mirrors params; sent as query string, not as a request body.</p>
+                    <textarea id="practicalRequestJson" class="practical__textarea practical__textarea--postman" rows="14" spellcheck="false" aria-label="Request parameters JSON"></textarea>
+                  </div>
+                </div>
+                <h4 class="practical__postman-h practical__postman-h--sub">Request preview</h4>
+                <pre class="practical__envelope-pre" id="practicalRequestEnvelope" aria-label="GET request envelope"></pre>
+                <div class="practical__toolbar">
+                  <button type="button" class="btn-practical-primary" id="btnPracticalSend">Send request</button>
+                  <button type="button" class="btn-practical-secondary" id="btnPracticalSyncSymbol">Use topbar symbol in JSON</button>
+                  <label class="practical__live-poll-label" title="Repeats GET /api/snapshot every 10s using the params above (same as Send)">
+                    <input type="checkbox" id="practicalLivePoll" checked />
+                    Live refresh (10s)
+                  </label>
+                  <span class="pill pill--live" id="practicalSendStatus" aria-live="polite"></span>
+                </div>
+              </details>
+
+              <div class="practical__out">
+                <h3 class="practical__outh3">Response</h3>
+                <p class="practical__statusline" id="practicalResponseLine"></p>
+
+                <div id="practicalViz" class="practical__viz" hidden>
+                  <p class="practical__source-note" id="practicalSourceNote">
+                    When <code>strategy_key</code> matches a row under <code>regime_detail.strategies</code>, the server returns
+                    <code>snapshot_scope: practical_focus</code> (narrower JSON). Everything here is still that single live MT5 pull —
+                    no fabricated fills. Money metrics that need a ledger are called out in panel <strong>5b</strong>. Deltas use
+                    <code>sessionStorage</code> from the prior successful send in this tab. With <strong>Live refresh</strong> enabled in the
+                    request toolbar, the same query runs on an interval while this page section is open.
+                  </p>
+
+                  <div id="practicalTraderCockpit" class="practical__cockpit" hidden>
+                    <header class="practical__cockpit-head">
+                      <h3 class="practical__cockpit-title">Trader cockpit — live strip &amp; selected book</h3>
+                      <p class="practical__cockpit-sub" id="practicalCockpitSub"></p>
+                    </header>
+                    <div class="practical__cockpit-grid">
+                      <div class="practical__cockpit-banner">
+                        <span class="practical__cockpit-banner-label">Live from MT5</span>
+                        <div id="practicalCockpitLive" class="practical__cockpit-live"></div>
+                      </div>
+                      <div id="practicalCockpitRegime" class="practical__cockpit-col practical__cockpit-col--regime"></div>
+                      <div id="practicalCockpitStrategy" class="practical__cockpit-col practical__cockpit-col--strat"></div>
+                      <div id="practicalCockpitAction" class="practical__cockpit-col practical__cockpit-col--action"></div>
+                    </div>
+                  </div>
+
+                  <div id="practicalStateStrip" class="practical__state-strip" aria-label="UI state labels"></div>
+
+                  <div class="practical-dash-grid">
+                    <section class="practical__panel" id="practicalPanelMarket" aria-labelledby="practicalHMarket">
+                      <h4 class="practical__panel-h" id="practicalHMarket">1 · Market state</h4>
+                      <p class="practical__panel-le">Current symbol, timeframe, source, MT5, session, quadrant, label, direction.</p>
+                      <div id="practicalMarketBody" class="practical__panel-body"></div>
+                    </section>
+
+                    <section class="practical__panel practical__panel--wide" id="practicalPanelCalc" aria-labelledby="practicalHCalc">
+                      <h4 class="practical__panel-h" id="practicalHCalc">1b · Calculated in UI (snapshot math)</h4>
+                      <p class="practical__panel-le">
+                        Derived from this response only (ATR scaling, scorecard win rates, signal distances). Not broker P&amp;L or fills.
+                      </p>
+                      <div id="practicalCalcBody" class="practical__panel-body"></div>
+                    </section>
+
+                    <section class="practical__panel" id="practicalPanelRegimeWhy" aria-labelledby="practicalHWhy">
+                      <h4 class="practical__panel-h" id="practicalHWhy">2 · Regime explanation</h4>
+                      <p class="practical__panel-le">Narrated from ADX, EMA structure, ATR, direction, regime counts, quadrant bars.</p>
+                      <div id="practicalRegimeWhyBody" class="practical__panel-body practical__reason"></div>
+                    </section>
+
+                    <section class="practical__panel practical__panel--wide" id="practicalPanelStrategy" aria-labelledby="practicalHStrat">
+                      <h4 class="practical__panel-h" id="practicalHStrat">3 · Strategy match</h4>
+                      <p class="practical__panel-le"><code>strategy_scores</code> + <code>strategy_selection</code>.</p>
+                      <div id="practicalStrategyBody" class="practical__panel-body"></div>
+                    </section>
+
+                    <section class="practical__panel practical__panel--wide" id="practicalPanelGate" aria-labelledby="practicalHGate">
+                      <h4 class="practical__panel-h" id="practicalHGate">4 · Trade gate</h4>
+                      <p class="practical__panel-le">Aggregate + per-check pass/fail from the payload.</p>
+                      <div id="practicalGateBody" class="practical__panel-body"></div>
+                    </section>
+
+                    <section class="practical__panel practical__panel--full" id="practicalPanelHistory" aria-labelledby="practicalHHist">
+                      <h4 class="practical__panel-h" id="practicalHHist">5 · Historical performance (payload)</h4>
+                      <p class="practical__panel-le">Selected strategy row + charts from the same response.</p>
+                      <div id="practicalHistoryIntro" class="practical__panel-body"></div>
+                      <div id="practicalStratTable" class="practical__table-shell practical__table-shell--dash"></div>
+                      <div class="practical__charts-grid practical__charts-grid--dash">
+                        <figure class="practical__chart-fig" id="practicalSlotRegimeFreq" hidden>
+                          <figcaption class="practical__cap"><code>regime_counts</code> · bars per regime id</figcaption>
+                          <canvas id="practicalChartRegimeFreq" height="220"></canvas>
+                        </figure>
+                        <figure class="practical__chart-fig" id="practicalSlotQuadDist" hidden>
+                          <figcaption class="practical__cap"><code>quadrant_bars</code></figcaption>
+                          <canvas id="practicalChartQuadDist" height="220"></canvas>
+                        </figure>
+                        <figure class="practical__chart-fig practical__chart-fig--wide" id="practicalSlotStratScores" hidden>
+                          <figcaption class="practical__cap"><code>strategy_scores</code></figcaption>
+                          <canvas id="practicalChartStratScores" height="220"></canvas>
+                        </figure>
+                        <figure class="practical__chart-fig practical__chart-fig--wide" id="practicalSlotLine" hidden>
+                          <figcaption class="practical__cap">Selected regime · <code>line_series</code></figcaption>
+                          <canvas id="practicalChartLine" height="200"></canvas>
+                        </figure>
+                        <figure class="practical__chart-fig practical__chart-fig--wide" id="practicalSlotMonthly" hidden>
+                          <figcaption class="practical__cap">Selected regime · <code>monthly</code></figcaption>
+                          <canvas id="practicalChartMonthly" height="200"></canvas>
+                        </figure>
+                        <figure class="practical__chart-fig practical__chart-fig--wide" id="practicalSlotStratWr" hidden>
+                          <figcaption class="practical__cap">Win rate by target · selected row</figcaption>
+                          <canvas id="practicalChartStrategyWR" height="260"></canvas>
+                        </figure>
+                        <div class="practical__chart-placeholder" id="practicalPlaceholderEquity">
+                          <strong>Equity curve</strong>
+                          <p>Not in <code>/api/snapshot</code>. Needs equity time series (MT5 or ledger API).</p>
+                        </div>
+                        <div class="practical__chart-placeholder" id="practicalPlaceholderDrawdown">
+                          <strong>Drawdown curve</strong>
+                          <p>Requires equity path / trade history — not present in this JSON.</p>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section class="practical__panel practical__panel--wide" id="practicalPanelMoney" aria-labelledby="practicalHMoney">
+                      <h4 class="practical__panel-h" id="practicalHMoney">5b · Money-side derivations &amp; gaps</h4>
+                      <div id="practicalMoneyBody" class="practical__panel-body"></div>
+                    </section>
+
+                    <section class="practical__panel" id="practicalPanelRisk" aria-labelledby="practicalHRisk">
+                      <h4 class="practical__panel-h" id="practicalHRisk">6 · Risk &amp; execution readiness</h4>
+                      <div id="practicalRiskBody" class="practical__panel-body"></div>
+                    </section>
+
+                    <section class="practical__panel practical__panel--wide" id="practicalPanelDelta" aria-labelledby="practicalHDelta">
+                      <h4 class="practical__panel-h" id="practicalHDelta">7 · Δ vs previous response</h4>
+                      <div id="practicalDeltaBody" class="practical__panel-body"></div>
+                    </section>
+
+                    <section class="practical__panel practical__panel--full" id="practicalPanelNext" aria-labelledby="practicalHNext">
+                      <h4 class="practical__panel-h" id="practicalHNext">8 · Next state (API limits)</h4>
+                      <div id="practicalNextBody" class="practical__panel-body"></div>
+                      <figure class="practical__chart-fig practical__chart-fig--wide" id="practicalSlotNextMarginal" hidden>
+                        <figcaption class="practical__cap">Marginal regime frequencies (sample) — not a transition matrix forecast</figcaption>
+                        <canvas id="practicalChartNextMarginal" height="240"></canvas>
+                      </figure>
+                    </section>
+
+                    <section class="practical__panel practical__panel--full practical__panel--conclusion" id="practicalPanelConclusion">
+                      <h4 class="practical__panel-h" id="practicalHConc">At a glance</h4>
+                      <ul class="practical__conclusion-list" id="practicalConclusionList"></ul>
+                    </section>
+                  </div>
+
+                  <details class="practical__details practical__details--nested">
+                    <summary class="practical__summary">Focused response — field tree</summary>
+                    <p class="practical__hint practical__hint--tight">Selected regime row + live + risk from wire JSON. Depth 6.</p>
+                    <div class="practical__tree-scroll" id="practicalFieldExplorer"></div>
+                  </details>
+                </div>
+
+                <details class="practical__details" open>
+                  <summary class="practical__summary">Focused response (JSON)</summary>
+                  <p class="practical__hint practical__hint--tight">
+                    Reorganized view of the same MT5-backed payload: one regime, one strategy row, plus live strip and risk/signal blocks.
+                    For the literal server body, use <strong>Exact wire JSON</strong>.
+                  </p>
+                  <pre class="practical__response-pre" id="practicalResponseNormalized">—</pre>
+                </details>
+                <details class="practical__details">
+                  <summary class="practical__summary">Exact wire JSON response</summary>
+                  <pre class="practical__response-pre" id="practicalResponseBody">—</pre>
+                </details>
+              </div>
+
+              <details class="practical__details">
+                <summary class="practical__summary">Strategy row only (from <code>regime_detail.strategies</code>)</summary>
+                <p class="practical__hint">
+                  Subset for the focused strategy. Object shape matches one element of the API array; not a second request.
+                </p>
+                <pre class="practical__response-pre practical__response-pre--sub" id="practicalStrategySlice">—</pre>
+              </details>
+            </section>
+          </div>
         </main>
       </div>
     </div>

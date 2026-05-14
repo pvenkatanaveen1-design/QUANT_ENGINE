@@ -6,6 +6,7 @@ MT5-backed JSON API for dashboard-lite (stdlib only — no Flask).
   python dashboard_api/server.py
 
   GET http://127.0.0.1:8766/api/snapshot?symbol=EURUSD&tf_minutes=60&bars=12000&regime_id=7
+  GET ...&strategy_key=R07-S01  (optional: Practical focus — one scorecard row + matching selector scores)
   GET http://127.0.0.1:8766/api/report/bundle?symbol=EURUSD&tf_minutes=60&bars=12000
   GET http://127.0.0.1:8766/api/report/warm?symbol=EURUSD&tf_minutes=60&bars=8000
   POST http://127.0.0.1:8766/api/report/warm  (JSON — Research panel; stores full payload on session)
@@ -14,6 +15,7 @@ MT5-backed JSON API for dashboard-lite (stdlib only — no Flask).
   GET http://127.0.0.1:8766/api/report/session/<sid>/bundle/regime/7
   GET http://127.0.0.1:8766/api/report/session/<sid>/client-request
   GET http://127.0.0.1:8766/api/report/pdf?...  (monolithic; may timeout)
+  POST http://127.0.0.1:8766/api/generate-pdf  (JSON: symbol, tf_minutes, bars — ReportLab snapshot PDF, one round-trip)
 
   POST http://127.0.0.1:8766/api/execute  (JSON: symbol, signal, approved_by)
 
@@ -117,10 +119,19 @@ def _enrich_quant_engine(out: dict, mt5, symbol: str, live: dict) -> None:
         }
 
     equity = 0.0
+    out["account"] = {}
     try:
         ai = mt5.account_info()
         if ai is not None:
             equity = float(getattr(ai, "equity", 0) or 0)
+            tm = int(getattr(ai, "trade_mode", 0) or 0)
+            demo_code = getattr(mt5, "ACCOUNT_TRADE_MODE_DEMO", 0)
+            out["account"] = {
+                "balance": float(getattr(ai, "balance", 0) or 0),
+                "equity": equity,
+                "profit": float(getattr(ai, "profit", 0) or 0),
+                "is_demo": tm == demo_code,
+            }
     except Exception:
         pass
 
@@ -136,6 +147,72 @@ def _enrich_quant_engine(out: dict, mt5, symbol: str, live: dict) -> None:
     )
     out["risk_gate"] = risk
     out["lot_size"] = float(risk.get("lot_size") or 0.0)
+
+
+def _focus_snapshot_for_practical(data: dict[str, Any], strategy_key: str) -> dict[str, Any]:
+    """
+    Narrow MT5 snapshot JSON for Practical regime UI: one ``regime_detail`` strategy row,
+    matching ``strategy_scores`` / ``strategy_selection`` entries, and regime_counts for
+    the selected regime id only. No extra MT5 calls — filters the existing dict.
+    """
+    sk = (strategy_key or "").strip()
+    if not sk:
+        return data
+    rd = data.get("regime_detail")
+    if not isinstance(rd, dict):
+        data["_focus_note"] = "strategy_key ignored: no regime_detail (pass regime_id)"
+        return data
+    strategies = rd.get("strategies")
+    if not isinstance(strategies, list):
+        return data
+    sel_row = next(
+        (s for s in strategies if isinstance(s, dict) and str(s.get("strategy_key") or "") == sk),
+        None,
+    )
+    if sel_row is None:
+        data["_focus_warning"] = f"strategy_key not found under this regime: {sk!r}"
+        return data
+
+    rd2 = dict(rd)
+    rd2["strategies"] = [dict(sel_row)]
+    data["regime_detail"] = rd2
+
+    sig_kind = str(sel_row.get("signal_kind") or "")
+    if sig_kind:
+        ss = data.get("strategy_scores")
+        if isinstance(ss, list):
+            data["strategy_scores"] = [
+                r for r in ss if isinstance(r, dict) and str(r.get("name") or "") == sig_kind
+            ]
+        sel_obj = data.get("strategy_selection")
+        if isinstance(sel_obj, dict):
+            st_list = sel_obj.get("strategies")
+            if isinstance(st_list, list):
+                sel_copy = dict(sel_obj)
+                sel_copy["strategies"] = [
+                    r for r in st_list if isinstance(r, dict) and str(r.get("name") or "") == sig_kind
+                ]
+                data["strategy_selection"] = sel_copy
+
+    rc = data.get("regime_counts")
+    rid = rd2.get("regime_id")
+    if isinstance(rc, dict) and rid is not None:
+        key = str(int(rid))
+        cnt = rc.get(key)
+        if cnt is None:
+            for kk, vv in rc.items():
+                try:
+                    if int(kk) == int(rid):
+                        cnt = vv
+                        key = str(kk)
+                        break
+                except (TypeError, ValueError):
+                    continue
+        data["regime_counts"] = {key: int(cnt) if cnt is not None else 0}
+
+    data["snapshot_scope"] = "practical_focus"
+    data["selected_strategy_key"] = sk
+    return data
 
 
 def _live_fallback_dict() -> dict:
@@ -917,6 +994,8 @@ class Handler(BaseHTTPRequestHandler):
                 regime_id = int(regime_raw[0])
             except ValueError:
                 regime_id = None
+        strat_key_raw = qs.get("strategy_key") or []
+        strategy_key_param = str(strat_key_raw[0]).strip() if strat_key_raw else ""
 
         try:
             data = build_snapshot(
@@ -927,6 +1006,8 @@ class Handler(BaseHTTPRequestHandler):
                 atr_sl_mult=atr_sl_mult,
                 max_bars=max_bars_rr,
             )
+            if isinstance(data, dict) and "error" not in data and strategy_key_param:
+                data = _focus_snapshot_for_practical(data, strategy_key_param)
         except Exception as e:
             data = {"error": str(e), "error_type": type(e).__name__}
 
@@ -986,6 +1067,63 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body_out)
             return
 
+        if parsed.path == "/api/generate-pdf":
+            length = int(self.headers.get("Content-Length", "0") or "0")
+            raw = self.rfile.read(max(0, length)) if length > 0 else b"{}"
+            try:
+                post_body = json.loads(raw.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                post_body = {}
+            if not isinstance(post_body, dict):
+                post_body = {}
+            symbol = str(post_body.get("symbol") or "EURUSD")
+            tf_minutes = int(post_body.get("tf_minutes") or post_body.get("tf") or 60)
+            bars = int(post_body.get("bars") or 8000)
+            atr_sl_mult = float(post_body.get("atr_sl_mult") or 1.5)
+            max_bars = int(post_body.get("max_bars") or 12000)
+            try:
+                from reports.pdf_generator import generate_report, write_quick_report_state
+
+                snap = build_snapshot(
+                    symbol=symbol,
+                    tf_minutes=tf_minutes,
+                    bars=bars,
+                    regime_id=None,
+                    atr_sl_mult=atr_sl_mult,
+                    max_bars=max_bars,
+                )
+                if not isinstance(snap, dict) or snap.get("error"):
+                    err = snap.get("error", "snapshot failed") if isinstance(snap, dict) else "invalid snapshot"
+                    body_out = json.dumps({"error": str(err)}).encode()
+                    self.send_response(502)
+                    self.send_header("Content-Type", "application/json")
+                    self._cors()
+                    self.end_headers()
+                    self.wfile.write(body_out)
+                    return
+                write_quick_report_state(snap)
+                out_pdf = Path(generate_report())
+                pdf_bytes = out_pdf.read_bytes()
+            except Exception as e:
+                import traceback
+
+                traceback.print_exc(file=sys.stderr)
+                body_out = json.dumps({"error": f"{type(e).__name__}: {e}"}).encode()
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self._cors()
+                self.end_headers()
+                self.wfile.write(body_out)
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "application/pdf")
+            disp = f'attachment; filename="{out_pdf.name}"'
+            self.send_header("Content-Disposition", disp)
+            self._cors()
+            self.end_headers()
+            self.wfile.write(pdf_bytes)
+            return
+
         if parsed.path != "/api/execute":
             self.send_error(404, "Not Found")
             return
@@ -1015,8 +1153,9 @@ def main() -> int:
     port = int(os.environ.get("FOREX_REGIME_API_PORT", "8766"))
     print(
         f"Regime MT5 API  http://{host}:{port}/api/snapshot  "
-        f"GET /api/report/warm  POST /api/report/warm  GET /api/report/session/<sid>/pdf/…  "
-        f"GET /api/report/pdf  GET /api/report/bundle  POST /api/execute  (MT5 must be running)"
+        f"GET /api/report/warm  POST /api/report/warm  POST /api/generate-pdf  "
+        f"GET /api/report/session/<sid>/pdf/…  GET /api/report/pdf  GET /api/report/bundle  POST /api/execute  "
+        f"(MT5 must be running)"
     )
     if host == "0.0.0.0":
         print("  Listening on all interfaces (FOREX_REGIME_API_BIND=0.0.0.0).")
