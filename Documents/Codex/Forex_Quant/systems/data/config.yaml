@@ -19,3 +19,7 @@ required_columns:
 max_spread_percentile_warning: 90
 gap_detection_lookback: 20
 stale_data_minutes: 60
+session_columns:
+  - session_label
+  - session_modifier
+  - kill_zone_active

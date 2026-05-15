@@ -38,7 +38,13 @@
       <div class="panel">
         <div class="metric-label">Quality</div>
         <div class="metric-value">{{ snapshot.data_quality.status if snapshot.data_quality else "unknown" }}</div>
-        <div class="mt-2 text-sm text-zinc-500">Live trading disabled</div>
+        <div class="mt-2 text-sm text-zinc-500">
+          {% if snapshot.data_quality and snapshot.data_quality.issues %}
+            {{ snapshot.data_quality.issues[0].message }}
+          {% else %}
+            No issues in quality report.
+          {% endif %}
+        </div>
       </div>
     </section>
 
@@ -277,7 +283,7 @@
                 <tr><th>Bid / Ask</th><td>{{ trade_state.current_market_values.bid or "-" }} / {{ trade_state.current_market_values.ask or "-" }}</td></tr>
                 <tr><th>Spread Points</th><td>{{ trade_state.current_market_values.spread_points or "-" }}</td></tr>
                 <tr><th>ATR / ADX</th><td>{{ trade_state.current_market_values.atr or "-" }} / {{ trade_state.current_market_values.adx or "-" }}</td></tr>
-                <tr><th>Trend Eff / Vol %</th><td>{{ trade_state.current_market_values.trend_efficiency or "-" }} / {{ trade_state.current_market_values.volatility_percentile or "-" }}</td></tr>
+                <tr><th>Efficiency ratio / Vol %</th><td>{{ trade_state.current_market_values.efficiency_ratio or "-" }} / {{ trade_state.current_market_values.volatility_percentile or "-" }}</td></tr>
                 <tr><th>Session / Killzone</th><td>{{ trade_state.current_market_values.session or "-" }} / {{ trade_state.current_market_values.killzone }}</td></tr>
                 <tr><th>Expected WR / RRR</th><td>{{ trade_state.research_model.expected_win_rate_mid or "-" }}% / 1:{{ trade_state.research_model.expected_rrr or "-" }}</td></tr>
                 <tr><th>Expected EV / Risk Mult</th><td>{{ trade_state.research_model.expected_ev_r or "-" }}R / {{ trade_state.research_model.risk_multiplier or "-" }}</td></tr>

@@ -15,6 +15,18 @@ templates = Jinja2Templates(directory=str(PROJECT_ROOT))
 router = APIRouter(tags=["settings"])
 
 
+@router.get("/testing-standard", response_class=HTMLResponse)
+def testing_standard_page(request: Request) -> HTMLResponse:
+    """Section 25 — where canonical tests live and API naming."""
+    return templates.TemplateResponse(request, "systems/settings/templates/testing_standard.html", {})
+
+
+@router.get("/config-reference", response_class=HTMLResponse)
+def config_reference_page(request: Request) -> HTMLResponse:
+    """Section 22 — YAML layout and consumers."""
+    return templates.TemplateResponse(request, "systems/settings/templates/config_reference.html", {})
+
+
 @router.get("/settings", response_class=HTMLResponse)
 def settings_page(request: Request, system: str = "app") -> HTMLResponse:
     try:

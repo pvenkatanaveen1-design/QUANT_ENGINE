@@ -16,8 +16,9 @@ class RegimeFeatureSet:
     atr: float = 0.0
     atr_percent: float = 0.0
     volatility_percentile: float = 0.0
-    trend_efficiency: float = 0.0
+    efficiency_ratio: float = 0.0
     adx: float = 0.0
+    #: OLS slope of close over the ER lookback window, divided by ATR (dimensionless trend tilt). Observability only; not used in quadrant routing.
     slope_score: float = 0.0
     spread_percentile: float = 0.0
     jump_z: float = 0.0

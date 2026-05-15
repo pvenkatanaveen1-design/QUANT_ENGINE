@@ -1,52 +1,119 @@
 symbols:
   EURUSD:
     pip_size: 0.0001
+    pip_value_per_mini_lot: 1.0
+    pip_value_per_lot: 10.0
     pip_value_mode: broker
+    min_lot: 0.01
+    max_lot: 100.0
+    lot_step: 0.01
+    swap_long: -0.5
+    swap_short: -0.3
     min_spread_pips: 0.0
     max_spread_pips: 2.0
     enabled: false
   GBPUSD:
     pip_size: 0.0001
+    pip_value_per_lot: 10.0
     pip_value_mode: broker
+    min_lot: 0.01
+    max_lot: 100.0
+    lot_step: 0.01
     min_spread_pips: 0.0
     max_spread_pips: 2.5
     enabled: false
   USDJPY:
     pip_size: 0.01
+    pip_value_per_lot_formula: "1000 / current_USDJPY_rate"
+    pip_value_per_lot: 6.67
     pip_value_mode: broker
+    min_lot: 0.01
+    max_lot: 100.0
+    lot_step: 0.01
     min_spread_pips: 0.0
     max_spread_pips: 2.5
     enabled: false
+  GBPJPY:
+    pip_size: 0.01
+    pip_value_per_lot_formula: "1000 / current_USDJPY_rate"
+    pip_value_per_lot: 6.67
+    pip_value_mode: broker
+    min_lot: 0.01
+    max_lot: 100.0
+    lot_step: 0.01
+    min_spread_pips: 0.0
+    max_spread_pips: 3.0
+    enabled: false
   USDCHF:
     pip_size: 0.0001
+    pip_value_per_lot: 11.0
     pip_value_mode: broker
+    min_lot: 0.01
+    max_lot: 100.0
+    lot_step: 0.01
     min_spread_pips: 0.0
     max_spread_pips: 2.5
     enabled: false
   USDCAD:
     pip_size: 0.0001
+    pip_value_per_lot: 7.35
     pip_value_mode: broker
+    min_lot: 0.01
+    max_lot: 100.0
+    lot_step: 0.01
     min_spread_pips: 0.0
     max_spread_pips: 2.5
     enabled: false
   AUDUSD:
     pip_size: 0.0001
+    pip_value_per_lot: 10.0
     pip_value_mode: broker
+    min_lot: 0.01
+    max_lot: 100.0
+    lot_step: 0.01
     min_spread_pips: 0.0
     max_spread_pips: 2.5
     enabled: false
   NZDUSD:
     pip_size: 0.0001
+    pip_value_per_lot: 10.0
     pip_value_mode: broker
+    min_lot: 0.01
+    max_lot: 100.0
+    lot_step: 0.01
+    min_spread_pips: 0.0
+    max_spread_pips: 3.0
+    enabled: false
+  AUDCAD:
+    pip_size: 0.0001
+    pip_value_per_lot_formula: "10 * current_USDCAD_rate"
+    pip_value_per_lot: 7.30
+    pip_value_mode: broker
+    min_lot: 0.01
+    max_lot: 100.0
+    lot_step: 0.01
+    min_spread_pips: 0.0
+    max_spread_pips: 3.0
+    enabled: false
+  EURCAD:
+    pip_size: 0.0001
+    pip_value_per_lot: 7.30
+    pip_value_mode: broker
+    min_lot: 0.01
+    max_lot: 100.0
+    lot_step: 0.01
     min_spread_pips: 0.0
     max_spread_pips: 3.0
     enabled: false
   XAUUSD:
     pip_size: 0.01
+    pip_value_per_lot: 1.0
     pip_value_mode: broker
+    min_lot: 0.01
+    max_lot: 50.0
+    lot_step: 0.01
     min_spread_pips: 0.0
     max_spread_pips: 50.0
     enabled: false
     optional: true
     risk_note: High volatility; keep disabled until separately validated.
-

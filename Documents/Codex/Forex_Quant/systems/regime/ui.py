@@ -10,6 +10,7 @@ from fastapi.templating import Jinja2Templates
 from core.api_response import fail, ok, timestamp
 from core.config_manager import ConfigManager
 from systems.regime import backend
+from systems.regime import hmm
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -57,6 +58,11 @@ def regime_definitions() -> JSONResponse:
 @router.get("/api/regimes/options")
 def regime_options() -> JSONResponse:
     return ok(backend.get_regime_options(), "Regime options loaded.")
+
+
+@router.get("/api/regimes/hmm/status")
+def hmm_regime_status() -> JSONResponse:
+    return ok(hmm.hmm_status(), "HMM regime layer status loaded.")
 
 
 @router.get("/api/regimes/one-week")

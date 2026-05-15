@@ -16,12 +16,14 @@ LOGGER = logging.getLogger("quanta.app")
 
 
 ROUTER_MODULES = [
+    # Section 17 page aliases are on the routers: /monitor, /research, /journal, /api/health, etc.
     ("monitoring", "systems.monitoring.ui", "/"),
     ("mt5_gateway", "systems.mt5_gateway.ui", "/mt5"),
     ("data", "systems.data.ui", "/data"),
     ("regime", "systems.regime.ui", "/regimes"),
     ("strategy_router", "systems.strategy_router.ui", "/strategies"),
     ("research", "systems.research.ui", "/backtester"),
+    ("analysis", "systems.analysis.ui", "/analysis"),
     ("risk", "systems.risk.ui", "/risk"),
     ("journal", "systems.journal.ui", "/decisions"),
     ("settings", "systems.settings.ui", "/settings"),

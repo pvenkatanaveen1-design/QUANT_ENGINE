@@ -11,9 +11,8 @@
     </div>
     <div class="flex flex-wrap gap-2">
       <span class="status-pill {% if options.mt5_status.connected %}status-amber{% else %}status-gray{% endif %}" data-live-status>
-        MT5 {% if options.mt5_status.connected %}live{% else %}offline{% endif %}
+        MT5 {% if options.mt5_status.connected %}connected{% else %}offline{% endif %}
       </span>
-      <span class="status-pill status-red">Live trading disabled</span>
     </div>
   </div>
 

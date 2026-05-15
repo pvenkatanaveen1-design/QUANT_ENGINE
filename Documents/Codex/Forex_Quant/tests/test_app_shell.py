@@ -28,7 +28,27 @@ def test_static_files_mount():
 
 
 def test_main_pages_do_not_crash_without_live_data():
-    for path in ["/data", "/regimes", "/strategies", "/backtester", "/risk", "/decisions", "/settings"]:
+    for path in [
+        "/monitor",
+        "/workflow",
+        "/project-phases",
+        "/data",
+        "/regimes",
+        "/strategies",
+        "/priority-setups",
+        "/strategy-gate",
+        "/research",
+        "/backtester",
+        "/analysis",
+        "/analytics",
+        "/evaluation-metrics",
+        "/risk",
+        "/position-sizing",
+        "/journal",
+        "/decisions",
+        "/settings",
+        "/testing-standard",
+        "/config-reference",
+    ]:
         response = client.get(path)
         assert response.status_code == 200, path
-

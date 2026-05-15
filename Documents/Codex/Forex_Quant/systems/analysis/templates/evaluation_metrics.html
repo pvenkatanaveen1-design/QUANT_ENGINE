@@ -1,0 +1,43 @@
+{% extends "app/templates/base.html" %}
+{% block title %}Evaluation metrics | Quanta Forex{% endblock %}
+{% block content %}
+<div class="space-y-6 max-w-5xl">
+  <div>
+    <h1 class="text-2xl font-semibold">Backtest &amp; live evaluation metrics</h1>
+    <p class="mt-1 text-sm text-zinc-500">Reference targets for signal-engine runs and monthly quant review. R = return per trade in risk units unless noted.</p>
+  </div>
+
+  <div class="panel overflow-x-auto">
+    <table class="table-compact w-full min-w-[720px] text-sm">
+      <thead>
+        <tr>
+          <th class="text-left">#</th>
+          <th class="text-left">Metric</th>
+          <th class="text-left">Formula</th>
+          <th class="text-left">Target</th>
+          <th class="text-left">What it tells you</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td class="font-medium">Expectancy (R)</td><td><code class="text-xs">avg(pnl_r)</code></td><td>&gt; 0.05R</td><td class="text-zinc-600">Edge exists if positive.</td></tr>
+        <tr><td>2</td><td class="font-medium">Profit Factor</td><td><code class="text-xs">gross_wins / gross_losses</code></td><td>&gt; 1.5</td><td class="text-zinc-600">&lt; 1.2 ≈ noise.</td></tr>
+        <tr><td>3</td><td class="font-medium">Win Rate</td><td><code class="text-xs">wins / total</code></td><td>pair with RR</td><td class="text-zinc-600">Not meaningful alone.</td></tr>
+        <tr><td>4</td><td class="font-medium">Avg RR Achieved</td><td><code class="text-xs">avg(rr_achieved)</code></td><td>match RR target</td><td class="text-zinc-600">Did you realize the planned reward:risk (e.g. 1:2.5)?</td></tr>
+        <tr><td>5</td><td class="font-medium">Sharpe Ratio</td><td><code class="text-xs">mean(R) / std(R) × √252</code></td><td>&gt; 1.0</td><td class="text-zinc-600">&gt; 1.5 = strong (per-trade R series).</td></tr>
+        <tr><td>6</td><td class="font-medium">Sortino Ratio</td><td><code class="text-xs">mean(R) / downside_std × √252</code></td><td>&gt; 1.2</td><td class="text-zinc-600">Better when upside/downside asymmetry matters.</td></tr>
+        <tr><td>7</td><td class="font-medium">Max Drawdown %</td><td>worst peak→trough</td><td>&lt; prop limit</td><td class="text-zinc-600">Stay under ~50% of allowed DD budget intraday.</td></tr>
+        <tr><td>8</td><td class="font-medium">Recovery Factor</td><td><code class="text-xs">total_return / max_dd</code></td><td>&gt; 2.0</td><td class="text-zinc-600">Return vs depth of pain.</td></tr>
+        <tr><td>9</td><td class="font-medium">Rolling 30-trade WR</td><td>rolling window</td><td>watch decay</td><td class="text-zinc-600">Drop ~8% → consider reducing size.</td></tr>
+        <tr><td>10</td><td class="font-medium">Confidence Correlation</td><td><code class="text-xs">corr(confidence, win)</code></td><td>&gt; 0.15</td><td class="text-zinc-600">Validates that higher confidence predicts wins.</td></tr>
+        <tr><td>11</td><td class="font-medium">Regime Frequency</td><td><code class="text-xs">count(regime) / bars</code></td><td>know market</td><td class="text-zinc-600">How often each regime appears; calibrate sample size.</td></tr>
+        <tr><td>12</td><td class="font-medium">Condition Lift</td><td><code class="text-xs">WR(kz=1) − WR(kz=0)</code></td><td>&gt; +5%</td><td class="text-zinc-600">Value of a filter (e.g. kill zone on).</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="text-xs text-zinc-500">
+    See live KPIs on <a class="text-sky-700 underline" href="/analytics">/analytics</a> after running
+    <span class="font-mono">POST /api/backtests/signal-engine</span>.
+  </p>
+</div>
+{% endblock %}

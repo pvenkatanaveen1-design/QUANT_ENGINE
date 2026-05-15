@@ -10,6 +10,7 @@ from systems.risk.cost_guard import check_costs
 from systems.risk.funded_rules_engine import check_funded_rules
 from systems.risk.kill_switch import check_kill_switch
 from systems.risk.position_sizer import calculate_position_size
+from systems.strategy.signal_routing import position_size_multiplier_for_regime
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -27,6 +28,8 @@ def analyze_signal(
     pip_size: float,
     regime_confidence: float,
     historical_trust: HistoricalTrustProfile | None = None,
+    regime_id: str | None = None,
+    regime_size_multiplier: float | None = None,
 ) -> RiskApproval:
     rules = _rules()
     checks = [
@@ -40,6 +43,12 @@ def analyze_signal(
         reasons = [reason for check in failed for reason in check.reasons]
         return RiskApproval(approved=False, action="rejected", reasons=reasons)
 
+    rsm = regime_size_multiplier if regime_size_multiplier is not None else None
+    if rsm is None and regime_id:
+        rsm = position_size_multiplier_for_regime(regime_id)
+    if rsm is None:
+        rsm = 1.0
+
     position = calculate_position_size(
         account=account,
         entry_price=entry_price,
@@ -49,6 +58,7 @@ def analyze_signal(
         max_risk_percent=float(rules.get("max_risk_per_trade_percent", 0.5)),
         regime_confidence=regime_confidence,
         historical_trust=historical_trust,
+        regime_size_multiplier=float(rsm),
     )
     reasons = [reason for check in checks for reason in check.reasons] + position.reasons
     if position.lot_size <= 0:

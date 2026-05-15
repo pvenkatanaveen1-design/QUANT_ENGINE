@@ -37,6 +37,18 @@ def data_options() -> JSONResponse:
     return ok(backend.get_market_options(), "Data options loaded.")
 
 
+@router.post("/api/data/load-and-clean")
+def load_and_clean(
+    source: str = Form("mt5_demo"),
+    symbol: str = Form(""),
+    timeframe: str = Form("M15"),
+    bars: int = Form(672),
+    input_path: str = Form(""),
+) -> JSONResponse:
+    """Section 17 alias — fetch MT5 bars, clean, persist (same as POST /api/data/fetch)."""
+    return fetch_data(source=source, symbol=symbol, timeframe=timeframe, bars=bars, input_path=input_path)
+
+
 @router.post("/api/data/fetch")
 def fetch_data(
     source: str = Form("mt5_demo"),
@@ -76,6 +88,16 @@ def fetch_data(
 @router.post("/api/data/load-csv")
 def load_csv(symbol: str = Form("EURUSD"), timeframe: str = Form("M15"), input_path: str = Form("")) -> JSONResponse:
     return fail("CSV loading is disabled in the runtime app.", code="mt5_only", detail="Use /api/data/fetch with source=mt5_demo.", status_code=410)
+
+
+@router.get("/api/data/stats/{symbol}/{timeframe}")
+def data_stats(symbol: str, timeframe: str) -> JSONResponse:
+    """Section 17 — dataset row + quality summary for one symbol/timeframe."""
+    sym, tf = symbol.upper(), timeframe.upper()
+    return ok(
+        {"dataset": backend.get_dataset_status(sym, tf), "quality": backend.get_quality_report(sym, tf)},
+        "Data stats loaded.",
+    )
 
 
 @router.get("/api/data/quality/{symbol}/{timeframe}")

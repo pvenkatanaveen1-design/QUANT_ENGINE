@@ -1,47 +1,79 @@
 timezone: UTC
+
 sessions:
   - id: Asia
     start: "00:00"
     end: "06:00"
     modifier: M03
-    notes: Asian range and lower-liquidity drift window.
+    kill_zone: false
+    notes: "Asian range build. JPY/AUD/NZD active. Reference levels only. Rarely trade."
+
   - id: London_PreOpen
     start: "06:00"
     end: "07:00"
     modifier: M01
-    notes: Transition into London liquidity.
+    kill_zone: false
+    notes: "Spread tightening. No high-probability entries. Prepare for kill zone."
+
   - id: London_Open
     start: "07:00"
     end: "10:00"
     modifier: M04
-    notes: London open expansion and sweep window.
+    kill_zone: true
+    notes: "KILL ZONE. Asian range sweep window. Q3_M04 and Q1_M04 primary setups."
+
   - id: London_Mid
     start: "10:00"
-    end: "13:00"
+    end: "12:00"
     modifier: M01
-    notes: Post-open London trading; no special session modifier.
+    kill_zone: false
+    notes: "Post-London-open drift. Lower momentum. Base modifier. Reduced opportunity."
+
+  - id: NY_Open
+    start: "12:00"
+    end: "13:00"
+    modifier: M04
+    kill_zone: true
+    notes: "KILL ZONE. Second-highest probability window. Same logic as London_Open."
+
   - id: London_NY_Overlap
     start: "13:00"
     end: "16:00"
     modifier: M05
-    notes: Highest major-session overlap liquidity.
-  - id: NY_Afternoon
+    kill_zone: false
+    notes: "PEAK VOLUME [A] BIS. Both sessions active. Q1_M05 trend continuation."
+
+  - id: London_Close
     start: "16:00"
+    end: "17:00"
+    modifier: M06
+    kill_zone: false
+    notes: "Reduce only. Spreads widen. No new entries. Exit EUR/GBP positions."
+
+  - id: NY_Mid
+    start: "17:00"
     end: "20:00"
     modifier: M01
-    notes: Normal New York afternoon after overlap.
+    kill_zone: false
+    notes: "Post-London low volume. Carry pairs may drift. 0.5x size maximum."
+
   - id: NY_Late
     start: "20:00"
     end: "22:00"
     modifier: M06
-    notes: Late New York liquidity decay.
+    kill_zone: false
+    notes: "Thin liquidity. No new entries. Trail stops on profitable open positions."
+
   - id: Rollover
     start: "22:00"
     end: "23:15"
     modifier: M06
-    notes: Broker rollover caution; spreads can widen sharply.
-  - id: Post_Rollover
+    kill_zone: false
+    notes: "Broker rollover. Spread spikes. Close all risky positions."
+
+  - id: Pre_Asia
     start: "23:15"
     end: "00:00"
-    modifier: M06
-    notes: Thin post-rollover liquidity before the next Asia window.
+    modifier: M03
+    kill_zone: false
+    notes: "Pre-Asia quiet. Treat as Asia extension. No new trades."

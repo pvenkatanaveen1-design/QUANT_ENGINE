@@ -36,9 +36,10 @@ def test_trend_low_vol_classifies_q1():
     assert result.base_regime == "Q1"
 
 
-def test_trend_high_vol_classifies_q2_or_no_trade_when_extreme():
+def test_trend_high_vol_classifies_q2_not_q4_from_extreme_vol_branch():
+    """High-vol uptrend must reach Q2 (trend + high vol) before extreme-vol → Q4."""
     result = detect_regime_for_rows(trend_rows(high_vol=True), symbol="EURUSD", timeframe="M15")
-    assert result.base_regime in {"Q2", "Q4"}
+    assert result.base_regime == "Q2"
 
 
 def test_range_classifies_q3():

@@ -16,6 +16,14 @@ class StrategyCandidate:
     description: str = ""
     logic_status: str = "name_only"
     live_allowed: bool = False
+    signal_fn: str = ""
+    win_rate_low: float = 0.0
+    win_rate_high: float = 0.0
+    rrr: float = 0.0
+    ev: float = 0.0
+    evidence: str = ""
+    size_override: float | None = None
+    notes: str = ""
 
 
 @dataclass

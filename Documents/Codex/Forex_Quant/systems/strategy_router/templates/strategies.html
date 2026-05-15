@@ -5,7 +5,7 @@
   <div class="flex flex-wrap items-end justify-between gap-3">
     <div>
       <h1 class="text-2xl font-semibold">Strategy Router</h1>
-      <p class="mt-1 text-sm text-zinc-500">{{ summary.total }} names, {{ summary.regimes }} regimes, live blocked</p>
+      <p class="mt-1 text-sm text-zinc-500">{{ summary.total }} names, {{ summary.regimes }} regimes, live blocked · <a class="text-sky-700 underline" href="/priority-setups">Priority setups</a> · <a class="text-sky-700 underline" href="/strategy-gate">Enablement gate</a></p>
     </div>
     <form class="flex gap-2" hx-get="/partials/regime-playbook" hx-target="#regime-playbook" hx-swap="outerHTML">
       <input class="input w-28" name="regime_id" value="{{ selected.regime_id }}">

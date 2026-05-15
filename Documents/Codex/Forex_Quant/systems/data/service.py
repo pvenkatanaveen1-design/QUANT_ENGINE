@@ -10,17 +10,48 @@ from typing import Any
 
 from core.config_manager import ConfigManager
 from core.models.market import DataQualityIssue, DataQualityReport
-from core.time_utils import to_utc
+from core.time_utils import classify_session, to_utc
 from systems.data.schemas import CleanedDatasetInfo, DataLoadResult
 from systems.mt5_gateway import backend as mt5_backend
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_REQUIRED_COLUMNS = ["time", "open", "high", "low", "close", "tick_volume", "spread"]
+SESSION_ANNOTATION_FIELDS = ["session_label", "session_modifier", "kill_zone_active"]
+
+
+def _normalize_spread(spread_raw: float) -> float:
+    """
+    MT5 often returns spread as integer points (e.g. 12 → 1.2 pips on 5-digit).
+    CSV may already store pips. If value > 10, assume integer points and scale.
+    """
+    s = float(spread_raw)
+    if s > 10:
+        return s / 10.0
+    return s
 
 
 def _load_config() -> dict[str, Any]:
     return ConfigManager(PROJECT_ROOT).load_yaml("systems/data/config.yaml")
+
+
+def _sessions_config() -> dict[str, Any]:
+    return ConfigManager(PROJECT_ROOT).load_yaml("config/sessions.yaml")
+
+
+def _stamp_session_rows(rows: list[dict[str, Any]], sessions_config: dict[str, Any] | None = None) -> None:
+    sessions_config = sessions_config or _sessions_config()
+    for row in rows:
+        sess = classify_session(row["time"], sessions_config)
+        row["session_label"] = str(sess.get("session") or "Unclassified")
+        row["session_modifier"] = str(sess.get("modifier") or "M01")
+        row["kill_zone_active"] = 1 if sess.get("kill_zone_active") else 0
+
+
+def cleaned_csv_fieldnames() -> list[str]:
+    config = _load_config()
+    extra = config.get("session_columns") or SESSION_ANNOTATION_FIELDS
+    return list(DEFAULT_REQUIRED_COLUMNS) + [str(column) for column in extra]
 
 
 def _issue(code: str, severity: str, message: str, count: int = 1) -> DataQualityIssue:
@@ -56,15 +87,24 @@ def _infer_expected_delta(times: list[datetime]) -> float | None:
 def _normalize_row(raw: dict[str, Any], row_number: int) -> dict[str, Any]:
     row = {str(key).strip().lower(): value for key, value in raw.items()}
     timestamp = to_utc(row["time"])
-    clean = {
+    clean: dict[str, Any] = {
         "time": timestamp,
         "open": _as_float(row["open"], "open", row_number),
         "high": _as_float(row["high"], "high", row_number),
         "low": _as_float(row["low"], "low", row_number),
         "close": _as_float(row["close"], "close", row_number),
         "tick_volume": _as_float(row.get("tick_volume", 0), "tick_volume", row_number),
-        "spread": _as_float(row.get("spread", 0), "spread", row_number),
+        "spread": _normalize_spread(_as_float(row.get("spread", 0), "spread", row_number)),
     }
+    if row.get("session_label") not in (None, ""):
+        clean["session_label"] = str(row["session_label"])
+    if row.get("session_modifier") not in (None, ""):
+        clean["session_modifier"] = str(row["session_modifier"])
+    if row.get("kill_zone_active") not in (None, ""):
+        try:
+            clean["kill_zone_active"] = int(float(row["kill_zone_active"]))
+        except (TypeError, ValueError):
+            clean["kill_zone_active"] = 1 if str(row["kill_zone_active"]).lower() in {"1", "true", "yes"} else 0
     return clean
 
 
@@ -127,6 +167,8 @@ def read_csv_rows(path: str | Path, required_columns: list[str] | None = None) -
     if invalid_price:
         issues.append(_issue("invalid_price", "warning", "Rows with non-positive OHLC prices were removed.", invalid_price))
 
+    cleaned.sort(key=lambda item: item["time"])
+    _stamp_session_rows(cleaned)
     return cleaned, rows_in, issues
 
 
@@ -179,21 +221,14 @@ def build_quality_report(symbol: str, timeframe: str, rows: list[dict[str, Any]]
 def save_cleaned_csv(rows: list[dict[str, Any]], output_path: str | Path) -> None:
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    fieldnames = cleaned_csv_fieldnames()
     with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=DEFAULT_REQUIRED_COLUMNS)
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, extrasaction="ignore")
         writer.writeheader()
         for row in rows:
-            writer.writerow(
-                {
-                    "time": row["time"].isoformat(),
-                    "open": row["open"],
-                    "high": row["high"],
-                    "low": row["low"],
-                    "close": row["close"],
-                    "tick_volume": row["tick_volume"],
-                    "spread": row["spread"],
-                }
-            )
+            payload: dict[str, Any] = {key: row.get(key) for key in fieldnames}
+            payload["time"] = row["time"].isoformat() if hasattr(row["time"], "isoformat") else row["time"]
+            writer.writerow(payload)
 
 
 def save_report(report: DataQualityReport, report_path: str | Path) -> None:
@@ -263,6 +298,8 @@ def _clean_rows(
     if invalid_price:
         issues.append(_issue("invalid_price", "warning", "Rows with non-positive OHLC prices were removed.", invalid_price))
 
+    cleaned.sort(key=lambda item: item["time"])
+    _stamp_session_rows(cleaned)
     report = build_quality_report(symbol, timeframe, cleaned, rows_in, issues)
     config = _load_config()
     minimum_rows = int(config.get("minimum_regime_rows", 120))

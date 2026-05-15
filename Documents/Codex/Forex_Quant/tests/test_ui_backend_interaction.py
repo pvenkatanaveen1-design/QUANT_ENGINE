@@ -17,12 +17,17 @@ def _assert_envelope(response):
 def test_api_routes_use_response_envelope():
     routes = [
         "/api/system/status",
+        "/api/health",
         "/api/data/status",
         "/api/regimes/definitions",
         "/api/strategies",
         "/api/risk/rules",
+        "/api/risk/kelly-demo",
         "/api/backtests/results",
         "/api/decisions",
+        "/api/journal/history",
+        "/api/analytics/data",
+        "/api/analytics/runs",
         "/api/settings/files",
     ]
     for route in routes:
@@ -66,10 +71,11 @@ def test_data_load_csv_api_is_disabled_in_runtime():
 
 
 def test_strategy_playbook_has_four_slots():
-    response = client.get("/api/strategies/by-regime/Q1_M01")
-    payload = _assert_envelope(response)
-    assert response.status_code == 200
-    assert len(payload["data"]["candidates"]) == 4
+    for url in ("/api/strategies/by-regime/Q1_M01", "/api/strategies/playbook/Q1_M01"):
+        response = client.get(url)
+        payload = _assert_envelope(response)
+        assert response.status_code == 200
+        assert len(payload["data"]["candidates"]) == 4
 
 
 def test_dangerous_live_flags_are_blocked_from_settings_ui():

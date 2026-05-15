@@ -3,7 +3,7 @@ from __future__ import annotations
 from core.models.risk import AccountState, HistoricalTrustProfile, PresentRiskSnapshot
 from systems.risk.cost_guard import check_costs
 from systems.risk.kill_switch import check_kill_switch
-from systems.risk.position_sizer import calculate_position_size
+from systems.risk.position_sizer import calculate_position_size, calculate_position_size_for_symbol
 from systems.risk.shield import analyze_signal
 
 
@@ -42,4 +42,18 @@ def test_shield_approves_only_when_all_checks_pass():
     )
     assert approval.approved
     assert approval.position_size is not None
+
+
+def test_pip_value_uses_symbols_yaml_for_eurusd():
+    result = calculate_position_size_for_symbol(
+        "EURUSD",
+        AccountState(equity=10000),
+        entry_price=1.1000,
+        stop_price=1.0990,
+        base_risk_percent=0.25,
+        regime_confidence=1.0,
+        historical_trust=HistoricalTrustProfile(approved=True),
+    )
+    assert result.lot_size > 0
+    assert any("pip_value_per_lot" in r.lower() or "configured" in r.lower() for r in result.reasons)
 

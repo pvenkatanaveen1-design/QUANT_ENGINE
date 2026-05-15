@@ -5,7 +5,7 @@ from typing import Any
 
 from core.config_manager import ConfigManager
 from core.models.risk import AccountState, HistoricalTrustProfile
-from systems.risk.position_sizer import calculate_position_size
+from systems.risk.position_sizer import calculate_position_size, calculate_position_size_for_symbol
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -56,6 +56,36 @@ def preview_position_size(
     approval = "approved_preview" if result.lot_size > 0 else "rejected_preview"
     return {
         "approval": approval,
+        "lot_size": round(result.lot_size, 4),
+        "risk_amount": round(result.risk_amount, 2),
+        "final_risk_percent": round(result.final_risk_percent, 4),
+        "reasons": result.reasons,
+    }
+
+
+def preview_position_size_for_symbol(
+    symbol: str,
+    account_balance: float,
+    entry_price: float,
+    stop_price: float,
+    regime_confidence: float,
+    historical_trust_factor: float,
+    broker_tick_value: float | None = None,
+) -> dict[str, Any]:
+    rules = get_risk_rules()
+    result = calculate_position_size_for_symbol(
+        symbol=symbol,
+        account=AccountState(equity=account_balance),
+        entry_price=entry_price,
+        stop_price=stop_price,
+        broker_tick_value=broker_tick_value,
+        base_risk_percent=float(rules.get("base_risk_per_trade_percent", 0.25)),
+        max_risk_percent=float(rules.get("max_risk_per_trade_percent", 0.5)),
+        regime_confidence=regime_confidence,
+        historical_trust=HistoricalTrustProfile(approved=historical_trust_factor >= 0.75),
+    )
+    return {
+        "symbol": symbol.upper(),
         "lot_size": round(result.lot_size, 4),
         "risk_amount": round(result.risk_amount, 2),
         "final_risk_percent": round(result.final_risk_percent, 4),

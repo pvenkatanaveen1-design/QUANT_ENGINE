@@ -461,7 +461,10 @@ def _to_iso(value: Any) -> str | None:
         return str(value)
 
 
-def _rate_row(row: Any) -> dict[str, Any]:
+def _rate_row(row: Any, *, point: float) -> dict[str, Any]:
+    raw_spread = _to_int(_safe_get(row, "spread"), 0)
+    # MT5 MqlRates.spread is in points; convert to price distance for OHLC pipeline parity.
+    spread_price = float(raw_spread) * point if point else float(raw_spread)
     return {
         "time": _to_iso(_safe_get(row, "time")),
         "open": _to_float(_safe_get(row, "open"), 0.0),
@@ -469,7 +472,7 @@ def _rate_row(row: Any) -> dict[str, Any]:
         "low": _to_float(_safe_get(row, "low"), 0.0),
         "close": _to_float(_safe_get(row, "close"), 0.0),
         "tick_volume": _to_int(_safe_get(row, "tick_volume"), 0),
-        "spread": _to_int(_safe_get(row, "spread"), 0),
+        "spread": spread_price,
         "real_volume": _to_int(_safe_get(row, "real_volume"), 0),
     }
 
@@ -484,13 +487,14 @@ def get_rates(symbol: str, timeframe: str, bars: int | None = None) -> dict[str,
         raise MT5GatewayError("bars_limit_exceeded", f"Bars limit exceeded: {requested} > {max_bars}.", 400)
     mt5 = _ensure_connected()
     clean_symbol = resolve_symbol(symbol)
-    _symbol_info_or_error(mt5, clean_symbol)
+    info = _symbol_info_or_error(mt5, clean_symbol)
+    point = _to_float(_safe_get(info, "point"), 0.0) or 0.0
     mt5_timeframe = _timeframe_constant(mt5, timeframe)
     with _MT5_LOCK:
         rates = mt5.copy_rates_from_pos(clean_symbol, mt5_timeframe, 0, requested)
     if rates is None:
         raise MT5GatewayError("rates_unavailable", f"MT5 returned no rates for {clean_symbol} {timeframe}.", 503)
-    rows = [_rate_row(row) for row in list(rates)]
+    rows = [_rate_row(row, point=point) for row in list(rates)]
     return {
         "metadata": {
             "symbol": clean_symbol,
@@ -499,6 +503,8 @@ def get_rates(symbol: str, timeframe: str, bars: int | None = None) -> dict[str,
             "bars_returned": len(rows),
             "source": "mt5",
             "fetched_at": timestamp(),
+            "point": point,
+            "spread_units": "price",
         },
         "rows": rows,
     }

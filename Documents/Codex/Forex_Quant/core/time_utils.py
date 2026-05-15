@@ -42,7 +42,7 @@ def time_in_window(moment: datetime, start_hhmm: str, end_hhmm: str) -> bool:
     return current >= start or current < end
 
 
-def classify_session(moment: str | datetime, sessions_config: dict) -> dict[str, str | None]:
+def classify_session(moment: str | datetime, sessions_config: dict) -> dict:
     tz_name = sessions_config.get("timezone", "UTC")
     dt = to_utc(moment)
     if tz_name != "UTC":
@@ -53,6 +53,12 @@ def classify_session(moment: str | datetime, sessions_config: dict) -> dict[str,
                 "session": session.get("id"),
                 "modifier": session.get("modifier"),
                 "notes": session.get("notes"),
+                "kill_zone_active": bool(session.get("kill_zone", False)),
             }
-    return {"session": "Unclassified", "modifier": "M01", "notes": None}
+    return {
+        "session": "Unclassified",
+        "modifier": "M01",
+        "notes": None,
+        "kill_zone_active": False,
+    }
 

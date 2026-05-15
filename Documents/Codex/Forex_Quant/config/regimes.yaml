@@ -1,15 +1,15 @@
 version: 0.1
 thresholds:
   atr_period: 14
-  trend_efficiency_period: 30
+  efficiency_ratio_period: 30
   volatility_percentile_lookback: 252
   low_vol_percentile: 40
   high_vol_percentile: 70
   high_vol_atr_percent: 0.0015
   extreme_vol_percentile: 90
   extreme_vol_atr_percent: 0.0040
-  trend_efficiency_min: 0.35
-  trend_efficiency_range_max: 0.25
+  efficiency_ratio_min: 0.35
+  efficiency_ratio_range_max: 0.25
   adx_trend_min: 22
   adx_range_max: 18
   spread_stress_percentile: 90

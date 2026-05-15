@@ -20,9 +20,33 @@ def dashboard(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request, "systems/monitoring/templates/dashboard.html", {"status": backend.system_status()})
 
 
+@router.get("/monitor", response_class=HTMLResponse)
+def monitor_alias(request: Request) -> HTMLResponse:
+    """Section 17 — same view as home (system health + regime card hooks)."""
+    return dashboard(request)
+
+
+@router.get("/workflow", response_class=HTMLResponse)
+def trader_workflow_page(request: Request) -> HTMLResponse:
+    """Section 18 — daily / weekly / monthly trader checklist (GMT)."""
+    return templates.TemplateResponse(request, "systems/monitoring/templates/workflow.html", {})
+
+
+@router.get("/project-phases", response_class=HTMLResponse)
+def project_phases_page(request: Request) -> HTMLResponse:
+    """Phase A–G roadmap vs codebase (reference)."""
+    return templates.TemplateResponse(request, "systems/monitoring/templates/project_phases.html", {})
+
+
 @router.get("/api/system/status")
 def system_status() -> JSONResponse:
     return ok(backend.system_status(), "System status loaded.")
+
+
+@router.get("/api/health")
+def api_health_discovery() -> JSONResponse:
+    """Section 17 alias — full subsystem status (same as /api/system/status)."""
+    return ok(backend.system_status(), "System health loaded.")
 
 
 @router.get("/api/system/health")

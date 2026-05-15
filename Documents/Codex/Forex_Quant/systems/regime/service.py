@@ -4,7 +4,7 @@ import math
 from collections import Counter
 from dataclasses import asdict
 from pathlib import Path
-from statistics import mean, median, pstdev
+from statistics import mean, median
 from typing import Any
 
 from core.config_manager import ConfigManager
@@ -54,7 +54,32 @@ def _percentile_rank(values: list[float], current: float) -> float:
     return 100.0 * below_or_equal / len(values)
 
 
-def _trend_efficiency(closes: list[float], period: int) -> float:
+def _ols_slope_per_bar(closes: list[float]) -> float:
+    """Least-squares slope of close vs bar index (price units per bar)."""
+    n = len(closes)
+    if n < 2:
+        return 0.0
+    x_mean = (n - 1) / 2.0
+    y_mean = sum(closes) / n
+    num = sum((i - x_mean) * (closes[i] - y_mean) for i in range(n))
+    den = sum((i - x_mean) ** 2 for i in range(n))
+    return num / den if den else 0.0
+
+
+def _slope_score(closes: list[float], period: int, atr: float) -> float:
+    """Blueprint-style trend tilt: slope_N / ATR over the last `period` closes (or fewer if short history)."""
+    if len(closes) < 2:
+        return 0.0
+    window = closes[-period:] if len(closes) >= period else closes
+    raw = _ols_slope_per_bar(window)
+    return raw / max(atr, 1e-10)
+
+
+def _kaufman_er(closes: list[float], period: int) -> float:
+    """
+    Kaufman Efficiency Ratio: |net displacement| / sum(|step changes|) over the last `period` bars.
+    Source: Kaufman (1995). Same receptive field as the prior efficiency_ratio helper.
+    """
     if len(closes) <= period:
         return 0.0
     net = abs(closes[-1] - closes[-period - 1])
@@ -63,71 +88,100 @@ def _trend_efficiency(closes: list[float], period: int) -> float:
 
 
 def _ema(values: list[float], period: int) -> float:
+    """
+    SMA-seeded EMA. Seeds from mean of first period bars, NOT values[0].
+    Starting from values[0] distorts first 50-100 bars on short history.
+    """
     if not values:
         return 0.0
-    multiplier = 2 / (period + 1)
-    seed_size = min(period, len(values))
-    ema = _average(values[:seed_size])
-    for value in values[seed_size:]:
+    if len(values) < period:
+        return sum(values) / len(values)
+    seed = sum(values[:period]) / period
+    multiplier = 2.0 / (period + 1)
+    ema = seed
+    for value in values[period:]:
         ema = (value - ema) * multiplier + ema
     return ema
 
 
-def _simplified_adx(rows: list[dict[str, Any]], period: int = 14) -> float:
-    if len(rows) <= period + 1:
+def _wilder_adx(rows: list[dict[str, Any]], period: int = 14) -> float:
+    """
+    Wilder-smoothed ADX on the bar series (last value). Replaces the prior single-smoothed DX blend.
+    Source: Wilder (1978).
+    """
+    if len(rows) < period * 2 + 1:
         return 0.0
-    trs: list[float] = []
-    plus_dm: list[float] = []
-    minus_dm: list[float] = []
-    for index in range(1, len(rows)):
-        high = float(rows[index]["high"])
-        low = float(rows[index]["low"])
-        prev_high = float(rows[index - 1]["high"])
-        prev_low = float(rows[index - 1]["low"])
-        prev_close = float(rows[index - 1]["close"])
-        trs.append(max(high - low, abs(high - prev_close), abs(low - prev_close)))
-        up_move = float(rows[index]["high"]) - float(rows[index - 1]["high"])
-        down_move = float(rows[index - 1]["low"]) - float(rows[index]["low"])
-        plus_dm.append(up_move if up_move > down_move and up_move > 0 else 0.0)
-        minus_dm.append(down_move if down_move > up_move and down_move > 0 else 0.0)
-    if len(trs) < period:
+    highs = [float(r["high"]) for r in rows]
+    lows = [float(r["low"]) for r in rows]
+    closes = [float(r["close"]) for r in rows]
+
+    trs: list[float] = [highs[0] - lows[0]]
+    for i in range(1, len(rows)):
+        hl = highs[i] - lows[i]
+        hpc = abs(highs[i] - closes[i - 1])
+        lpc = abs(lows[i] - closes[i - 1])
+        trs.append(max(hl, hpc, lpc))
+
+    plus_dms: list[float] = [0.0]
+    minus_dms: list[float] = [0.0]
+    for i in range(1, len(rows)):
+        up = highs[i] - highs[i - 1]
+        down = lows[i - 1] - lows[i]
+        plus_dms.append(up if up > down and up > 0 else 0.0)
+        minus_dms.append(down if down > up and down > 0 else 0.0)
+
+    alpha = 1.0 / period
+
+    def wilder(values: list[float]) -> list[float]:
+        out = [values[0]]
+        for v in values[1:]:
+            out.append(out[-1] * (1 - alpha) + v * alpha)
+        return out
+
+    atr_s = wilder(trs)
+    plus_s = wilder(plus_dms)
+    minus_s = wilder(minus_dms)
+
+    plus_di = [100.0 * p / max(a, 1e-10) for p, a in zip(plus_s, atr_s)]
+    minus_di = [100.0 * m / max(a, 1e-10) for m, a in zip(minus_s, atr_s)]
+
+    dx_series: list[float] = []
+    for p, m in zip(plus_di, minus_di):
+        den = p + m
+        dx_series.append(100.0 * abs(p - m) / den if den > 0 else 0.0)
+
+    adx_series = wilder(dx_series)
+    return adx_series[-1]
+
+
+def _jump_z(rows: list[dict[str, Any]], period: int = 30) -> float:
+    """
+    Jump detector for FX using log returns.
+    FX mean return ≈ 0. Real jump: |return| > 3×sigma AND sigma > hist_sigma × 1.5
+    """
+    if len(rows) < period + 1:
         return 0.0
-
-    smoothed_tr = sum(trs[:period]) or 1e-12
-    smoothed_plus_dm = sum(plus_dm[:period])
-    smoothed_minus_dm = sum(minus_dm[:period])
-    dx_values: list[float] = []
-
-    def _dx(tr_value: float, plus_value: float, minus_value: float) -> float:
-        plus_di = 100.0 * plus_value / tr_value
-        minus_di = 100.0 * minus_value / tr_value
-        denominator = plus_di + minus_di
-        return 100.0 * abs(plus_di - minus_di) / denominator if denominator else 0.0
-
-    dx_values.append(_dx(smoothed_tr, smoothed_plus_dm, smoothed_minus_dm))
-    for index in range(period, len(trs)):
-        smoothed_tr = smoothed_tr - (smoothed_tr / period) + trs[index]
-        smoothed_plus_dm = smoothed_plus_dm - (smoothed_plus_dm / period) + plus_dm[index]
-        smoothed_minus_dm = smoothed_minus_dm - (smoothed_minus_dm / period) + minus_dm[index]
-        dx_values.append(_dx(max(smoothed_tr, 1e-12), smoothed_plus_dm, smoothed_minus_dm))
-
-    if len(dx_values) < period:
-        return _average(dx_values)
-    adx = _average(dx_values[:period])
-    for dx in dx_values[period:]:
-        adx = ((adx * (period - 1)) + dx) / period
-    return adx
-
-
-def _jump_z(closes: list[float], lookback: int = 30) -> float:
-    if len(closes) <= lookback + 1:
+    log_returns: list[float] = []
+    for i in range(1, len(rows)):
+        c0 = float(rows[i - 1]["close"])
+        c1 = float(rows[i]["close"])
+        if c0 > 0:
+            log_returns.append(math.log(c1 / c0))
+    if len(log_returns) < period:
         return 0.0
-    returns = [math.log(closes[index] / closes[index - 1]) for index in range(1, len(closes)) if closes[index - 1] > 0]
-    recent = returns[-lookback:]
-    sigma = pstdev(recent) if len(recent) > 1 else 0.0
-    baseline = abs(mean(recent)) * 0.75 if recent else 0.0
-    denominator = max(sigma, baseline, 1e-8)
-    return abs(returns[-1]) / denominator if denominator else 0.0
+    recent = log_returns[-period:]
+    last = recent[-1]
+    m = sum(recent) / len(recent)
+    var = sum((r - m) ** 2 for r in recent) / len(recent)
+    sigma = var**0.5
+    if sigma <= 0:
+        return 0.0
+    full_m = sum(log_returns) / len(log_returns)
+    full_var = sum((r - full_m) ** 2 for r in log_returns) / len(log_returns)
+    hist_sigma = full_var**0.5
+    z = abs(last) / sigma
+    sigma_ratio = sigma / max(hist_sigma, 1e-10)
+    return z if (z > 3.0 and sigma_ratio > 1.5) else 0.0
 
 
 def _compression_percentile(rows: list[dict[str, Any]], lookback: int) -> float:
@@ -307,7 +361,15 @@ def calculate_feature_snapshot(rows: list[dict[str, Any]], context: dict[str, An
     thresholds = regimes_config.get("thresholds", {})
     lookbacks = local_config.get("feature_lookbacks", {})
     atr_period = int(lookbacks.get("atr_period", thresholds.get("atr_period", 14)))
-    trend_period = int(lookbacks.get("trend_efficiency_period", thresholds.get("trend_efficiency_period", 30)))
+    trend_period = int(
+        lookbacks.get(
+            "efficiency_ratio_period",
+            thresholds.get(
+                "efficiency_ratio_period",
+                lookbacks.get("trend_efficiency_period", thresholds.get("trend_efficiency_period", 30)),
+            ),
+        )
+    )
     vol_lookback = int(lookbacks.get("volatility_percentile_lookback", thresholds.get("volatility_percentile_lookback", 252)))
     swing_lookback = int(lookbacks.get("swing_lookback", 20))
 
@@ -334,7 +396,7 @@ def calculate_feature_snapshot(rows: list[dict[str, Any]], context: dict[str, An
     body_ratio, upper_wick_ratio, lower_wick_ratio = _candle_ratios(rows[-1])
     sweep_high, sweep_low = _sweep_flags(rows, swing_lookback, spread_percentile)
     session = classify_session(rows[-1]["time"], sessions_config)
-    jump_z = _jump_z(closes, trend_period)
+    jump_z = _jump_z(rows, trend_period)
     microstructure = _microstructure_context(
         rows=rows,
         sessions_config=sessions_config,
@@ -348,16 +410,13 @@ def calculate_feature_snapshot(rows: list[dict[str, Any]], context: dict[str, An
     )
     microstructure["news_proxy"]["jump_z"] = round(jump_z, 3)
 
-    slope = (closes[-1] - closes[-min(trend_period + 1, len(closes))]) / max(1, min(trend_period, len(closes) - 1))
-    slope_score = slope / atr if atr else 0.0
-
     return RegimeFeatureSet(
         atr=atr,
         atr_percent=atr_percent,
         volatility_percentile=volatility_percentile,
-        trend_efficiency=_trend_efficiency(closes, trend_period),
-        adx=_simplified_adx(rows, atr_period),
-        slope_score=slope_score,
+        efficiency_ratio=_kaufman_er(closes, trend_period),
+        adx=_wilder_adx(rows, atr_period),
+        slope_score=_slope_score(closes, trend_period, atr),
         spread_percentile=spread_percentile,
         jump_z=jump_z,
         compression_percentile=_compression_percentile(rows, trend_period),
@@ -370,6 +429,7 @@ def calculate_feature_snapshot(rows: list[dict[str, Any]], context: dict[str, An
         data_quality_bad=bool(context and context.get("data_quality_bad")),
         extra={
             "session_modifier": session.get("modifier") or "M01",
+            "kill_zone_active": bool(session.get("kill_zone_active", False)),
             "ema_50": _ema(closes[-50:], 50),
             "close": close,
             **microstructure,
@@ -377,7 +437,61 @@ def calculate_feature_snapshot(rows: list[dict[str, Any]], context: dict[str, An
     )
 
 
+def _compute_confidence(features: RegimeFeatureSet, base_regime: str, modifier: str) -> float:
+    """
+    Confidence score 0.10 – 0.95. Higher = more signals agree.
+    Uses RegimeFeatureSet field names (volatility_percentile, spread_percentile, etc.).
+    """
+    kz = bool(features.extra.get("kill_zone_active", False))
+
+    score = 0.0
+    weights = 0.0
+
+    if base_regime in ("Q1", "Q2"):
+        if features.adx > 30:
+            score += 0.25
+        elif features.adx > 25:
+            score += 0.18
+        elif features.adx > 22:
+            score += 0.10
+        weights += 0.25
+
+    if base_regime in ("Q1", "Q2") and features.efficiency_ratio > 0.50:
+        score += 0.20
+    elif base_regime == "Q3" and features.efficiency_ratio < 0.20:
+        score += 0.20
+    weights += 0.20
+
+    if modifier == "M04" and kz:
+        score += 0.15
+    weights += 0.15
+
+    if modifier == "M09" and (features.sweep_high or features.sweep_low):
+        score += 0.15
+    weights += 0.15
+
+    vpt = features.volatility_percentile
+    if base_regime in ("Q1", "Q3") and vpt < 50:
+        score += 0.10
+    elif base_regime == "Q2" and vpt > 70:
+        score += 0.10
+    weights += 0.10
+
+    if features.spread_percentile < 50:
+        score += 0.10
+    weights += 0.10
+
+    if modifier == "M02" and features.compression_percentile <= 20:
+        score += 0.05
+    weights += 0.05
+
+    raw = score / max(weights, 1e-10)
+    return max(0.10, min(0.95, raw))
+
+
 def _choose_base(features: RegimeFeatureSet, thresholds: dict[str, Any], reasons: list[RegimeReason]) -> str:
+    er_min = float(thresholds.get("efficiency_ratio_min", thresholds.get("trend_efficiency_min", 0.35)))
+    er_max = float(thresholds.get("efficiency_ratio_range_max", thresholds.get("trend_efficiency_range_max", 0.25)))
     if features.data_quality_bad:
         reasons.append(RegimeReason("data_quality_bad", "Data quality is marked bad; trading is blocked.", "critical"))
         return "Q4"
@@ -387,26 +501,51 @@ def _choose_base(features: RegimeFeatureSet, thresholds: dict[str, Any], reasons
     if features.jump_z > float(thresholds.get("jump_shock_z", 3.0)):
         reasons.append(RegimeReason("jump_shock", f"Jump z-score {features.jump_z:.2f} > {float(thresholds.get('jump_shock_z', 3.0)):.2f}.", "critical"))
         return "Q4"
-    extreme_vol = features.volatility_percentile >= float(thresholds.get("extreme_vol_percentile", 90)) or features.atr_percent >= float(thresholds.get("extreme_vol_atr_percent", 0.004))
-    if extreme_vol:
-        reasons.append(RegimeReason("volatility_extreme", f"Volatility percentile {features.volatility_percentile:.1f} or ATR percent {features.atr_percent:.4f} is extreme.", "warning"))
-        return "Q4"
 
-    trend = features.trend_efficiency >= float(thresholds.get("trend_efficiency_min", 0.35)) and features.adx >= float(thresholds.get("adx_trend_min", 22))
-    range_bound = features.trend_efficiency <= float(thresholds.get("trend_efficiency_range_max", 0.25)) and features.adx <= float(thresholds.get("adx_range_max", 18))
-    high_vol = features.volatility_percentile > float(thresholds.get("high_vol_percentile", 70)) or features.atr_percent >= float(thresholds.get("high_vol_atr_percent", 0.0015))
+    extreme_vol = features.volatility_percentile >= float(thresholds.get("extreme_vol_percentile", 90)) or features.atr_percent >= float(
+        thresholds.get("extreme_vol_atr_percent", 0.004)
+    )
+    high_vol = features.volatility_percentile > float(thresholds.get("high_vol_percentile", 70)) or features.atr_percent >= float(
+        thresholds.get("high_vol_atr_percent", 0.0015)
+    )
+    trend = features.efficiency_ratio >= er_min and features.adx >= float(thresholds.get("adx_trend_min", 22))
+    range_bound = features.efficiency_ratio <= er_max and features.adx <= float(thresholds.get("adx_range_max", 18))
 
-    if trend and high_vol:
-        reasons.append(RegimeReason("trend_high_vol", f"Trend efficiency {features.trend_efficiency:.2f} >= {float(thresholds.get('trend_efficiency_min', 0.35)):.2f}, ADX {features.adx:.1f} >= {float(thresholds.get('adx_trend_min', 22)):.1f}, volatility percentile {features.volatility_percentile:.1f} or ATR percent {features.atr_percent:.4f} is high."))
+    if trend and (high_vol or extreme_vol):
+        reasons.append(
+            RegimeReason(
+                "trend_high_vol",
+                f"Trend (ER={features.efficiency_ratio:.2f} ADX={features.adx:.1f}) + elevated vol ({features.volatility_percentile:.0f}th pct / ATR%). Q2.",
+            )
+        )
         return "Q2"
     if trend:
-        reasons.append(RegimeReason("trend_low_normal_vol", f"Trend efficiency {features.trend_efficiency:.2f} >= {float(thresholds.get('trend_efficiency_min', 0.35)):.2f}, ADX {features.adx:.1f} >= {float(thresholds.get('adx_trend_min', 22)):.1f}, volatility percentile {features.volatility_percentile:.1f} <= {float(thresholds.get('high_vol_percentile', 70)):.1f}."))
+        reasons.append(RegimeReason("trend_low_vol", "Trend confirmed, normal vol. Q1."))
         return "Q1"
-    if range_bound:
-        reasons.append(RegimeReason("range_low_normal_vol", f"Trend efficiency {features.trend_efficiency:.2f} <= {float(thresholds.get('trend_efficiency_range_max', 0.25)):.2f} and ADX {features.adx:.1f} <= {float(thresholds.get('adx_range_max', 18)):.1f}."))
+    if range_bound and not high_vol:
+        reasons.append(
+            RegimeReason(
+                "range_low_vol",
+                f"Range (ER={features.efficiency_ratio:.2f} ADX={features.adx:.1f}). Q3.",
+            )
+        )
         return "Q3"
-
-    reasons.append(RegimeReason("transition", f"Trend/range evidence is mixed: trend efficiency {features.trend_efficiency:.2f}, ADX {features.adx:.1f}, volatility percentile {features.volatility_percentile:.1f}.", "warning"))
+    if extreme_vol:
+        reasons.append(
+            RegimeReason(
+                "extreme_vol_no_trend",
+                f"Extreme vol no trend ({features.volatility_percentile:.0f}th pct). Q4.",
+                "warning",
+            )
+        )
+        return "Q4"
+    reasons.append(
+        RegimeReason(
+            "transition",
+            f"Mixed signals. ER={features.efficiency_ratio:.2f} ADX={features.adx:.1f}. Q4.",
+            "warning",
+        )
+    )
     return "Q4"
 
 
@@ -466,12 +605,7 @@ def detect_regime_for_rows(rows: list[dict[str, Any]], symbol: str = "UNKNOWN", 
     tradable = bool(base_meta.get("tradable", False)) and bool(modifier_meta.get("tradable", True))
     risk_posture = str(modifier_meta.get("risk_posture") or base_meta.get("risk_posture") or "unknown")
 
-    confidence = 0.55
-    confidence += min(features.trend_efficiency, 0.5) * 0.35
-    confidence += min(features.adx / 100.0, 0.4) * 0.25
-    confidence -= 0.2 if base == "Q4" else 0.0
-    confidence -= 0.15 if modifier in {"M10", "M07", "M13"} else 0.0
-    confidence = max(0.1, min(0.95, confidence))
+    confidence = round(_compute_confidence(features, base, modifier), 4)
 
     return RegimeResult(
         base_regime=base,
@@ -500,8 +634,7 @@ def _row_time(row: dict[str, Any]) -> Any:
 
 
 def _is_killzone(row: dict[str, Any], sessions_config: dict[str, Any]) -> bool:
-    session = classify_session(row["time"], sessions_config).get("session")
-    return session in {"London_Open", "London_NY_Overlap"}
+    return bool(classify_session(row["time"], sessions_config).get("kill_zone_active"))
 
 
 def _window_label(start: Any, end: Any | None = None) -> str:

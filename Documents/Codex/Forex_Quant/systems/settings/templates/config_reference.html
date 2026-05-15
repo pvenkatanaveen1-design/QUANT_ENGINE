@@ -1,0 +1,91 @@
+{% extends "app/templates/base.html" %}
+{% block title %}Config reference | Quanta Forex{% endblock %}
+{% block content %}
+<div class="space-y-6 max-w-5xl">
+  <div>
+    <h1 class="text-2xl font-semibold">Config files reference</h1>
+    <p class="mt-1 text-sm text-zinc-500">Section 22 — what each file controls and what loads it. Edits: after changing YAML, <span class="font-medium">restart the app</span> — <code class="text-xs">ConfigManager</code> caches each file after the first read in a process.</p>
+  </div>
+
+  <div class="panel overflow-x-auto">
+    <table class="table-compact w-full min-w-[640px] text-sm">
+      <thead>
+        <tr>
+          <th class="text-left">Config file</th>
+          <th class="text-left">Controls</th>
+          <th class="text-left">Who reads it</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code class="text-xs">config/regimes.yaml</code></td>
+          <td class="text-zinc-700">ADX thresholds, vol percentiles, regime tradability</td>
+          <td><code class="text-xs">systems/regime/service.py</code>, <code class="text-xs">systems/regime/backend.py</code>, regime UI</td>
+        </tr>
+        <tr>
+          <td><code class="text-xs">config/strategy_registry.yaml</code></td>
+          <td class="text-zinc-700">208 strategies, <code class="text-xs">enabled</code>, <code class="text-xs">status</code>, priors</td>
+          <td><code class="text-xs">systems/strategy_router/service.py</code></td>
+        </tr>
+        <tr>
+          <td><code class="text-xs">config/risk_rules.yaml</code></td>
+          <td class="text-zinc-700">Base risk %, max DD, spread percentile threshold</td>
+          <td><code class="text-xs">systems/risk/backend.py</code>, <code class="text-xs">systems/risk/shield.py</code>, research</td>
+        </tr>
+        <tr>
+          <td><code class="text-xs">config/funded_rules.yaml</code></td>
+          <td class="text-zinc-700">Daily loss limit, trailing DD, prop-style caps</td>
+          <td><code class="text-xs">systems/risk/backend.py</code> → <code class="text-xs">systems/risk/funded_rules_engine.py</code></td>
+        </tr>
+        <tr>
+          <td><code class="text-xs">config/sessions.yaml</code></td>
+          <td class="text-zinc-700">Kill zone GMT windows, session labels</td>
+          <td>Loaded into <code class="text-xs">classify_session(..., sessions_config)</code> in <code class="text-xs">core/time_utils.py</code>; YAML loaded by <code class="text-xs">systems/regime/service.py</code>, <code class="text-xs">systems/data/service.py</code>, <code class="text-xs">systems/research/service.py</code></td>
+        </tr>
+        <tr>
+          <td><code class="text-xs">config/symbols.yaml</code></td>
+          <td class="text-zinc-700">pip size, <code class="text-xs">pip_value_per_lot</code>, swap, lot limits</td>
+          <td><code class="text-xs">systems/risk/position_sizer.py</code></td>
+        </tr>
+        <tr>
+          <td><code class="text-xs">config/app.yaml</code></td>
+          <td class="text-zinc-700">App name, <code class="text-xs">paper_trading_enabled</code>, <code class="text-xs">live_trading_enabled</code>, defaults</td>
+          <td><code class="text-xs">app/main.py</code>, <code class="text-xs">systems/monitoring/backend.py</code>, Settings UI</td>
+        </tr>
+        <tr>
+          <td><code class="text-xs">systems/regime/config.yaml</code></td>
+          <td class="text-zinc-700">Feature lookback periods (regime subsystem)</td>
+          <td><code class="text-xs">systems/regime/service.py</code></td>
+        </tr>
+        <tr>
+          <td><code class="text-xs">systems/risk/config.yaml</code></td>
+          <td class="text-zinc-700">Duplicate risk keys (not wired)</td>
+          <td class="text-zinc-600">Runtime uses <code class="text-xs">config/risk_rules.yaml</code> — keep this file in sync for documentation or remove to avoid drift.</td>
+        </tr>
+        <tr>
+          <td><code class="text-xs">config/strategy_router.yaml</code></td>
+          <td class="text-zinc-700">Registry validation (<code class="text-xs">strict_blueprint</code>, etc.)</td>
+          <td><code class="text-xs">systems/strategy_router/service.py</code></td>
+        </tr>
+        <tr>
+          <td><code class="text-xs">config/signal_routing.yaml</code></td>
+          <td class="text-zinc-700">Per-regime signal codes, size multipliers / overrides</td>
+          <td><code class="text-xs">systems/strategy/signal_routing.py</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <section class="panel border-l-4 border-red-600">
+    <div class="label text-red-900">Strategy &amp; live flags</div>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-zinc-800">
+      <li>Change <code class="text-xs">enabled</code> and <code class="text-xs">status</code> on registry rows <span class="font-medium">only</span> after backtests satisfy the <a class="text-sky-700 underline" href="/strategy-gate">enablement gate</a>.</li>
+      <li><code class="text-xs">live_allowed</code> on a strategy: <span class="font-medium">manual operator only</span>. Never set via an AI prompt.</li>
+    </ul>
+  </section>
+
+  <p class="text-xs text-zinc-500">
+    Edit configs from <a class="text-sky-700 underline" href="/settings">/settings</a> where exposed, or on disk in <code class="text-xs">config/</code>.
+  </p>
+</div>
+{% endblock %}

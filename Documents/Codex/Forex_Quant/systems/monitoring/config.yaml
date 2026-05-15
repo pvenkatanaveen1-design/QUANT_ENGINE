@@ -11,6 +11,8 @@ systems:
     page_url: /strategies
   - name: Research/Backtest
     page_url: /backtester
+  - name: Analysis Cache
+    page_url: /analysis
   - name: Risk
     page_url: /risk
   - name: Execution

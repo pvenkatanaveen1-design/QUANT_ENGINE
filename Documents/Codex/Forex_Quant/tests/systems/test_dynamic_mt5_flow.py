@@ -13,6 +13,8 @@ from systems.mt5_gateway import service as mt5_service
 from systems.regime import backend as regime_backend
 from systems.regime import service as regime_service
 from systems.research import service as research_service
+from systems.strategy import signals as strategy_signals
+from systems.strategy_router import backend as strategy_backend
 
 
 class DynamicMockMT5:
@@ -202,6 +204,7 @@ def test_scenario_produces_estimate_for_synthetic_trend(monkeypatch):
         regime_scope="all_observed",
         killzone_enabled=False,
         spread_filter_enabled=False,
+        save_result=False,
     )
     assert result["blocked"] is False
     assert result["label"] == "scenario estimate"
@@ -212,6 +215,16 @@ def test_scenario_produces_estimate_for_synthetic_trend(monkeypatch):
     assert "return_percent" in result
     assert "failure_events" in result
     assert "equity_curve" in result
+
+
+def test_all_208_strategies_have_signal_template_mapping():
+    registry = strategy_backend.get_registry()
+    templates = {strategy_signals.template_for_strategy(item) for item in registry}
+    assert len(registry) == 208
+    assert "ema_pullback" in templates
+    assert "sweep_reclaim" in templates
+    assert "defensive_guard" in templates
+    assert all(strategy_signals.template_for_strategy(item) for item in registry)
 
 
 def test_regime_live_websocket_payload_shape():

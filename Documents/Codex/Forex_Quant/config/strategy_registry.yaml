@@ -1,1669 +1,3027 @@
-﻿# Strategy registry generated from the 52-regime blueprint.
-# These are names/placeholders only. Keep enabled=false until logic, tests, and forward validation exist.
+# config/strategy_registry.yaml
+# All strategies start disabled. Enable ONLY after backtest validates.
+# Evidence codes: A=Academic P=Practitioner Q=Quant firm I=ICT
+# Q2: default size_override 0.5x; Q4: universal defensive — missing a trade costs zero.
+
 version: 0.1
 total_strategies: 208
 strategies:
-  - id: Q1_M01_S01
-    name: "EMA pullback"
-    regime_id: Q1_M01
-    regime_logic: "Trend, low vol, clean spread"
-    slot: primary
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q1_M01_S02
-    name: "Donchian continuation"
-    regime_id: Q1_M01
-    regime_logic: "Trend, low vol, clean spread"
-    slot: secondary
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q1_M01_S03
-    name: "break-retest"
-    regime_id: Q1_M01
-    regime_logic: "Trend, low vol, clean spread"
-    slot: confirmation
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q1_M01_S04
-    name: "time-series momentum"
-    regime_id: Q1_M01
-    regime_logic: "Trend, low vol, clean spread"
-    slot: fallback
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q2_M01_S01
-    name: "ATR breakout"
-    regime_id: Q2_M01
-    regime_logic: "Trend, high vol, clean spread"
-    slot: primary
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q2_M01_S02
-    name: "momentum continuation"
-    regime_id: Q2_M01
-    regime_logic: "Trend, high vol, clean spread"
-    slot: secondary
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q2_M01_S03
-    name: "volatility pullback"
-    regime_id: Q2_M01
-    regime_logic: "Trend, high vol, clean spread"
-    slot: confirmation
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q2_M01_S04
-    name: "trailing runner"
-    regime_id: Q2_M01
-    regime_logic: "Trend, high vol, clean spread"
-    slot: fallback
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q3_M01_S01
-    name: "Bollinger fade"
-    regime_id: Q3_M01
-    regime_logic: "Range, low vol, clean spread"
-    slot: primary
-    family: mean_reversion
-    status: not_tested
-    enabled: false
-  - id: Q3_M01_S02
-    name: "RSI range fade"
-    regime_id: Q3_M01
-    regime_logic: "Range, low vol, clean spread"
-    slot: secondary
-    family: mean_reversion
-    status: not_tested
-    enabled: false
-  - id: Q3_M01_S03
-    name: "support/resistance fade"
-    regime_id: Q3_M01
-    regime_logic: "Range, low vol, clean spread"
-    slot: confirmation
-    family: mean_reversion
-    status: not_tested
-    enabled: false
-  - id: Q3_M01_S04
-    name: "VWAP/session mean fade"
-    regime_id: Q3_M01
-    regime_logic: "Range, low vol, clean spread"
-    slot: fallback
-    family: mean_reversion
-    status: not_tested
-    enabled: false
-  - id: Q4_M01_S01
-    name: "no trade"
-    regime_id: Q4_M01
-    regime_logic: "Clean but unclear structure"
-    slot: primary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M01_S02
-    name: "wait for Q1-Q3"
-    regime_id: Q4_M01
-    regime_logic: "Clean but unclear structure"
-    slot: secondary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M01_S03
-    name: "reduce exposure"
-    regime_id: Q4_M01
-    regime_logic: "Clean but unclear structure"
-    slot: confirmation
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M01_S04
-    name: "observe only"
-    regime_id: Q4_M01
-    regime_logic: "Clean but unclear structure"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q1_M02_S01
-    name: "trend continuation after squeeze"
-    regime_id: Q1_M02
-    regime_logic: "Trend pauses with compressed volatility"
-    slot: primary
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q1_M02_S02
-    name: "EMA pullback"
-    regime_id: Q1_M02
-    regime_logic: "Trend pauses with compressed volatility"
-    slot: secondary
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q1_M02_S03
-    name: "inside-bar break"
-    regime_id: Q1_M02
-    regime_logic: "Trend pauses with compressed volatility"
-    slot: confirmation
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q1_M02_S04
-    name: "Donchian break"
-    regime_id: Q1_M02
-    regime_logic: "Trend pauses with compressed volatility"
-    slot: fallback
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q2_M02_S01
-    name: "ATR expansion breakout"
-    regime_id: Q2_M02
-    regime_logic: "Compression then expansion in trend"
-    slot: primary
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q2_M02_S02
-    name: "stop-entry breakout"
-    regime_id: Q2_M02
-    regime_logic: "Compression then expansion in trend"
-    slot: secondary
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q2_M02_S03
-    name: "volatility-scaled momentum"
-    regime_id: Q2_M02
-    regime_logic: "Compression then expansion in trend"
-    slot: confirmation
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q2_M02_S04
-    name: "trail-only runner"
-    regime_id: Q2_M02
-    regime_logic: "Compression then expansion in trend"
-    slot: fallback
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q3_M02_S01
-    name: "range fade"
-    regime_id: Q3_M02
-    regime_logic: "Tight range and low volatility"
-    slot: primary
-    family: mean_reversion
-    status: not_tested
-    enabled: false
-  - id: Q3_M02_S02
-    name: "mean reversion"
-    regime_id: Q3_M02
-    regime_logic: "Tight range and low volatility"
-    slot: secondary
-    family: mean_reversion
-    status: not_tested
-    enabled: false
-  - id: Q3_M02_S03
-    name: "boundary scalp"
-    regime_id: Q3_M02
-    regime_logic: "Tight range and low volatility"
-    slot: confirmation
-    family: mean_reversion
-    status: not_tested
-    enabled: false
-  - id: Q3_M02_S04
-    name: "no trade until edge proven"
-    regime_id: Q3_M02
-    regime_logic: "Tight range and low volatility"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M02_S01
-    name: "wait"
-    regime_id: Q4_M02
-    regime_logic: "Compression with unstable signals"
-    slot: primary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M02_S02
-    name: "no trade"
-    regime_id: Q4_M02
-    regime_logic: "Compression with unstable signals"
-    slot: secondary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M02_S03
-    name: "alert only"
-    regime_id: Q4_M02
-    regime_logic: "Compression with unstable signals"
-    slot: confirmation
-    family: general
-    status: not_tested
-    enabled: false
-  - id: Q4_M02_S04
-    name: "classify after breakout"
-    regime_id: Q4_M02
-    regime_logic: "Compression with unstable signals"
-    slot: fallback
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q1_M03_S01
-    name: "small trend continuation"
-    regime_id: Q1_M03
-    regime_logic: "Slow trend during Asia"
-    slot: primary
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q1_M03_S02
-    name: "carry drift"
-    regime_id: Q1_M03
-    regime_logic: "Slow trend during Asia"
-    slot: secondary
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q1_M03_S03
-    name: "EMA pullback"
-    regime_id: Q1_M03
-    regime_logic: "Slow trend during Asia"
-    slot: confirmation
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q1_M03_S04
-    name: "no-trade if spread wide"
-    regime_id: Q1_M03
-    regime_logic: "Slow trend during Asia"
-    slot: fallback
-    family: general
-    status: not_tested
-    enabled: false
-  - id: Q2_M03_S01
-    name: "reduced-size momentum"
-    regime_id: Q2_M03
-    regime_logic: "High vol during Asia"
-    slot: primary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q2_M03_S02
-    name: "event-driven continuation"
-    regime_id: Q2_M03
-    regime_logic: "High vol during Asia"
-    slot: secondary
-    family: news
-    status: not_tested
-    enabled: false
-  - id: Q2_M03_S03
-    name: "no trade"
-    regime_id: Q2_M03
-    regime_logic: "High vol during Asia"
-    slot: confirmation
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q2_M03_S04
-    name: "trail existing only"
-    regime_id: Q2_M03
-    regime_logic: "High vol during Asia"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q3_M03_S01
-    name: "Asian range fade"
-    regime_id: Q3_M03
-    regime_logic: "Classic Asia range"
-    slot: primary
-    family: mean_reversion
-    status: not_tested
-    enabled: false
-  - id: Q3_M03_S02
-    name: "Bollinger fade"
-    regime_id: Q3_M03
-    regime_logic: "Classic Asia range"
-    slot: secondary
-    family: mean_reversion
-    status: not_tested
-    enabled: false
-  - id: Q3_M03_S03
-    name: "liquidity boundary fade"
-    regime_id: Q3_M03
-    regime_logic: "Classic Asia range"
-    slot: confirmation
-    family: mean_reversion
-    status: not_tested
-    enabled: false
-  - id: Q3_M03_S04
-    name: "time stop"
-    regime_id: Q3_M03
-    regime_logic: "Classic Asia range"
-    slot: fallback
-    family: general
-    status: not_tested
-    enabled: false
-  - id: Q4_M03_S01
-    name: "no trade"
-    regime_id: Q4_M03
-    regime_logic: "Thin liquidity or random movement"
-    slot: primary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M03_S02
-    name: "reduce risk"
-    regime_id: Q4_M03
-    regime_logic: "Thin liquidity or random movement"
-    slot: secondary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M03_S03
-    name: "wait for London"
-    regime_id: Q4_M03
-    regime_logic: "Thin liquidity or random movement"
-    slot: confirmation
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M03_S04
-    name: "close weak trades"
-    regime_id: Q4_M03
-    regime_logic: "Thin liquidity or random movement"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q1_M04_S01
-    name: "break-retest"
-    regime_id: Q1_M04
-    regime_logic: "Trend into London open"
-    slot: primary
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q1_M04_S02
-    name: "opening range continuation"
-    regime_id: Q1_M04
-    regime_logic: "Trend into London open"
-    slot: secondary
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q1_M04_S03
-    name: "EMA pullback"
-    regime_id: Q1_M04
-    regime_logic: "Trend into London open"
-    slot: confirmation
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q1_M04_S04
-    name: "sweep continuation"
-    regime_id: Q1_M04
-    regime_logic: "Trend into London open"
-    slot: fallback
-    family: liquidity
-    status: not_tested
-    enabled: false
-  - id: Q2_M04_S01
-    name: "opening range breakout"
-    regime_id: Q2_M04
-    regime_logic: "High-vol London expansion"
-    slot: primary
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q2_M04_S02
-    name: "ATR breakout"
-    regime_id: Q2_M04
-    regime_logic: "High-vol London expansion"
-    slot: secondary
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q2_M04_S03
-    name: "momentum impulse"
-    regime_id: Q2_M04
-    regime_logic: "High-vol London expansion"
-    slot: confirmation
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q2_M04_S04
-    name: "partial exits"
-    regime_id: Q2_M04
-    regime_logic: "High-vol London expansion"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q3_M04_S01
-    name: "Asia high/low sweep reversal"
-    regime_id: Q3_M04
-    regime_logic: "London tests Asia range but no trend"
-    slot: primary
-    family: liquidity
-    status: not_tested
-    enabled: false
-  - id: Q3_M04_S02
-    name: "failed breakout fade"
-    regime_id: Q3_M04
-    regime_logic: "London tests Asia range but no trend"
-    slot: secondary
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q3_M04_S03
-    name: "range expansion fade"
-    regime_id: Q3_M04
-    regime_logic: "London tests Asia range but no trend"
-    slot: confirmation
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q3_M04_S04
-    name: "wait-confirmation"
-    regime_id: Q3_M04
-    regime_logic: "London tests Asia range but no trend"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M04_S01
-    name: "wait"
-    regime_id: Q4_M04
-    regime_logic: "First 5-15 min noisy or spread unstable"
-    slot: primary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M04_S02
-    name: "no trade"
-    regime_id: Q4_M04
-    regime_logic: "First 5-15 min noisy or spread unstable"
-    slot: secondary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M04_S03
-    name: "observe sweep"
-    regime_id: Q4_M04
-    regime_logic: "First 5-15 min noisy or spread unstable"
-    slot: confirmation
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M04_S04
-    name: "trade only after confirmation"
-    regime_id: Q4_M04
-    regime_logic: "First 5-15 min noisy or spread unstable"
-    slot: fallback
-    family: general
-    status: not_tested
-    enabled: false
-  - id: Q1_M05_S01
-    name: "trend continuation"
-    regime_id: Q1_M05
-    regime_logic: "Trend with strong liquidity"
-    slot: primary
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q1_M05_S02
-    name: "pullback continuation"
-    regime_id: Q1_M05
-    regime_logic: "Trend with strong liquidity"
-    slot: secondary
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q1_M05_S03
-    name: "breakout retest"
-    regime_id: Q1_M05
-    regime_logic: "Trend with strong liquidity"
-    slot: confirmation
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q1_M05_S04
-    name: "pyramiding only if allowed"
-    regime_id: Q1_M05
-    regime_logic: "Trend with strong liquidity"
-    slot: fallback
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q2_M05_S01
-    name: "momentum breakout"
-    regime_id: Q2_M05
-    regime_logic: "Large directional volatility"
-    slot: primary
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q2_M05_S02
-    name: "ATR trailing"
-    regime_id: Q2_M05
-    regime_logic: "Large directional volatility"
-    slot: secondary
-    family: general
-    status: not_tested
-    enabled: false
-  - id: Q2_M05_S03
-    name: "volatility pullback"
-    regime_id: Q2_M05
-    regime_logic: "Large directional volatility"
-    slot: confirmation
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q2_M05_S04
-    name: "reduced position sizing"
-    regime_id: Q2_M05
-    regime_logic: "Large directional volatility"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q3_M05_S01
-    name: "range fade if no breakout"
-    regime_id: Q3_M05
-    regime_logic: "Range starts breaking or rejecting"
-    slot: primary
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q3_M05_S02
-    name: "failed breakout"
-    regime_id: Q3_M05
-    regime_logic: "Range starts breaking or rejecting"
-    slot: secondary
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q3_M05_S03
-    name: "session mean reversion"
-    regime_id: Q3_M05
-    regime_logic: "Range starts breaking or rejecting"
-    slot: confirmation
-    family: mean_reversion
-    status: not_tested
-    enabled: false
-  - id: Q3_M05_S04
-    name: "no trade if mixed"
-    regime_id: Q3_M05
-    regime_logic: "Range starts breaking or rejecting"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M05_S01
-    name: "no trade"
-    regime_id: Q4_M05
-    regime_logic: "News/event overlap confusion"
-    slot: primary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M05_S02
-    name: "close risk"
-    regime_id: Q4_M05
-    regime_logic: "News/event overlap confusion"
-    slot: secondary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M05_S03
-    name: "wait for spread normalization"
-    regime_id: Q4_M05
-    regime_logic: "News/event overlap confusion"
-    slot: confirmation
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M05_S04
-    name: "observe only"
-    regime_id: Q4_M05
-    regime_logic: "News/event overlap confusion"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q1_M06_S01
-    name: "trail existing"
-    regime_id: Q1_M06
-    regime_logic: "Existing trend late session"
-    slot: primary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q1_M06_S02
-    name: "no new entry"
-    regime_id: Q1_M06
-    regime_logic: "Existing trend late session"
-    slot: secondary
-    family: general
-    status: not_tested
-    enabled: false
-  - id: Q1_M06_S03
-    name: "time-based exit"
-    regime_id: Q1_M06
-    regime_logic: "Existing trend late session"
-    slot: confirmation
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q1_M06_S04
-    name: "small continuation only if tested"
-    regime_id: Q1_M06
-    regime_logic: "Existing trend late session"
-    slot: fallback
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q2_M06_S01
-    name: "no new entry"
-    regime_id: Q2_M06
-    regime_logic: "High vol late session"
-    slot: primary
-    family: general
-    status: not_tested
-    enabled: false
-  - id: Q2_M06_S02
-    name: "reduce risk"
-    regime_id: Q2_M06
-    regime_logic: "High vol late session"
-    slot: secondary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q2_M06_S03
-    name: "trail"
-    regime_id: Q2_M06
-    regime_logic: "High vol late session"
-    slot: confirmation
-    family: general
-    status: not_tested
-    enabled: false
-  - id: Q2_M06_S04
-    name: "close before rollover"
-    regime_id: Q2_M06
-    regime_logic: "High vol late session"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q3_M06_S01
-    name: "small mean reversion only if spread normal"
-    regime_id: Q3_M06
-    regime_logic: "Low-vol late range"
-    slot: primary
-    family: mean_reversion
-    status: not_tested
-    enabled: false
-  - id: Q3_M06_S02
-    name: "time exit"
-    regime_id: Q3_M06
-    regime_logic: "Low-vol late range"
-    slot: secondary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q3_M06_S03
-    name: "no trade"
-    regime_id: Q3_M06
-    regime_logic: "Low-vol late range"
-    slot: confirmation
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q3_M06_S04
-    name: "close weak trades"
-    regime_id: Q3_M06
-    regime_logic: "Low-vol late range"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M06_S01
-    name: "no trade"
-    regime_id: Q4_M06
-    regime_logic: "Rollover spread/liquidity stress"
-    slot: primary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M06_S02
-    name: "kill new orders"
-    regime_id: Q4_M06
-    regime_logic: "Rollover spread/liquidity stress"
-    slot: secondary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M06_S03
-    name: "close risky trades"
-    regime_id: Q4_M06
-    regime_logic: "Rollover spread/liquidity stress"
-    slot: confirmation
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M06_S04
-    name: "wait"
-    regime_id: Q4_M06
-    regime_logic: "Rollover spread/liquidity stress"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q1_M07_S01
-    name: "reduce size"
-    regime_id: Q1_M07
-    regime_logic: "Trend before major news"
-    slot: primary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q1_M07_S02
-    name: "no new trade"
-    regime_id: Q1_M07
-    regime_logic: "Trend before major news"
-    slot: secondary
-    family: general
-    status: not_tested
-    enabled: false
-  - id: Q1_M07_S03
-    name: "tighten/partial exit"
-    regime_id: Q1_M07
-    regime_logic: "Trend before major news"
-    slot: confirmation
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q1_M07_S04
-    name: "wait"
-    regime_id: Q1_M07
-    regime_logic: "Trend before major news"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q2_M07_S01
-    name: "no trade"
-    regime_id: Q2_M07
-    regime_logic: "Volatile trend before news"
-    slot: primary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q2_M07_S02
-    name: "reduce exposure"
-    regime_id: Q2_M07
-    regime_logic: "Volatile trend before news"
-    slot: secondary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q2_M07_S03
-    name: "close risky positions"
-    regime_id: Q2_M07
-    regime_logic: "Volatile trend before news"
-    slot: confirmation
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q2_M07_S04
-    name: "wait"
-    regime_id: Q2_M07
-    regime_logic: "Volatile trend before news"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q3_M07_S01
-    name: "no trade"
-    regime_id: Q3_M07
-    regime_logic: "Range before news"
-    slot: primary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q3_M07_S02
-    name: "cancel pending orders"
-    regime_id: Q3_M07
-    regime_logic: "Range before news"
-    slot: secondary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q3_M07_S03
-    name: "wait"
-    regime_id: Q3_M07
-    regime_logic: "Range before news"
-    slot: confirmation
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q3_M07_S04
-    name: "observe breakout levels"
-    regime_id: Q3_M07
-    regime_logic: "Range before news"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M07_S01
-    name: "hard no trade"
-    regime_id: Q4_M07
-    regime_logic: "Event risk dominant"
-    slot: primary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M07_S02
-    name: "news lock"
-    regime_id: Q4_M07
-    regime_logic: "Event risk dominant"
-    slot: secondary
-    family: news
-    status: not_tested
-    enabled: false
-  - id: Q4_M07_S03
-    name: "kill new orders"
-    regime_id: Q4_M07
-    regime_logic: "Event risk dominant"
-    slot: confirmation
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M07_S04
-    name: "exit if rules require"
-    regime_id: Q4_M07
-    regime_logic: "Event risk dominant"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q1_M08_S01
-    name: "continuation after retest"
-    regime_id: Q1_M08
-    regime_logic: "News confirms trend after spread normalizes"
-    slot: primary
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q1_M08_S02
-    name: "EMA pullback"
-    regime_id: Q1_M08
-    regime_logic: "News confirms trend after spread normalizes"
-    slot: secondary
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q1_M08_S03
-    name: "breakout continuation"
-    regime_id: Q1_M08
-    regime_logic: "News confirms trend after spread normalizes"
-    slot: confirmation
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q1_M08_S04
-    name: "reduced size"
-    regime_id: Q1_M08
-    regime_logic: "News confirms trend after spread normalizes"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q2_M08_S01
-    name: "momentum continuation"
-    regime_id: Q2_M08
-    regime_logic: "Strong news impulse"
-    slot: primary
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q2_M08_S02
-    name: "ATR breakout"
-    regime_id: Q2_M08
-    regime_logic: "Strong news impulse"
-    slot: secondary
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q2_M08_S03
-    name: "trailing runner"
-    regime_id: Q2_M08
-    regime_logic: "Strong news impulse"
-    slot: confirmation
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q2_M08_S04
-    name: "reduced size"
-    regime_id: Q2_M08
-    regime_logic: "Strong news impulse"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q3_M08_S01
-    name: "fade only after volatility normalizes"
-    regime_id: Q3_M08
-    regime_logic: "News spike returns to range"
-    slot: primary
-    family: mean_reversion
-    status: not_tested
-    enabled: false
-  - id: Q3_M08_S02
-    name: "failed breakout fade"
-    regime_id: Q3_M08
-    regime_logic: "News spike returns to range"
-    slot: secondary
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q3_M08_S03
-    name: "z-score mean reversion"
-    regime_id: Q3_M08
-    regime_logic: "News spike returns to range"
-    slot: confirmation
-    family: mean_reversion
-    status: not_tested
-    enabled: false
-  - id: Q3_M08_S04
-    name: "wait"
-    regime_id: Q3_M08
-    regime_logic: "News spike returns to range"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M08_S01
-    name: "no trade"
-    regime_id: Q4_M08
-    regime_logic: "Spread/jump still unstable"
-    slot: primary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M08_S02
-    name: "wait for normalization"
-    regime_id: Q4_M08
-    regime_logic: "Spread/jump still unstable"
-    slot: secondary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M08_S03
-    name: "observe only"
-    regime_id: Q4_M08
-    regime_logic: "Spread/jump still unstable"
-    slot: confirmation
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M08_S04
-    name: "kill new orders"
-    regime_id: Q4_M08
-    regime_logic: "Spread/jump still unstable"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q1_M09_S01
-    name: "sweep pullback entry"
-    regime_id: Q1_M09
-    regime_logic: "Sweep against trend then continuation"
-    slot: primary
-    family: liquidity
-    status: not_tested
-    enabled: false
-  - id: Q1_M09_S02
-    name: "break-retest"
-    regime_id: Q1_M09
-    regime_logic: "Sweep against trend then continuation"
-    slot: secondary
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q1_M09_S03
-    name: "trend continuation"
-    regime_id: Q1_M09
-    regime_logic: "Sweep against trend then continuation"
-    slot: confirmation
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q1_M09_S04
-    name: "stop below sweep"
-    regime_id: Q1_M09
-    regime_logic: "Sweep against trend then continuation"
-    slot: fallback
-    family: liquidity
-    status: not_tested
-    enabled: false
-  - id: Q2_M09_S01
-    name: "sweep continuation"
-    regime_id: Q2_M09
-    regime_logic: "Sweep then high-vol impulse"
-    slot: primary
-    family: liquidity
-    status: not_tested
-    enabled: false
-  - id: Q2_M09_S02
-    name: "ATR momentum"
-    regime_id: Q2_M09
-    regime_logic: "Sweep then high-vol impulse"
-    slot: secondary
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q2_M09_S03
-    name: "reduced size"
-    regime_id: Q2_M09
-    regime_logic: "Sweep then high-vol impulse"
-    slot: confirmation
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q2_M09_S04
-    name: "fast partials"
-    regime_id: Q2_M09
-    regime_logic: "Sweep then high-vol impulse"
-    slot: fallback
-    family: general
-    status: not_tested
-    enabled: false
-  - id: Q3_M09_S01
-    name: "sweep reversal"
-    regime_id: Q3_M09
-    regime_logic: "Sweep at range edge"
-    slot: primary
-    family: liquidity
-    status: not_tested
-    enabled: false
-  - id: Q3_M09_S02
-    name: "failed breakout fade"
-    regime_id: Q3_M09
-    regime_logic: "Sweep at range edge"
-    slot: secondary
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q3_M09_S03
-    name: "Bollinger fade"
-    regime_id: Q3_M09
-    regime_logic: "Sweep at range edge"
-    slot: confirmation
-    family: mean_reversion
-    status: not_tested
-    enabled: false
-  - id: Q3_M09_S04
-    name: "range target"
-    regime_id: Q3_M09
-    regime_logic: "Sweep at range edge"
-    slot: fallback
-    family: mean_reversion
-    status: not_tested
-    enabled: false
-  - id: Q4_M09_S01
-    name: "wait"
-    regime_id: Q4_M09
-    regime_logic: "Sweep without confirmation or bad spread"
-    slot: primary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M09_S02
-    name: "no trade"
-    regime_id: Q4_M09
-    regime_logic: "Sweep without confirmation or bad spread"
-    slot: secondary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M09_S03
-    name: "require next-bar confirmation"
-    regime_id: Q4_M09
-    regime_logic: "Sweep without confirmation or bad spread"
-    slot: confirmation
-    family: general
-    status: not_tested
-    enabled: false
-  - id: Q4_M09_S04
-    name: "observe only"
-    regime_id: Q4_M09
-    regime_logic: "Sweep without confirmation or bad spread"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q1_M10_S01
-    name: "no new trade"
-    regime_id: Q1_M10
-    regime_logic: "Trend but execution cost high"
-    slot: primary
-    family: general
-    status: not_tested
-    enabled: false
-  - id: Q1_M10_S02
-    name: "reduce size"
-    regime_id: Q1_M10
-    regime_logic: "Trend but execution cost high"
-    slot: secondary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q1_M10_S03
-    name: "wait for spread normal"
-    regime_id: Q1_M10
-    regime_logic: "Trend but execution cost high"
-    slot: confirmation
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q1_M10_S04
-    name: "trail existing"
-    regime_id: Q1_M10
-    regime_logic: "Trend but execution cost high"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q2_M10_S01
-    name: "no trade"
-    regime_id: Q2_M10
-    regime_logic: "High volatility and high spread"
-    slot: primary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q2_M10_S02
-    name: "kill new orders"
-    regime_id: Q2_M10
-    regime_logic: "High volatility and high spread"
-    slot: secondary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q2_M10_S03
-    name: "close by rules"
-    regime_id: Q2_M10
-    regime_logic: "High volatility and high spread"
-    slot: confirmation
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q2_M10_S04
-    name: "wait"
-    regime_id: Q2_M10
-    regime_logic: "High volatility and high spread"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q3_M10_S01
-    name: "no trade"
-    regime_id: Q3_M10
-    regime_logic: "Range but spread ruins edge"
-    slot: primary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q3_M10_S02
-    name: "skip scalps"
-    regime_id: Q3_M10
-    regime_logic: "Range but spread ruins edge"
-    slot: secondary
-    family: general
-    status: not_tested
-    enabled: false
-  - id: Q3_M10_S03
-    name: "wait"
-    regime_id: Q3_M10
-    regime_logic: "Range but spread ruins edge"
-    slot: confirmation
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q3_M10_S04
-    name: "observe only"
-    regime_id: Q3_M10
-    regime_logic: "Range but spread ruins edge"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M10_S01
-    name: "kill switch candidate"
-    regime_id: Q4_M10
-    regime_logic: "Cost/liquidity stress dominant"
-    slot: primary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M10_S02
-    name: "no trade"
-    regime_id: Q4_M10
-    regime_logic: "Cost/liquidity stress dominant"
-    slot: secondary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M10_S03
-    name: "data warning"
-    regime_id: Q4_M10
-    regime_logic: "Cost/liquidity stress dominant"
-    slot: confirmation
-    family: general
-    status: not_tested
-    enabled: false
-  - id: Q4_M10_S04
-    name: "broker warning"
-    regime_id: Q4_M10
-    regime_logic: "Cost/liquidity stress dominant"
-    slot: fallback
-    family: general
-    status: not_tested
-    enabled: false
-  - id: Q1_M11_S01
-    name: "smaller pullback"
-    regime_id: Q1_M11
-    regime_logic: "Trend mature but controlled"
-    slot: primary
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q1_M11_S02
-    name: "trail"
-    regime_id: Q1_M11
-    regime_logic: "Trend mature but controlled"
-    slot: secondary
-    family: general
-    status: not_tested
-    enabled: false
-  - id: Q1_M11_S03
-    name: "partial exit"
-    regime_id: Q1_M11
-    regime_logic: "Trend mature but controlled"
-    slot: confirmation
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q1_M11_S04
-    name: "no fresh breakout chase"
-    regime_id: Q1_M11
-    regime_logic: "Trend mature but controlled"
-    slot: fallback
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q2_M11_S01
-    name: "trailing stop"
-    regime_id: Q2_M11
-    regime_logic: "Volatile exhaustion"
-    slot: primary
-    family: general
-    status: not_tested
-    enabled: false
-  - id: Q2_M11_S02
-    name: "reversal only after confirmation"
-    regime_id: Q2_M11
-    regime_logic: "Volatile exhaustion"
-    slot: secondary
-    family: general
-    status: not_tested
-    enabled: false
-  - id: Q2_M11_S03
-    name: "no chase"
-    regime_id: Q2_M11
-    regime_logic: "Volatile exhaustion"
-    slot: confirmation
-    family: general
-    status: not_tested
-    enabled: false
-  - id: Q2_M11_S04
-    name: "reduce size"
-    regime_id: Q2_M11
-    regime_logic: "Volatile exhaustion"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q3_M11_S01
-    name: "mean reversion"
-    regime_id: Q3_M11
-    regime_logic: "Exhaustion into range"
-    slot: primary
-    family: mean_reversion
-    status: not_tested
-    enabled: false
-  - id: Q3_M11_S02
-    name: "range fade"
-    regime_id: Q3_M11
-    regime_logic: "Exhaustion into range"
-    slot: secondary
-    family: mean_reversion
-    status: not_tested
-    enabled: false
-  - id: Q3_M11_S03
-    name: "divergence fade if tested"
-    regime_id: Q3_M11
-    regime_logic: "Exhaustion into range"
-    slot: confirmation
-    family: mean_reversion
-    status: not_tested
-    enabled: false
-  - id: Q3_M11_S04
-    name: "time stop"
-    regime_id: Q3_M11
-    regime_logic: "Exhaustion into range"
-    slot: fallback
-    family: general
-    status: not_tested
-    enabled: false
-  - id: Q4_M11_S01
-    name: "no trade"
-    regime_id: Q4_M11
-    regime_logic: "Exhaustion plus instability"
-    slot: primary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M11_S02
-    name: "wait"
-    regime_id: Q4_M11
-    regime_logic: "Exhaustion plus instability"
-    slot: secondary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M11_S03
-    name: "protect profits"
-    regime_id: Q4_M11
-    regime_logic: "Exhaustion plus instability"
-    slot: confirmation
-    family: general
-    status: not_tested
-    enabled: false
-  - id: Q4_M11_S04
-    name: "reclassify"
-    regime_id: Q4_M11
-    regime_logic: "Exhaustion plus instability"
-    slot: fallback
-    family: general
-    status: not_tested
-    enabled: false
-  - id: Q1_M12_S01
-    name: "full trend continuation"
-    regime_id: Q1_M12
-    regime_logic: "Higher and lower timeframe trend agree"
-    slot: primary
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q1_M12_S02
-    name: "pullback"
-    regime_id: Q1_M12
-    regime_logic: "Higher and lower timeframe trend agree"
-    slot: secondary
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q1_M12_S03
-    name: "break-retest"
-    regime_id: Q1_M12
-    regime_logic: "Higher and lower timeframe trend agree"
-    slot: confirmation
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q1_M12_S04
-    name: "time-series momentum"
-    regime_id: Q1_M12
-    regime_logic: "Higher and lower timeframe trend agree"
-    slot: fallback
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q2_M12_S01
-    name: "ATR breakout"
-    regime_id: Q2_M12
-    regime_logic: "Multi-timeframe trend plus high vol"
-    slot: primary
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q2_M12_S02
-    name: "reduced-size momentum"
-    regime_id: Q2_M12
-    regime_logic: "Multi-timeframe trend plus high vol"
-    slot: secondary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q2_M12_S03
-    name: "trailing runner"
-    regime_id: Q2_M12
-    regime_logic: "Multi-timeframe trend plus high vol"
-    slot: confirmation
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q2_M12_S04
-    name: "volatility pullback"
-    regime_id: Q2_M12
-    regime_logic: "Multi-timeframe trend plus high vol"
-    slot: fallback
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q3_M12_S01
-    name: "range fade"
-    regime_id: Q3_M12
-    regime_logic: "Multiple timeframes range-bound"
-    slot: primary
-    family: mean_reversion
-    status: not_tested
-    enabled: false
-  - id: Q3_M12_S02
-    name: "mean reversion"
-    regime_id: Q3_M12
-    regime_logic: "Multiple timeframes range-bound"
-    slot: secondary
-    family: mean_reversion
-    status: not_tested
-    enabled: false
-  - id: Q3_M12_S03
-    name: "boundary reversal"
-    regime_id: Q3_M12
-    regime_logic: "Multiple timeframes range-bound"
-    slot: confirmation
-    family: mean_reversion
-    status: not_tested
-    enabled: false
-  - id: Q3_M12_S04
-    name: "smaller targets"
-    regime_id: Q3_M12
-    regime_logic: "Multiple timeframes range-bound"
-    slot: fallback
-    family: general
-    status: not_tested
-    enabled: false
-  - id: Q4_M12_S01
-    name: "no trade"
-    regime_id: Q4_M12
-    regime_logic: "Timeframes conflict"
-    slot: primary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M12_S02
-    name: "wait for alignment"
-    regime_id: Q4_M12
-    regime_logic: "Timeframes conflict"
-    slot: secondary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M12_S03
-    name: "reduce risk"
-    regime_id: Q4_M12
-    regime_logic: "Timeframes conflict"
-    slot: confirmation
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M12_S04
-    name: "observe only"
-    regime_id: Q4_M12
-    regime_logic: "Timeframes conflict"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q1_M13_S01
-    name: "USD-aligned continuation"
-    regime_id: Q1_M13
-    regime_logic: "Trend aligns with USD/macro flow"
-    slot: primary
-    family: macro_correlation
-    status: not_tested
-    enabled: false
-  - id: Q1_M13_S02
-    name: "pullback"
-    regime_id: Q1_M13
-    regime_logic: "Trend aligns with USD/macro flow"
-    slot: secondary
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q1_M13_S03
-    name: "basket-confirmed breakout"
-    regime_id: Q1_M13
-    regime_logic: "Trend aligns with USD/macro flow"
-    slot: confirmation
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q1_M13_S04
-    name: "reduced correlated exposure"
-    regime_id: Q1_M13
-    regime_logic: "Trend aligns with USD/macro flow"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q2_M13_S01
-    name: "momentum continuation"
-    regime_id: Q2_M13
-    regime_logic: "Strong USD shock or risk-off trend"
-    slot: primary
-    family: trend_momentum
-    status: not_tested
-    enabled: false
-  - id: Q2_M13_S02
-    name: "ATR breakout"
-    regime_id: Q2_M13
-    regime_logic: "Strong USD shock or risk-off trend"
-    slot: secondary
-    family: breakout
-    status: not_tested
-    enabled: false
-  - id: Q2_M13_S03
-    name: "reduced basket risk"
-    regime_id: Q2_M13
-    regime_logic: "Strong USD shock or risk-off trend"
-    slot: confirmation
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q2_M13_S04
-    name: "trail"
-    regime_id: Q2_M13
-    regime_logic: "Strong USD shock or risk-off trend"
-    slot: fallback
-    family: general
-    status: not_tested
-    enabled: false
-  - id: Q3_M13_S01
-    name: "pair-neutral mean reversion"
-    regime_id: Q3_M13
-    regime_logic: "Range but cross-pair correlation abnormal"
-    slot: primary
-    family: mean_reversion
-    status: not_tested
-    enabled: false
-  - id: Q3_M13_S02
-    name: "reduce exposure"
-    regime_id: Q3_M13
-    regime_logic: "Range but cross-pair correlation abnormal"
-    slot: secondary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q3_M13_S03
-    name: "no trade if basket risk high"
-    regime_id: Q3_M13
-    regime_logic: "Range but cross-pair correlation abnormal"
-    slot: confirmation
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q3_M13_S04
-    name: "observe"
-    regime_id: Q3_M13
-    regime_logic: "Range but cross-pair correlation abnormal"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M13_S01
-    name: "no trade"
-    regime_id: Q4_M13
-    regime_logic: "Correlation shock unstable"
-    slot: primary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M13_S02
-    name: "close correlated risk"
-    regime_id: Q4_M13
-    regime_logic: "Correlation shock unstable"
-    slot: secondary
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M13_S03
-    name: "kill new basket trades"
-    regime_id: Q4_M13
-    regime_logic: "Correlation shock unstable"
-    slot: confirmation
-    family: defensive
-    status: not_tested
-    enabled: false
-  - id: Q4_M13_S04
-    name: "wait"
-    regime_id: Q4_M13
-    regime_logic: "Correlation shock unstable"
-    slot: fallback
-    family: defensive
-    status: not_tested
-    enabled: false
+- id: Q1_M01_S01
+  regime_id: Q1_M01
+  slot: primary
+  signal_fn: S01_ema_pullback
+  name: Trend Base — EMA Pullback (Primary)
+  win_rate_low: 0.55
+  win_rate_high: 0.62
+  rrr: 2.5
+  ev: 0.73
+  evidence: '[A Menkhoff2012][P]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  regime_logic: Trend, low vol, clean spread
+- id: Q1_M01_S02
+  regime_id: Q1_M01
+  slot: secondary
+  signal_fn: S02_donchian
+  name: Trend Base — Donchian Continuation
+  win_rate_low: 0.52
+  win_rate_high: 0.58
+  rrr: 3.0
+  ev: 0.77
+  evidence: '[P][Q AQR]'
+  family: breakout
+  enabled: false
+  status: not_tested
+  regime_logic: Trend, low vol, clean spread
+- id: Q1_M01_S03
+  regime_id: Q1_M01
+  slot: confirmation
+  signal_fn: S01_ema_pullback
+  name: Trend Base — Break-Retest
+  win_rate_low: 0.52
+  win_rate_high: 0.58
+  rrr: 2.0
+  ev: 0.5
+  evidence: '[P universal]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  regime_logic: Trend, low vol, clean spread
+- id: Q1_M01_S04
+  regime_id: Q1_M01
+  slot: fallback
+  signal_fn: S02_donchian
+  name: Trend Base — Time-Series Momentum
+  win_rate_low: 0.55
+  win_rate_high: 0.6
+  rrr: 3.0
+  ev: 0.8
+  evidence: '[A Jegadeesh1993][A Menkhoff2012]'
+  family: breakout
+  enabled: false
+  status: not_tested
+  regime_logic: Trend, low vol, clean spread
+- id: Q2_M01_S01
+  regime_id: Q2_M01
+  slot: primary
+  signal_fn: S01_ema_pullback
+  name: Trend High Vol Base — ATR Breakout
+  win_rate_low: 0.52
+  win_rate_high: 0.58
+  rrr: 2.0
+  ev: 0.5
+  evidence: '[A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Trend, high vol, clean spread
+- id: Q2_M01_S02
+  regime_id: Q2_M01
+  slot: secondary
+  signal_fn: S02_donchian
+  name: Trend High Vol Base — Donchian Continuation
+  win_rate_low: 0.48000000000000004
+  win_rate_high: 0.5399999999999999
+  rrr: 2.75
+  ev: 0.708
+  evidence: '[P][Q AQR] [A][P] 0.5x size'
+  family: breakout
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Trend, high vol, clean spread
+- id: Q2_M01_S03
+  regime_id: Q2_M01
+  slot: confirmation
+  signal_fn: S01_ema_pullback
+  name: Trend High Vol Base — Break-Retest
+  win_rate_low: 0.48000000000000004
+  win_rate_high: 0.5399999999999999
+  rrr: 1.75
+  ev: 0.46
+  evidence: '[P universal] [A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Trend, high vol, clean spread
+- id: Q2_M01_S04
+  regime_id: Q2_M01
+  slot: fallback
+  signal_fn: S02_donchian
+  name: Trend High Vol Base — Time-Series Momentum
+  win_rate_low: 0.51
+  win_rate_high: 0.5599999999999999
+  rrr: 2.75
+  ev: 0.736
+  evidence: '[A Jegadeesh1993][A Menkhoff2012] [A][P] 0.5x size'
+  family: breakout
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Trend, high vol, clean spread
+- id: Q3_M01_S01
+  regime_id: Q3_M01
+  slot: primary
+  signal_fn: S03_bb_fade
+  name: Range Base — Bollinger Fade
+  win_rate_low: 0.63
+  win_rate_high: 0.7
+  rrr: 1.8
+  ev: 0.82
+  evidence: '[A Poterba1988][P BB 2SD]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  regime_logic: Range, low vol, clean spread
+- id: Q3_M01_S02
+  regime_id: Q3_M01
+  slot: secondary
+  signal_fn: S03_bb_fade
+  name: Range Base — RSI Range Fade
+  win_rate_low: 0.6
+  win_rate_high: 0.67
+  rrr: 1.8
+  ev: 0.74
+  evidence: '[P]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  regime_logic: Range, low vol, clean spread
+- id: Q3_M01_S03
+  regime_id: Q3_M01
+  slot: confirmation
+  signal_fn: S03_bb_fade
+  name: Range Base — S/R Fade
+  win_rate_low: 0.57
+  win_rate_high: 0.63
+  rrr: 1.8
+  ev: 0.67
+  evidence: '[P]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  regime_logic: Range, low vol, clean spread
+- id: Q3_M01_S04
+  regime_id: Q3_M01
+  slot: fallback
+  signal_fn: S03_bb_fade
+  name: Range Base — VWAP Mean Fade
+  win_rate_low: 0.55
+  win_rate_high: 0.62
+  rrr: 1.5
+  ev: 0.55
+  evidence: '[P]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  regime_logic: Range, low vol, clean spread
+- id: Q4_M01_S01
+  regime_id: Q4_M01
+  slot: primary
+  signal_fn: S08_no_trade
+  name: Defensive — No Trade (Ambiguous)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[Q AQR][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: ADX 15-25 transition. Regime uncertainty = reduce/skip.
+  regime_logic: Clean but unclear structure
+- id: Q4_M01_S02
+  regime_id: Q4_M01
+  slot: secondary
+  signal_fn: S08_no_trade
+  name: Defensive — Observe / No New (M01)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[Q AQR][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Observe structure only; no new risk.
+  regime_logic: Clean but unclear structure
+- id: Q4_M01_S03
+  regime_id: Q4_M01
+  slot: confirmation
+  signal_fn: S08_no_trade
+  name: Defensive — Capital preservation (M01)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[Q AQR][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Wait for Q1–Q3 clarity before sizing.
+  regime_logic: Clean but unclear structure
+- id: Q4_M01_S04
+  regime_id: Q4_M01
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Defensive — Flat is valid (M01)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[Q AQR][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Wrong trade in Q4 costs real money — flat is valid.
+  regime_logic: Clean but unclear structure
+- id: Q1_M02_S01
+  regime_id: Q1_M02
+  slot: primary
+  signal_fn: S01_ema_pullback
+  name: Trend Squeeze — Continuation After Squeeze
+  win_rate_low: 0.58
+  win_rate_high: 0.64
+  rrr: 3.0
+  ev: 1.07
+  evidence: '[P][A GARCH vol clustering]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  regime_logic: Trend pauses with compressed volatility
+- id: Q1_M02_S02
+  regime_id: Q1_M02
+  slot: secondary
+  signal_fn: S01_ema_pullback
+  name: Trend Squeeze — EMA Pullback
+  win_rate_low: 0.55
+  win_rate_high: 0.6
+  rrr: 2.5
+  ev: 0.8
+  evidence: '[P]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  regime_logic: Trend pauses with compressed volatility
+- id: Q1_M02_S03
+  regime_id: Q1_M02
+  slot: confirmation
+  signal_fn: S01_ema_pullback
+  name: Trend Squeeze — Inside Bar Break
+  win_rate_low: 0.52
+  win_rate_high: 0.57
+  rrr: 2.5
+  ev: 0.68
+  evidence: '[P]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  regime_logic: Trend pauses with compressed volatility
+- id: Q1_M02_S04
+  regime_id: Q1_M02
+  slot: fallback
+  signal_fn: S02_donchian
+  name: Trend Squeeze — Donchian Break
+  win_rate_low: 0.52
+  win_rate_high: 0.58
+  rrr: 3.0
+  ev: 0.77
+  evidence: '[P][Q]'
+  family: breakout
+  enabled: false
+  status: not_tested
+  regime_logic: Trend pauses with compressed volatility
+- id: Q2_M02_S01
+  regime_id: Q2_M02
+  slot: primary
+  signal_fn: S01_ema_pullback
+  name: Trend High Vol Squeeze — Continuation After Squeeze
+  win_rate_low: 0.5399999999999999
+  win_rate_high: 0.6
+  rrr: 2.75
+  ev: 0.984
+  evidence: '[P][A GARCH vol clustering] [A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Compression then expansion in trend
+- id: Q2_M02_S02
+  regime_id: Q2_M02
+  slot: secondary
+  signal_fn: S01_ema_pullback
+  name: Trend High Vol Squeeze — EMA Pullback
+  win_rate_low: 0.51
+  win_rate_high: 0.5599999999999999
+  rrr: 2.25
+  ev: 0.736
+  evidence: '[P] [A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Compression then expansion in trend
+- id: Q2_M02_S03
+  regime_id: Q2_M02
+  slot: confirmation
+  signal_fn: S01_ema_pullback
+  name: Trend High Vol Squeeze — Inside Bar Break
+  win_rate_low: 0.48000000000000004
+  win_rate_high: 0.5299999999999999
+  rrr: 2.25
+  ev: 0.626
+  evidence: '[P] [A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Compression then expansion in trend
+- id: Q2_M02_S04
+  regime_id: Q2_M02
+  slot: fallback
+  signal_fn: S02_donchian
+  name: Trend High Vol Squeeze — Donchian Break
+  win_rate_low: 0.48000000000000004
+  win_rate_high: 0.5399999999999999
+  rrr: 2.75
+  ev: 0.708
+  evidence: '[P][Q] [A][P] 0.5x size'
+  family: breakout
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Compression then expansion in trend
+- id: Q3_M02_S01
+  regime_id: Q3_M02
+  slot: primary
+  signal_fn: S03_bb_fade
+  name: Range Compression — Post-Squeeze Mean Reversion
+  win_rate_low: 0.61
+  win_rate_high: 0.67
+  rrr: 1.8
+  ev: 0.76
+  evidence: '[P][A vol clustering]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  regime_logic: Tight range and low volatility
+- id: Q3_M02_S02
+  regime_id: Q3_M02
+  slot: secondary
+  signal_fn: S06_failed_bo_fade
+  name: Range Compression — Failed Range Break
+  win_rate_low: 0.58
+  win_rate_high: 0.65
+  rrr: 2.0
+  ev: 0.7
+  evidence: '[P]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  regime_logic: Tight range and low volatility
+- id: Q3_M02_S03
+  regime_id: Q3_M02
+  slot: confirmation
+  signal_fn: S03_bb_fade
+  name: Range Compression — Inner Range Fade
+  win_rate_low: 0.56
+  win_rate_high: 0.62
+  rrr: 1.8
+  ev: 0.62
+  evidence: '[P]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  regime_logic: Tight range and low volatility
+- id: Q3_M02_S04
+  regime_id: Q3_M02
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Range Compression — Wait Expansion Clear
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Tight range and low volatility
+- id: Q4_M02_S01
+  regime_id: Q4_M02
+  slot: primary
+  signal_fn: S08_no_trade
+  name: Defensive — No Trade (Compression Noise)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Compressed tape without clean expansion — skip new entries.
+  regime_logic: Compression with unstable signals
+- id: Q4_M02_S02
+  regime_id: Q4_M02
+  slot: secondary
+  signal_fn: S08_no_trade
+  name: Defensive — Observe / No New (M02)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Avoid breakout lottery ahead of vol event.
+  regime_logic: Compression with unstable signals
+- id: Q4_M02_S03
+  regime_id: Q4_M02
+  slot: confirmation
+  signal_fn: S08_no_trade
+  name: Defensive — Capital preservation (M02)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Stand down until range boundaries confirm.
+  regime_logic: Compression with unstable signals
+- id: Q4_M02_S04
+  regime_id: Q4_M02
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Defensive — Flat is valid (M02)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Missing a trade costs zero.
+  regime_logic: Compression with unstable signals
+- id: Q1_M03_S01
+  regime_id: Q1_M03
+  slot: primary
+  signal_fn: S07_carry_drift
+  name: Trend Asia — Carry Drift
+  win_rate_low: 0.48
+  win_rate_high: 0.54
+  rrr: 2.0
+  ev: 0.46
+  evidence: '[A Burnside2011][P]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Slow trend during Asia
+- id: Q1_M03_S02
+  regime_id: Q1_M03
+  slot: secondary
+  signal_fn: S07_carry_drift
+  name: Trend Asia — EMA Pullback (Reduced)
+  win_rate_low: 0.48
+  win_rate_high: 0.54
+  rrr: 2.0
+  ev: 0.46
+  evidence: '[P]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Slow trend during Asia
+- id: Q1_M03_S03
+  regime_id: Q1_M03
+  slot: confirmation
+  signal_fn: S07_carry_drift
+  name: Trend Asia — EMA Pullback Half Size
+  win_rate_low: 0.48
+  win_rate_high: 0.52
+  rrr: 2.0
+  ev: 0.4
+  evidence: '[P]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Slow trend during Asia
+- id: Q1_M03_S04
+  regime_id: Q1_M03
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Trend Asia — No Trade (Spread Wide)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Slow trend during Asia
+- id: Q2_M03_S01
+  regime_id: Q2_M03
+  slot: primary
+  signal_fn: S07_carry_drift
+  name: Trend High Vol Asia — Carry Drift
+  win_rate_low: 0.44
+  win_rate_high: 0.5
+  rrr: 1.75
+  ev: 0.423
+  evidence: '[A Burnside2011][P] [A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: High vol during Asia
+- id: Q2_M03_S02
+  regime_id: Q2_M03
+  slot: secondary
+  signal_fn: S07_carry_drift
+  name: Trend High Vol Asia — EMA Pullback (Reduced)
+  win_rate_low: 0.44
+  win_rate_high: 0.5
+  rrr: 1.75
+  ev: 0.423
+  evidence: '[P] [A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: High vol during Asia
+- id: Q2_M03_S03
+  regime_id: Q2_M03
+  slot: confirmation
+  signal_fn: S07_carry_drift
+  name: Trend High Vol Asia — EMA Pullback Half Size
+  win_rate_low: 0.44
+  win_rate_high: 0.48000000000000004
+  rrr: 1.75
+  ev: 0.368
+  evidence: '[P] [A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: High vol during Asia
+- id: Q2_M03_S04
+  regime_id: Q2_M03
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Trend High Vol Asia — No Trade (Spread Wide)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P] [A][P] 0.5x size'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: High vol during Asia
+- id: Q3_M03_S01
+  regime_id: Q3_M03
+  slot: primary
+  signal_fn: S03_bb_fade
+  name: Range Asia — Session Mean Fade
+  win_rate_low: 0.58
+  win_rate_high: 0.64
+  rrr: 1.8
+  ev: 0.68
+  evidence: '[P]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Classic Asia range
+- id: Q3_M03_S02
+  regime_id: Q3_M03
+  slot: secondary
+  signal_fn: S03_bb_fade
+  name: Range Asia — Tight Range Scalp
+  win_rate_low: 0.55
+  win_rate_high: 0.62
+  rrr: 1.5
+  ev: 0.58
+  evidence: '[P]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Classic Asia range
+- id: Q3_M03_S03
+  regime_id: Q3_M03
+  slot: confirmation
+  signal_fn: S07_carry_drift
+  name: Range Asia — Drift Fade
+  win_rate_low: 0.52
+  win_rate_high: 0.58
+  rrr: 1.8
+  ev: 0.52
+  evidence: '[P]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Classic Asia range
+- id: Q3_M03_S04
+  regime_id: Q3_M03
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Range Asia — Spread Watch
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Classic Asia range
+- id: Q4_M03_S01
+  regime_id: Q4_M03
+  slot: primary
+  signal_fn: S08_no_trade
+  name: Defensive — No Trade (Asia Thin)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Illiquid drift; fade edge poor after costs.
+  regime_logic: Thin liquidity or random movement
+- id: Q4_M03_S02
+  regime_id: Q4_M03
+  slot: secondary
+  signal_fn: S08_no_trade
+  name: Defensive — Observe / No New (M03)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: No chase through wide spreads.
+  regime_logic: Thin liquidity or random movement
+- id: Q4_M03_S03
+  regime_id: Q4_M03
+  slot: confirmation
+  signal_fn: S08_no_trade
+  name: Defensive — Capital preservation (M03)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Protect capital over session transition.
+  regime_logic: Thin liquidity or random movement
+- id: Q4_M03_S04
+  regime_id: Q4_M03
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Defensive — Flat is valid (M03)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Wait for London/NY liquidity.
+  regime_logic: Thin liquidity or random movement
+- id: Q1_M04_S01
+  regime_id: Q1_M04
+  slot: primary
+  signal_fn: S01_ema_pullback
+  name: Trend London Kill Zone — EMA Pullback
+  win_rate_low: 0.6
+  win_rate_high: 0.65
+  rrr: 2.5
+  ev: 0.85
+  evidence: '[P][I kill_zone]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  regime_logic: Trend into London open
+- id: Q1_M04_S02
+  regime_id: Q1_M04
+  slot: secondary
+  signal_fn: S01_ema_pullback
+  name: Trend London Kill Zone — Opening Range Break
+  win_rate_low: 0.55
+  win_rate_high: 0.62
+  rrr: 2.0
+  ev: 0.73
+  evidence: '[P]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  regime_logic: Trend into London open
+- id: Q1_M04_S03
+  regime_id: Q1_M04
+  slot: confirmation
+  signal_fn: S01_ema_pullback
+  name: Trend London Kill Zone — EMA Retest
+  win_rate_low: 0.55
+  win_rate_high: 0.62
+  rrr: 2.5
+  ev: 0.8
+  evidence: '[P]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  regime_logic: Trend into London open
+- id: Q1_M04_S04
+  regime_id: Q1_M04
+  slot: fallback
+  signal_fn: S04_asian_sweep
+  name: Trend London Kill Zone — Sweep Continuation
+  win_rate_low: 0.6
+  win_rate_high: 0.65
+  rrr: 3.0
+  ev: 1.15
+  evidence: '[P][I]'
+  family: liquidity
+  enabled: false
+  status: not_tested
+  regime_logic: Trend into London open
+- id: Q2_M04_S01
+  regime_id: Q2_M04
+  slot: primary
+  signal_fn: S01_ema_pullback
+  name: Trend High Vol London Kill Zone — EMA Pullback
+  win_rate_low: 0.55
+  win_rate_high: 0.62
+  rrr: 2.5
+  ev: 0.8
+  evidence: '[P][I] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: High-vol London expansion
+- id: Q2_M04_S02
+  regime_id: Q2_M04
+  slot: secondary
+  signal_fn: S01_ema_pullback
+  name: Trend High Vol London Kill Zone — Opening Range Break
+  win_rate_low: 0.51
+  win_rate_high: 0.58
+  rrr: 1.75
+  ev: 0.672
+  evidence: '[P] [A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: High-vol London expansion
+- id: Q2_M04_S03
+  regime_id: Q2_M04
+  slot: confirmation
+  signal_fn: S01_ema_pullback
+  name: Trend High Vol London Kill Zone — EMA Retest
+  win_rate_low: 0.51
+  win_rate_high: 0.58
+  rrr: 2.25
+  ev: 0.736
+  evidence: '[P] [A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: High-vol London expansion
+- id: Q2_M04_S04
+  regime_id: Q2_M04
+  slot: fallback
+  signal_fn: S04_asian_sweep
+  name: Trend High Vol London Kill Zone — Sweep Continuation
+  win_rate_low: 0.5599999999999999
+  win_rate_high: 0.61
+  rrr: 2.75
+  ev: 1.058
+  evidence: '[P][I] [A][P] 0.5x size'
+  family: liquidity
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: High-vol London expansion
+- id: Q3_M04_S01
+  regime_id: Q3_M04
+  slot: primary
+  signal_fn: S04_asian_sweep
+  name: Range London Kill Zone — Asian Range Sweep Reversal ⭐ CORE
+  win_rate_low: 0.62
+  win_rate_high: 0.68
+  rrr: 3.0
+  ev: 1.6
+  evidence: '[P Zaye Capital][I ICT Asian Range]'
+  family: liquidity
+  enabled: false
+  status: not_tested
+  notes: 3-4/5 trading days. Kill zone timing MANDATORY. MSS confirmation (body_ratio<0.5).
+  regime_logic: London tests Asia range but no trend
+- id: Q3_M04_S02
+  regime_id: Q3_M04
+  slot: secondary
+  signal_fn: S06_failed_bo_fade
+  name: Range London Kill Zone — Failed Breakout Fade
+  win_rate_low: 0.6
+  win_rate_high: 0.65
+  rrr: 2.5
+  ev: 1.0
+  evidence: '[P]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  regime_logic: London tests Asia range but no trend
+- id: Q3_M04_S03
+  regime_id: Q3_M04
+  slot: confirmation
+  signal_fn: S03_bb_fade
+  name: Range London Kill Zone — Range Expansion Fade
+  win_rate_low: 0.56
+  win_rate_high: 0.62
+  rrr: 2.5
+  ev: 0.84
+  evidence: '[P]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  regime_logic: London tests Asia range but no trend
+- id: Q3_M04_S04
+  regime_id: Q3_M04
+  slot: fallback
+  signal_fn: S04_asian_sweep
+  name: Range London Kill Zone — Wait MSS Confirmation
+  win_rate_low: 0.62
+  win_rate_high: 0.68
+  rrr: 3.0
+  ev: 1.6
+  evidence: '[I MSS required]'
+  family: liquidity
+  enabled: false
+  status: not_tested
+  notes: If unclear — wait for MSS. MSS = most recent HH broken (bull) or LL broken
+    (bear).
+  regime_logic: London tests Asia range but no trend
+- id: Q4_M04_S01
+  regime_id: Q4_M04
+  slot: primary
+  signal_fn: S08_no_trade
+  name: Defensive — No Trade (Open Chop)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][I]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: First 5–15 min noisy or spread unstable.
+  regime_logic: First 5-15 min noisy or spread unstable
+- id: Q4_M04_S02
+  regime_id: Q4_M04
+  slot: secondary
+  signal_fn: S08_no_trade
+  name: Defensive — Observe / No New (M04)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][I]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Do not hunt liquidity scans without MSS.
+  regime_logic: First 5-15 min noisy or spread unstable
+- id: Q4_M04_S03
+  regime_id: Q4_M04
+  slot: confirmation
+  signal_fn: S08_no_trade
+  name: Defensive — Capital preservation (M04)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][I]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Observe sweeps from distance; no chase without structural confirmation.
+  regime_logic: First 5-15 min noisy or spread unstable
+- id: Q4_M04_S04
+  regime_id: Q4_M04
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Defensive — Flat is valid (M04)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][I]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Kill zone without MSS = stand down — no machine-gun entries.
+  regime_logic: First 5-15 min noisy or spread unstable
+- id: Q1_M05_S01
+  regime_id: Q1_M05
+  slot: primary
+  signal_fn: S01_ema_pullback
+  name: Trend NY/Overlap — Continuation
+  win_rate_low: 0.55
+  win_rate_high: 0.6
+  rrr: 2.5
+  ev: 0.8
+  evidence: '[P NY continuation]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  regime_logic: Trend with strong liquidity
+- id: Q1_M05_S02
+  regime_id: Q1_M05
+  slot: secondary
+  signal_fn: S01_ema_pullback
+  name: Trend NY/Overlap — Pullback Continuation
+  win_rate_low: 0.56
+  win_rate_high: 0.62
+  rrr: 2.5
+  ev: 0.84
+  evidence: '[P]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  regime_logic: Trend with strong liquidity
+- id: Q1_M05_S03
+  regime_id: Q1_M05
+  slot: confirmation
+  signal_fn: S01_ema_pullback
+  name: Trend NY/Overlap — Breakout Retest
+  win_rate_low: 0.54
+  win_rate_high: 0.6
+  rrr: 2.5
+  ev: 0.78
+  evidence: '[P]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  regime_logic: Trend with strong liquidity
+- id: Q1_M05_S04
+  regime_id: Q1_M05
+  slot: fallback
+  signal_fn: S02_donchian
+  name: Trend NY/Overlap — Pyramid Add
+  win_rate_low: 0.55
+  win_rate_high: 0.6
+  rrr: 3.0
+  ev: 0.95
+  evidence: '[Q AQR pyramiding]'
+  family: breakout
+  enabled: false
+  status: not_tested
+  regime_logic: Trend with strong liquidity
+- id: Q2_M05_S01
+  regime_id: Q2_M05
+  slot: primary
+  signal_fn: S01_ema_pullback
+  name: Trend High Vol NY/Overlap — Continuation
+  win_rate_low: 0.51
+  win_rate_high: 0.5599999999999999
+  rrr: 2.25
+  ev: 0.736
+  evidence: '[P NY continuation] [A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Large directional volatility
+- id: Q2_M05_S02
+  regime_id: Q2_M05
+  slot: secondary
+  signal_fn: S01_ema_pullback
+  name: Trend High Vol NY/Overlap — Pullback Continuation
+  win_rate_low: 0.52
+  win_rate_high: 0.58
+  rrr: 2.25
+  ev: 0.773
+  evidence: '[P] [A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Large directional volatility
+- id: Q2_M05_S03
+  regime_id: Q2_M05
+  slot: confirmation
+  signal_fn: S01_ema_pullback
+  name: Trend High Vol NY/Overlap — Breakout Retest
+  win_rate_low: 0.5
+  win_rate_high: 0.5599999999999999
+  rrr: 2.25
+  ev: 0.718
+  evidence: '[P] [A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Large directional volatility
+- id: Q2_M05_S04
+  regime_id: Q2_M05
+  slot: fallback
+  signal_fn: S02_donchian
+  name: Trend High Vol NY/Overlap — Pyramid Add
+  win_rate_low: 0.51
+  win_rate_high: 0.5599999999999999
+  rrr: 2.75
+  ev: 0.874
+  evidence: '[Q AQR pyramiding] [A][P] 0.5x size'
+  family: breakout
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Large directional volatility
+- id: Q3_M05_S01
+  regime_id: Q3_M05
+  slot: primary
+  signal_fn: S03_bb_fade
+  name: Range Overlap — High Liquidity Mean Fade
+  win_rate_low: 0.6
+  win_rate_high: 0.66
+  rrr: 1.8
+  ev: 0.74
+  evidence: '[P]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  regime_logic: Range starts breaking or rejecting
+- id: Q3_M05_S02
+  regime_id: Q3_M05
+  slot: secondary
+  signal_fn: S06_failed_bo_fade
+  name: Range Overlap — Liquidity Grab Fade
+  win_rate_low: 0.58
+  win_rate_high: 0.64
+  rrr: 2.2
+  ev: 0.72
+  evidence: '[P]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  regime_logic: Range starts breaking or rejecting
+- id: Q3_M05_S03
+  regime_id: Q3_M05
+  slot: confirmation
+  signal_fn: S03_bb_fade
+  name: Range Overlap — Session VWAP Fade
+  win_rate_low: 0.56
+  win_rate_high: 0.62
+  rrr: 1.8
+  ev: 0.65
+  evidence: '[P]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  regime_logic: Range starts breaking or rejecting
+- id: Q3_M05_S04
+  regime_id: Q3_M05
+  slot: fallback
+  signal_fn: S05_sweep_reclaim
+  name: Range Overlap — Sweep Mean Revert
+  win_rate_low: 0.57
+  win_rate_high: 0.63
+  rrr: 2.5
+  ev: 0.78
+  evidence: '[P][I]'
+  family: liquidity
+  enabled: false
+  status: not_tested
+  regime_logic: Range starts breaking or rejecting
+- id: Q4_M05_S01
+  regime_id: Q4_M05
+  slot: primary
+  signal_fn: S08_no_trade
+  name: Defensive — No Trade (Overlap Whipsaw)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Peak volume two-way; false breaks common.
+  regime_logic: News/event overlap confusion
+- id: Q4_M05_S02
+  regime_id: Q4_M05
+  slot: secondary
+  signal_fn: S08_no_trade
+  name: Defensive — Observe / No New (M05)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Flat is a position in overlap chop.
+  regime_logic: News/event overlap confusion
+- id: Q4_M05_S03
+  regime_id: Q4_M05
+  slot: confirmation
+  signal_fn: S08_no_trade
+  name: Defensive — Capital preservation (M05)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Wait for directional commitment.
+  regime_logic: News/event overlap confusion
+- id: Q4_M05_S04
+  regime_id: Q4_M05
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Defensive — Flat is valid (M05)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Preserve mental and financial capital.
+  regime_logic: News/event overlap confusion
+- id: Q1_M06_S01
+  regime_id: Q1_M06
+  slot: primary
+  signal_fn: S08_no_trade
+  name: Trend Late Session — Trail Only
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Existing trend late session
+- id: Q1_M06_S02
+  regime_id: Q1_M06
+  slot: secondary
+  signal_fn: S08_no_trade
+  name: Trend Late Session — No New Entry
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Existing trend late session
+- id: Q1_M06_S03
+  regime_id: Q1_M06
+  slot: confirmation
+  signal_fn: S08_no_trade
+  name: Trend Late Session — Time Exit
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Existing trend late session
+- id: Q1_M06_S04
+  regime_id: Q1_M06
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Trend Late Session — Swap Check Exit
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Existing trend late session
+- id: Q2_M06_S01
+  regime_id: Q2_M06
+  slot: primary
+  signal_fn: S08_no_trade
+  name: Trend High Vol Late Session — Trail Only
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R] [A][P] 0.5x size'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: High vol late session
+- id: Q2_M06_S02
+  regime_id: Q2_M06
+  slot: secondary
+  signal_fn: S08_no_trade
+  name: Trend High Vol Late Session — No New Entry
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R] [A][P] 0.5x size'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: High vol late session
+- id: Q2_M06_S03
+  regime_id: Q2_M06
+  slot: confirmation
+  signal_fn: S08_no_trade
+  name: Trend High Vol Late Session — Time Exit
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P] [A][P] 0.5x size'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: High vol late session
+- id: Q2_M06_S04
+  regime_id: Q2_M06
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Trend High Vol Late Session — Swap Check Exit
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R] [A][P] 0.5x size'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: High vol late session
+- id: Q3_M06_S01
+  regime_id: Q3_M06
+  slot: primary
+  signal_fn: S08_no_trade
+  name: Range Late Session — No New Range Trade
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Low-vol late range
+- id: Q3_M06_S02
+  regime_id: Q3_M06
+  slot: secondary
+  signal_fn: S03_bb_fade
+  name: Range Late Session — Tight Fade Only
+  win_rate_low: 0.52
+  win_rate_high: 0.58
+  rrr: 1.5
+  ev: 0.48
+  evidence: '[P]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Low-vol late range
+- id: Q3_M06_S03
+  regime_id: Q3_M06
+  slot: confirmation
+  signal_fn: S08_no_trade
+  name: Range Late Session — Trail Stops
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Low-vol late range
+- id: Q3_M06_S04
+  regime_id: Q3_M06
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Range Late Session — Flat Before Rollover
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Low-vol late range
+- id: Q4_M06_S01
+  regime_id: Q4_M06
+  slot: primary
+  signal_fn: S08_no_trade
+  name: Defensive — No Trade (Late / Low Liquidity)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Trail only; no new speculative risk.
+  regime_logic: Rollover spread/liquidity stress
+- id: Q4_M06_S02
+  regime_id: Q4_M06
+  slot: secondary
+  signal_fn: S08_no_trade
+  name: Defensive — Observe / No New (M06)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Swap and slippage dominate edge.
+  regime_logic: Rollover spread/liquidity stress
+- id: Q4_M06_S03
+  regime_id: Q4_M06
+  slot: confirmation
+  signal_fn: S08_no_trade
+  name: Defensive — Capital preservation (M06)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Book flat ahead of rollover window awareness.
+  regime_logic: Rollover spread/liquidity stress
+- id: Q4_M06_S04
+  regime_id: Q4_M06
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Defensive — Flat is valid (M06)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Wrong trade here prints permanently.
+  regime_logic: Rollover spread/liquidity stress
+- id: Q1_M07_S01
+  regime_id: Q1_M07
+  slot: primary
+  signal_fn: S08_no_trade
+  name: Trend Pre-News — Reduce Size 50%
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[A Lucca2015][P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Trend before major news
+- id: Q1_M07_S02
+  regime_id: Q1_M07
+  slot: secondary
+  signal_fn: S08_no_trade
+  name: Trend Pre-News — No New Trade
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Trend before major news
+- id: Q1_M07_S03
+  regime_id: Q1_M07
+  slot: confirmation
+  signal_fn: S08_no_trade
+  name: Trend Pre-News — Tighten/Partial Exit
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Trend before major news
+- id: Q1_M07_S04
+  regime_id: Q1_M07
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Trend Pre-News — Wait for Post-News
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Trend before major news
+- id: Q2_M07_S01
+  regime_id: Q2_M07
+  slot: primary
+  signal_fn: S08_no_trade
+  name: Trend High Vol Pre-News — Reduce Size 50%
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[A Lucca2015][P] [A][P] 0.5x size'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Volatile trend before news
+- id: Q2_M07_S02
+  regime_id: Q2_M07
+  slot: secondary
+  signal_fn: S08_no_trade
+  name: Trend High Vol Pre-News — No New Trade
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P] [A][P] 0.5x size'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Volatile trend before news
+- id: Q2_M07_S03
+  regime_id: Q2_M07
+  slot: confirmation
+  signal_fn: S08_no_trade
+  name: Trend High Vol Pre-News — Tighten/Partial Exit
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P] [A][P] 0.5x size'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Volatile trend before news
+- id: Q2_M07_S04
+  regime_id: Q2_M07
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Trend High Vol Pre-News — Wait for Post-News
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R] [A][P] 0.5x size'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Volatile trend before news
+- id: Q3_M07_S01
+  regime_id: Q3_M07
+  slot: primary
+  signal_fn: S08_no_trade
+  name: Range Pre-News — Flat
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[A Lucca2015][P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Range before news
+- id: Q3_M07_S02
+  regime_id: Q3_M07
+  slot: secondary
+  signal_fn: S08_no_trade
+  name: Range Pre-News — No Fade Lottery
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Range before news
+- id: Q3_M07_S03
+  regime_id: Q3_M07
+  slot: confirmation
+  signal_fn: S08_no_trade
+  name: Range Pre-News — Close Pending Fades
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Range before news
+- id: Q3_M07_S04
+  regime_id: Q3_M07
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Range Pre-News — Wait Post-Catalyst
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Range before news
+- id: Q4_M07_S01
+  regime_id: Q4_M07
+  slot: primary
+  signal_fn: S08_no_trade
+  name: Defensive — No Trade (Pre-News)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[A Lucca2015][P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: News convexity dominates; calendar risk off.
+  regime_logic: Event risk dominant
+- id: Q4_M07_S02
+  regime_id: Q4_M07
+  slot: secondary
+  signal_fn: S08_no_trade
+  name: Defensive — Observe / No New (M07)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[A Lucca2015][P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: No lottery fades into binary events.
+  regime_logic: Event risk dominant
+- id: Q4_M07_S03
+  regime_id: Q4_M07
+  slot: confirmation
+  signal_fn: S08_no_trade
+  name: Defensive — Capital preservation (M07)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[A Lucca2015][P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Protect open risk; reduce if mandated.
+  regime_logic: Event risk dominant
+- id: Q4_M07_S04
+  regime_id: Q4_M07
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Defensive — Flat is valid (M07)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[A Lucca2015][P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Wait for post-print structure.
+  regime_logic: Event risk dominant
+- id: Q1_M08_S01
+  regime_id: Q1_M08
+  slot: primary
+  signal_fn: S01_ema_pullback
+  name: Trend Post-News Confirmed — Continuation Retest
+  win_rate_low: 0.6
+  win_rate_high: 0.65
+  rrr: 2.5
+  ev: 0.88
+  evidence: '[P post-news]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  regime_logic: News confirms trend after spread normalizes
+- id: Q1_M08_S02
+  regime_id: Q1_M08
+  slot: secondary
+  signal_fn: S01_ema_pullback
+  name: Trend Post-News — EMA Pullback
+  win_rate_low: 0.56
+  win_rate_high: 0.62
+  rrr: 2.5
+  ev: 0.84
+  evidence: '[P]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  regime_logic: News confirms trend after spread normalizes
+- id: Q1_M08_S03
+  regime_id: Q1_M08
+  slot: confirmation
+  signal_fn: S02_donchian
+  name: Trend Post-News — Breakout Continuation
+  win_rate_low: 0.55
+  win_rate_high: 0.62
+  rrr: 3.0
+  ev: 0.96
+  evidence: '[P]'
+  family: breakout
+  enabled: false
+  status: not_tested
+  regime_logic: News confirms trend after spread normalizes
+- id: Q1_M08_S04
+  regime_id: Q1_M08
+  slot: fallback
+  signal_fn: S01_ema_pullback
+  name: Trend Post-News — Reduced Size (vol still elevated)
+  win_rate_low: 0.55
+  win_rate_high: 0.62
+  rrr: 2.5
+  ev: 0.8
+  evidence: '[P]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.75
+  regime_logic: News confirms trend after spread normalizes
+- id: Q2_M08_S01
+  regime_id: Q2_M08
+  slot: primary
+  signal_fn: S01_ema_pullback
+  name: Trend High Vol Post-News Confirmed — Continuation Retest
+  win_rate_low: 0.5599999999999999
+  win_rate_high: 0.61
+  rrr: 2.25
+  ev: 0.81
+  evidence: '[P post-news] [A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Strong news impulse
+- id: Q2_M08_S02
+  regime_id: Q2_M08
+  slot: secondary
+  signal_fn: S01_ema_pullback
+  name: Trend High Vol Post-News — EMA Pullback
+  win_rate_low: 0.52
+  win_rate_high: 0.58
+  rrr: 2.25
+  ev: 0.773
+  evidence: '[P] [A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Strong news impulse
+- id: Q2_M08_S03
+  regime_id: Q2_M08
+  slot: confirmation
+  signal_fn: S02_donchian
+  name: Trend High Vol Post-News — Breakout Continuation
+  win_rate_low: 0.51
+  win_rate_high: 0.58
+  rrr: 2.75
+  ev: 0.883
+  evidence: '[P] [A][P] 0.5x size'
+  family: breakout
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Strong news impulse
+- id: Q2_M08_S04
+  regime_id: Q2_M08
+  slot: fallback
+  signal_fn: S01_ema_pullback
+  name: Trend High Vol Post-News — Reduced Size (vol still elevated)
+  win_rate_low: 0.51
+  win_rate_high: 0.58
+  rrr: 2.25
+  ev: 0.736
+  evidence: '[P] [A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Strong news impulse
+- id: Q3_M08_S01
+  regime_id: Q3_M08
+  slot: primary
+  signal_fn: S03_bb_fade
+  name: Range Post-News — Volatility Mean Revert
+  win_rate_low: 0.58
+  win_rate_high: 0.64
+  rrr: 2.0
+  ev: 0.72
+  evidence: '[P]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  regime_logic: News spike returns to range
+- id: Q3_M08_S02
+  regime_id: Q3_M08
+  slot: secondary
+  signal_fn: S06_failed_bo_fade
+  name: Range Post-News — Failed Spike Fade
+  win_rate_low: 0.57
+  win_rate_high: 0.63
+  rrr: 2.2
+  ev: 0.7
+  evidence: '[P]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  regime_logic: News spike returns to range
+- id: Q3_M08_S03
+  regime_id: Q3_M08
+  slot: confirmation
+  signal_fn: S03_bb_fade
+  name: Range Post-News — Two-Sided Range
+  win_rate_low: 0.55
+  win_rate_high: 0.61
+  rrr: 1.8
+  ev: 0.62
+  evidence: '[P]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  size_override: 0.75
+  regime_logic: News spike returns to range
+- id: Q3_M08_S04
+  regime_id: Q3_M08
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Range Post-News — If Range Broken, Stand Down
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: News spike returns to range
+- id: Q4_M08_S01
+  regime_id: Q4_M08
+  slot: primary
+  signal_fn: S08_no_trade
+  name: Defensive — No Trade (Post-News Chop)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Volatility without structural follow-through.
+  regime_logic: Spread/jump still unstable
+- id: Q4_M08_S02
+  regime_id: Q4_M08
+  slot: secondary
+  signal_fn: S08_no_trade
+  name: Defensive — Observe / No New (M08)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Fade only after validated range returns.
+  regime_logic: Spread/jump still unstable
+- id: Q4_M08_S03
+  regime_id: Q4_M08
+  slot: confirmation
+  signal_fn: S08_no_trade
+  name: Defensive — Capital preservation (M08)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Avoid revenge entries after spike.
+  regime_logic: Spread/jump still unstable
+- id: Q4_M08_S04
+  regime_id: Q4_M08
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Defensive — Flat is valid (M08)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Clarity before size.
+  regime_logic: Spread/jump still unstable
+- id: Q1_M09_S01
+  regime_id: Q1_M09
+  slot: primary
+  signal_fn: S05_sweep_reclaim
+  name: Trend Sweep — Sweep Pullback Entry
+  win_rate_low: 0.62
+  win_rate_high: 0.68
+  rrr: 3.0
+  ev: 1.56
+  evidence: '[P][I ICT sweep]'
+  family: liquidity
+  enabled: false
+  status: not_tested
+  regime_logic: Sweep against trend then continuation
+- id: Q1_M09_S02
+  regime_id: Q1_M09
+  slot: secondary
+  signal_fn: S01_ema_pullback
+  name: Trend Sweep — Break-Retest After Sweep
+  win_rate_low: 0.58
+  win_rate_high: 0.64
+  rrr: 2.5
+  ev: 1.02
+  evidence: '[P]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  regime_logic: Sweep against trend then continuation
+- id: Q1_M09_S03
+  regime_id: Q1_M09
+  slot: confirmation
+  signal_fn: S01_ema_pullback
+  name: Trend Sweep — Trend Continuation After Sweep
+  win_rate_low: 0.58
+  win_rate_high: 0.65
+  rrr: 2.5
+  ev: 1.03
+  evidence: '[P]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  regime_logic: Sweep against trend then continuation
+- id: Q1_M09_S04
+  regime_id: Q1_M09
+  slot: fallback
+  signal_fn: S05_sweep_reclaim
+  name: Trend Sweep — Stop Beyond Sweep Extreme
+  win_rate_low: 0.58
+  win_rate_high: 0.64
+  rrr: 3.0
+  ev: 1.18
+  evidence: '[P][I]'
+  family: liquidity
+  enabled: false
+  status: not_tested
+  regime_logic: Sweep against trend then continuation
+- id: Q2_M09_S01
+  regime_id: Q2_M09
+  slot: primary
+  signal_fn: S05_sweep_reclaim
+  name: Trend High Vol Sweep — Fast Reversal
+  win_rate_low: 0.55
+  win_rate_high: 0.62
+  rrr: 2.0
+  ev: 0.6
+  evidence: '[P][I] 0.35x size fast exit'
+  family: liquidity
+  enabled: false
+  status: not_tested
+  size_override: 0.35
+  regime_logic: Sweep then high-vol impulse
+- id: Q2_M09_S02
+  regime_id: Q2_M09
+  slot: secondary
+  signal_fn: S01_ema_pullback
+  name: Trend High Vol Sweep — Break-Retest After Sweep
+  win_rate_low: 0.5399999999999999
+  win_rate_high: 0.6
+  rrr: 2.25
+  ev: 0.938
+  evidence: '[P] [A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Sweep then high-vol impulse
+- id: Q2_M09_S03
+  regime_id: Q2_M09
+  slot: confirmation
+  signal_fn: S01_ema_pullback
+  name: Trend High Vol Sweep — Trend Continuation After Sweep
+  win_rate_low: 0.5399999999999999
+  win_rate_high: 0.61
+  rrr: 2.25
+  ev: 0.948
+  evidence: '[P] [A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Sweep then high-vol impulse
+- id: Q2_M09_S04
+  regime_id: Q2_M09
+  slot: fallback
+  signal_fn: S05_sweep_reclaim
+  name: Trend High Vol Sweep — Stop Beyond Sweep Extreme
+  win_rate_low: 0.5399999999999999
+  win_rate_high: 0.6
+  rrr: 2.75
+  ev: 1.086
+  evidence: '[P][I] [A][P] 0.5x size'
+  family: liquidity
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Sweep then high-vol impulse
+- id: Q3_M09_S01
+  regime_id: Q3_M09
+  slot: primary
+  signal_fn: S05_sweep_reclaim
+  name: Range Sweep at Boundary — Sweep Reclaim
+  win_rate_low: 0.62
+  win_rate_high: 0.68
+  rrr: 3.0
+  ev: 1.6
+  evidence: '[P][I]'
+  family: liquidity
+  enabled: false
+  status: not_tested
+  regime_logic: Sweep at range edge
+- id: Q3_M09_S02
+  regime_id: Q3_M09
+  slot: secondary
+  signal_fn: S04_asian_sweep
+  name: Range Sweep at Boundary — Break-Retest
+  win_rate_low: 0.6
+  win_rate_high: 0.65
+  rrr: 2.5
+  ev: 1.0
+  evidence: '[P]'
+  family: liquidity
+  enabled: false
+  status: not_tested
+  regime_logic: Sweep at range edge
+- id: Q3_M09_S03
+  regime_id: Q3_M09
+  slot: confirmation
+  signal_fn: S03_bb_fade
+  name: Range Sweep at Boundary — Continuation Fade
+  win_rate_low: 0.58
+  win_rate_high: 0.65
+  rrr: 3.0
+  ev: 1.04
+  evidence: '[P]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  regime_logic: Sweep at range edge
+- id: Q3_M09_S04
+  regime_id: Q3_M09
+  slot: fallback
+  signal_fn: S05_sweep_reclaim
+  name: Range Sweep at Boundary — Stop Beyond Sweep
+  win_rate_low: 0.58
+  win_rate_high: 0.64
+  rrr: 3.0
+  ev: 1.03
+  evidence: '[P][I]'
+  family: liquidity
+  enabled: false
+  status: not_tested
+  regime_logic: Sweep at range edge
+- id: Q4_M09_S01
+  regime_id: Q4_M09
+  slot: primary
+  signal_fn: S08_no_trade
+  name: Defensive — No Trade (Sweep Without Confirmation)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][I]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Sweeps without reclaim/MSS = noise.
+  regime_logic: Sweep without confirmation or bad spread
+- id: Q4_M09_S02
+  regime_id: Q4_M09
+  slot: secondary
+  signal_fn: S08_no_trade
+  name: Defensive — Observe / No New (M09)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][I]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Do not marry sweep bias blindly.
+  regime_logic: Sweep without confirmation or bad spread
+- id: Q4_M09_S03
+  regime_id: Q4_M09
+  slot: confirmation
+  signal_fn: S08_no_trade
+  name: Defensive — Capital preservation (M09)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][I]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Let order flow prove direction.
+  regime_logic: Sweep without confirmation or bad spread
+- id: Q4_M09_S04
+  regime_id: Q4_M09
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Defensive — Flat is valid (M09)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][I]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Stand down until sweep resolves.
+  regime_logic: Sweep without confirmation or bad spread
+- id: Q1_M10_S01
+  regime_id: Q1_M10
+  slot: primary
+  signal_fn: S08_no_trade
+  name: Trend High Spread — No New Trade
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[A][P spread kills edge]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Trend but execution cost high
+- id: Q1_M10_S02
+  regime_id: Q1_M10
+  slot: secondary
+  signal_fn: S08_no_trade
+  name: Trend High Spread — Reduce Size
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Trend but execution cost high
+- id: Q1_M10_S03
+  regime_id: Q1_M10
+  slot: confirmation
+  signal_fn: S08_no_trade
+  name: Trend High Spread — Wait for Spread Normal
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Trend but execution cost high
+- id: Q1_M10_S04
+  regime_id: Q1_M10
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Trend High Spread — Trail Existing Only
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Trend but execution cost high
+- id: Q2_M10_S01
+  regime_id: Q2_M10
+  slot: primary
+  signal_fn: S08_no_trade
+  name: Trend High Vol High Spread — No New Trade
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[A][P spread kills edge] [A][P] 0.5x size'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: High volatility and high spread
+- id: Q2_M10_S02
+  regime_id: Q2_M10
+  slot: secondary
+  signal_fn: S08_no_trade
+  name: Trend High Vol High Spread — Reduce Size
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P] [A][P] 0.5x size'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: High volatility and high spread
+- id: Q2_M10_S03
+  regime_id: Q2_M10
+  slot: confirmation
+  signal_fn: S08_no_trade
+  name: Trend High Vol High Spread — Wait for Spread Normal
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P] [A][P] 0.5x size'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: High volatility and high spread
+- id: Q2_M10_S04
+  regime_id: Q2_M10
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Trend High Vol High Spread — Trail Existing Only
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R] [A][P] 0.5x size'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: High volatility and high spread
+- id: Q3_M10_S01
+  regime_id: Q3_M10
+  slot: primary
+  signal_fn: S08_no_trade
+  name: Range High Spread — No Range Edge
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[A][P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Range but spread ruins edge
+- id: Q3_M10_S02
+  regime_id: Q3_M10
+  slot: secondary
+  signal_fn: S08_no_trade
+  name: Range High Spread — Cost > Fair Value
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Range but spread ruins edge
+- id: Q3_M10_S03
+  regime_id: Q3_M10
+  slot: confirmation
+  signal_fn: S08_no_trade
+  name: Range High Spread — Observe Only
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Range but spread ruins edge
+- id: Q3_M10_S04
+  regime_id: Q3_M10
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Range High Spread — Trail Working Fades
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Range but spread ruins edge
+- id: Q4_M10_S01
+  regime_id: Q4_M10
+  slot: primary
+  signal_fn: S08_no_trade
+  name: Defensive — No Trade (Spread Stress)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[A][P spread kills edge]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Edge negative after transaction costs.
+  regime_logic: Cost/liquidity stress dominant
+- id: Q4_M10_S02
+  regime_id: Q4_M10
+  slot: secondary
+  signal_fn: S08_no_trade
+  name: Defensive — Observe / No New (M10)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[A][P spread kills edge]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Wait for spread normalization.
+  regime_logic: Cost/liquidity stress dominant
+- id: Q4_M10_S03
+  regime_id: Q4_M10
+  slot: confirmation
+  signal_fn: S08_no_trade
+  name: Defensive — Capital preservation (M10)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[A][P spread kills edge]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Trail runners only if already on.
+  regime_logic: Cost/liquidity stress dominant
+- id: Q4_M10_S04
+  regime_id: Q4_M10
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Defensive — Flat is valid (M10)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[A][P spread kills edge]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Capital preservation mode.
+  regime_logic: Cost/liquidity stress dominant
+- id: Q1_M11_S01
+  regime_id: Q1_M11
+  slot: primary
+  signal_fn: S01_ema_pullback
+  name: Trend Exhaustion — Smaller Pullback Entry
+  win_rate_low: 0.52
+  win_rate_high: 0.58
+  rrr: 2.0
+  ev: 0.5
+  evidence: '[P]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.75
+  regime_logic: Trend mature but controlled
+- id: Q1_M11_S02
+  regime_id: Q1_M11
+  slot: secondary
+  signal_fn: S01_ema_pullback
+  name: Trend Exhaustion — Trail Existing
+  win_rate_low: 0.52
+  win_rate_high: 0.58
+  rrr: 2.0
+  ev: 0.5
+  evidence: '[P]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  regime_logic: Trend mature but controlled
+- id: Q1_M11_S03
+  regime_id: Q1_M11
+  slot: confirmation
+  signal_fn: S01_ema_pullback
+  name: Trend Exhaustion — Partial Exit at TP1
+  win_rate_low: 0.52
+  win_rate_high: 0.58
+  rrr: 2.0
+  ev: 0.5
+  evidence: '[P]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  regime_logic: Trend mature but controlled
+- id: Q1_M11_S04
+  regime_id: Q1_M11
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Trend Exhaustion — No Fresh Breakout Chase
+  win_rate_low: 0.38
+  win_rate_high: 0.45
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Trend mature but controlled
+- id: Q2_M11_S01
+  regime_id: Q2_M11
+  slot: primary
+  signal_fn: S01_ema_pullback
+  name: Trend High Vol Exhaustion — Smaller Pullback Entry
+  win_rate_low: 0.48000000000000004
+  win_rate_high: 0.5399999999999999
+  rrr: 1.75
+  ev: 0.46
+  evidence: '[P] [A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Volatile exhaustion
+- id: Q2_M11_S02
+  regime_id: Q2_M11
+  slot: secondary
+  signal_fn: S01_ema_pullback
+  name: Trend High Vol Exhaustion — Trail Existing
+  win_rate_low: 0.48000000000000004
+  win_rate_high: 0.5399999999999999
+  rrr: 1.75
+  ev: 0.46
+  evidence: '[P] [A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Volatile exhaustion
+- id: Q2_M11_S03
+  regime_id: Q2_M11
+  slot: confirmation
+  signal_fn: S01_ema_pullback
+  name: Trend High Vol Exhaustion — Partial Exit at TP1
+  win_rate_low: 0.48000000000000004
+  win_rate_high: 0.5399999999999999
+  rrr: 1.75
+  ev: 0.46
+  evidence: '[P] [A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Volatile exhaustion
+- id: Q2_M11_S04
+  regime_id: Q2_M11
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Trend High Vol Exhaustion — No Fresh Breakout Chase
+  win_rate_low: 0.34
+  win_rate_high: 0.41000000000000003
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P] [A][P] 0.5x size'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Volatile exhaustion
+- id: Q3_M11_S01
+  regime_id: Q3_M11
+  slot: primary
+  signal_fn: S03_bb_fade
+  name: Range Exhaustion — Terminal Range Fade
+  win_rate_low: 0.56
+  win_rate_high: 0.62
+  rrr: 1.8
+  ev: 0.64
+  evidence: '[P]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  size_override: 0.75
+  regime_logic: Exhaustion into range
+- id: Q3_M11_S02
+  regime_id: Q3_M11
+  slot: secondary
+  signal_fn: S06_failed_bo_fade
+  name: Range Exhaustion — Last Fakeout Fade
+  win_rate_low: 0.54
+  win_rate_high: 0.6
+  rrr: 2.0
+  ev: 0.6
+  evidence: '[P]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  regime_logic: Exhaustion into range
+- id: Q3_M11_S03
+  regime_id: Q3_M11
+  slot: confirmation
+  signal_fn: S08_no_trade
+  name: Range Exhaustion — Reduced New Risk
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Exhaustion into range
+- id: Q3_M11_S04
+  regime_id: Q3_M11
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Range Exhaustion — Wait Trend Resolution
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Exhaustion into range
+- id: Q4_M11_S01
+  regime_id: Q4_M11
+  slot: primary
+  signal_fn: S08_no_trade
+  name: Defensive — No Trade (Trend/Ranging Exhaustion)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Late-cycle chop; breakout chase toxic.
+  regime_logic: Exhaustion plus instability
+- id: Q4_M11_S02
+  regime_id: Q4_M11
+  slot: secondary
+  signal_fn: S08_no_trade
+  name: Defensive — Observe / No New (M11)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Fade only with tested playbook elsewhere.
+  regime_logic: Exhaustion plus instability
+- id: Q4_M11_S03
+  regime_id: Q4_M11
+  slot: confirmation
+  signal_fn: S08_no_trade
+  name: Defensive — Capital preservation (M11)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Reduce temptation trades.
+  regime_logic: Exhaustion plus instability
+- id: Q4_M11_S04
+  regime_id: Q4_M11
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Defensive — Flat is valid (M11)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Wrong breakout costs more than missed fade.
+  regime_logic: Exhaustion plus instability
+- id: Q1_M12_S01
+  regime_id: Q1_M12
+  slot: primary
+  signal_fn: S01_ema_pullback
+  name: Trend Multi-TF — Full Trend Continuation
+  win_rate_low: 0.62
+  win_rate_high: 0.68
+  rrr: 3.0
+  ev: 1.56
+  evidence: '[P][Q AQR multi-signal]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  regime_logic: Higher and lower timeframe trend agree
+- id: Q1_M12_S02
+  regime_id: Q1_M12
+  slot: secondary
+  signal_fn: S01_ema_pullback
+  name: Trend Multi-TF — EMA Pullback
+  win_rate_low: 0.6
+  win_rate_high: 0.65
+  rrr: 2.5
+  ev: 1.13
+  evidence: '[P]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  regime_logic: Higher and lower timeframe trend agree
+- id: Q1_M12_S03
+  regime_id: Q1_M12
+  slot: confirmation
+  signal_fn: S01_ema_pullback
+  name: Trend Multi-TF — Break-Retest
+  win_rate_low: 0.58
+  win_rate_high: 0.64
+  rrr: 2.5
+  ev: 1.02
+  evidence: '[P]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  regime_logic: Higher and lower timeframe trend agree
+- id: Q1_M12_S04
+  regime_id: Q1_M12
+  slot: fallback
+  signal_fn: S02_donchian
+  name: Trend Multi-TF — Time-Series Momentum
+  win_rate_low: 0.6
+  win_rate_high: 0.68
+  rrr: 3.0
+  ev: 1.2
+  evidence: '[A Menkhoff2012]'
+  family: breakout
+  enabled: false
+  status: not_tested
+  regime_logic: Higher and lower timeframe trend agree
+- id: Q2_M12_S01
+  regime_id: Q2_M12
+  slot: primary
+  signal_fn: S01_ema_pullback
+  name: Trend High Vol Multi-TF — Full Trend Continuation
+  win_rate_low: 0.58
+  win_rate_high: 0.64
+  rrr: 2.75
+  ev: 1.435
+  evidence: '[P][Q AQR multi-signal] [A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Multi-timeframe trend plus high vol
+- id: Q2_M12_S02
+  regime_id: Q2_M12
+  slot: secondary
+  signal_fn: S01_ema_pullback
+  name: Trend High Vol Multi-TF — EMA Pullback
+  win_rate_low: 0.5599999999999999
+  win_rate_high: 0.61
+  rrr: 2.25
+  ev: 1.04
+  evidence: '[P] [A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Multi-timeframe trend plus high vol
+- id: Q2_M12_S03
+  regime_id: Q2_M12
+  slot: confirmation
+  signal_fn: S01_ema_pullback
+  name: Trend High Vol Multi-TF — Break-Retest
+  win_rate_low: 0.5399999999999999
+  win_rate_high: 0.6
+  rrr: 2.25
+  ev: 0.938
+  evidence: '[P] [A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Multi-timeframe trend plus high vol
+- id: Q2_M12_S04
+  regime_id: Q2_M12
+  slot: fallback
+  signal_fn: S02_donchian
+  name: Trend High Vol Multi-TF — Time-Series Momentum
+  win_rate_low: 0.5599999999999999
+  win_rate_high: 0.64
+  rrr: 2.75
+  ev: 1.104
+  evidence: '[A Menkhoff2012] [A][P] 0.5x size'
+  family: breakout
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Multi-timeframe trend plus high vol
+- id: Q3_M12_S01
+  regime_id: Q3_M12
+  slot: primary
+  signal_fn: S03_bb_fade
+  name: Range Multi-TF — HTF Range Anchor Fade
+  win_rate_low: 0.61
+  win_rate_high: 0.67
+  rrr: 1.9
+  ev: 0.78
+  evidence: '[P][Q]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  regime_logic: Multiple timeframes range-bound
+- id: Q3_M12_S02
+  regime_id: Q3_M12
+  slot: secondary
+  signal_fn: S06_failed_bo_fade
+  name: Range Multi-TF — HTF Boundary Fakeout
+  win_rate_low: 0.59
+  win_rate_high: 0.65
+  rrr: 2.2
+  ev: 0.74
+  evidence: '[P]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  regime_logic: Multiple timeframes range-bound
+- id: Q3_M12_S03
+  regime_id: Q3_M12
+  slot: confirmation
+  signal_fn: S05_sweep_reclaim
+  name: Range Multi-TF — Liquidity Sweep Revert
+  win_rate_low: 0.58
+  win_rate_high: 0.64
+  rrr: 2.5
+  ev: 0.76
+  evidence: '[P][I]'
+  family: liquidity
+  enabled: false
+  status: not_tested
+  regime_logic: Multiple timeframes range-bound
+- id: Q3_M12_S04
+  regime_id: Q3_M12
+  slot: fallback
+  signal_fn: S03_bb_fade
+  name: Range Multi-TF — Confluence VWAP Fade
+  win_rate_low: 0.57
+  win_rate_high: 0.63
+  rrr: 1.8
+  ev: 0.68
+  evidence: '[P]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  regime_logic: Multiple timeframes range-bound
+- id: Q4_M12_S01
+  regime_id: Q4_M12
+  slot: primary
+  signal_fn: S08_no_trade
+  name: Defensive — No Trade (Multi-TF Conflict)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][Q]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Higher TF disagrees with micro — no conviction.
+  regime_logic: Timeframes conflict
+- id: Q4_M12_S02
+  regime_id: Q4_M12
+  slot: secondary
+  signal_fn: S08_no_trade
+  name: Defensive — Observe / No New (M12)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][Q]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Wait for timeframe alignment.
+  regime_logic: Timeframes conflict
+- id: Q4_M12_S03
+  regime_id: Q4_M12
+  slot: confirmation
+  signal_fn: S08_no_trade
+  name: Defensive — Capital preservation (M12)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][Q]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Do not average conflicting signals.
+  regime_logic: Timeframes conflict
+- id: Q4_M12_S04
+  regime_id: Q4_M12
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Defensive — Flat is valid (M12)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][Q]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Patience is the position.
+  regime_logic: Timeframes conflict
+- id: Q1_M13_S01
+  regime_id: Q1_M13
+  slot: primary
+  signal_fn: S02_donchian
+  name: Trend Macro — USD-Aligned Continuation
+  win_rate_low: 0.64
+  win_rate_high: 0.7
+  rrr: 3.0
+  ev: 1.68
+  evidence: '[A Serban2010][P]'
+  family: breakout
+  enabled: false
+  status: not_tested
+  regime_logic: Trend aligns with USD/macro flow
+- id: Q1_M13_S02
+  regime_id: Q1_M13
+  slot: secondary
+  signal_fn: S01_ema_pullback
+  name: Trend Macro — Pullback
+  win_rate_low: 0.62
+  win_rate_high: 0.67
+  rrr: 2.5
+  ev: 1.2
+  evidence: '[P]'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  regime_logic: Trend aligns with USD/macro flow
+- id: Q1_M13_S03
+  regime_id: Q1_M13
+  slot: confirmation
+  signal_fn: S02_donchian
+  name: Trend Macro — Basket-Confirmed Breakout
+  win_rate_low: 0.63
+  win_rate_high: 0.68
+  rrr: 3.0
+  ev: 1.32
+  evidence: '[P]'
+  family: breakout
+  enabled: false
+  status: not_tested
+  regime_logic: Trend aligns with USD/macro flow
+- id: Q1_M13_S04
+  regime_id: Q1_M13
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Trend Macro — Reduce Correlated Exposure
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][A correlation risk]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Cap correlated exposure at 3% total. EUR+GBP+AUD all long USD = 1 trade x3.
+  regime_logic: Trend aligns with USD/macro flow
+- id: Q2_M13_S01
+  regime_id: Q2_M13
+  slot: primary
+  signal_fn: S02_donchian
+  name: Trend High Vol Macro — USD-Aligned Continuation
+  win_rate_low: 0.6
+  win_rate_high: 0.6599999999999999
+  rrr: 2.75
+  ev: 1.546
+  evidence: '[A Serban2010][P] [A][P] 0.5x size'
+  family: breakout
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Strong USD shock or risk-off trend
+- id: Q2_M13_S02
+  regime_id: Q2_M13
+  slot: secondary
+  signal_fn: S01_ema_pullback
+  name: Trend High Vol Macro — Pullback
+  win_rate_low: 0.58
+  win_rate_high: 0.63
+  rrr: 2.25
+  ev: 1.104
+  evidence: '[P] [A][P] 0.5x size'
+  family: trend_momentum
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Strong USD shock or risk-off trend
+- id: Q2_M13_S03
+  regime_id: Q2_M13
+  slot: confirmation
+  signal_fn: S02_donchian
+  name: Trend High Vol Macro — Basket-Confirmed Breakout
+  win_rate_low: 0.59
+  win_rate_high: 0.64
+  rrr: 2.75
+  ev: 1.214
+  evidence: '[P] [A][P] 0.5x size'
+  family: breakout
+  enabled: false
+  status: not_tested
+  size_override: 0.5
+  regime_logic: Strong USD shock or risk-off trend
+- id: Q2_M13_S04
+  regime_id: Q2_M13
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Trend High Vol Macro — Reduce Correlated Exposure
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][A correlation risk] [A][P] 0.5x size'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Cap correlated exposure at 3% total. EUR+GBP+AUD all long USD = 1 trade x3.
+  regime_logic: Strong USD shock or risk-off trend
+- id: Q3_M13_S01
+  regime_id: Q3_M13
+  slot: primary
+  signal_fn: S08_no_trade
+  name: Range Macro — Correlation Chaos
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][A correlation risk]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Range but cross-pair correlation abnormal
+- id: Q3_M13_S02
+  regime_id: Q3_M13
+  slot: secondary
+  signal_fn: S03_bb_fade
+  name: Range Macro — USD Stress Two-Way
+  win_rate_low: 0.54
+  win_rate_high: 0.6
+  rrr: 1.8
+  ev: 0.56
+  evidence: '[P]'
+  family: mean_reversion
+  enabled: false
+  status: not_tested
+  size_override: 0.35
+  regime_logic: Range but cross-pair correlation abnormal
+- id: Q3_M13_S03
+  regime_id: Q3_M13
+  slot: confirmation
+  signal_fn: S08_no_trade
+  name: Range Macro — No Hero Trades
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][R]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  regime_logic: Range but cross-pair correlation abnormal
+- id: Q3_M13_S04
+  regime_id: Q3_M13
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Range Macro — Basket Risk Cap
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][A correlation risk]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Cap correlated exposure at 3% total. Missing a trade costs zero.
+  regime_logic: Range but cross-pair correlation abnormal
+- id: Q4_M13_S01
+  regime_id: Q4_M13
+  slot: primary
+  signal_fn: S08_no_trade
+  name: Defensive — No Trade (Macro / Correlation Shock)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][A correlation risk]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: USD and cross-asset shocks — reduce exposure.
+  regime_logic: Correlation shock unstable
+- id: Q4_M13_S02
+  regime_id: Q4_M13
+  slot: secondary
+  signal_fn: S08_no_trade
+  name: Defensive — Observe / No New (M13)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][A correlation risk]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: No correlated doubling across pairs.
+  regime_logic: Correlation shock unstable
+- id: Q4_M13_S03
+  regime_id: Q4_M13
+  slot: confirmation
+  signal_fn: S08_no_trade
+  name: Defensive — Capital preservation (M13)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][A correlation risk]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: Basket risk cap enforced.
+  regime_logic: Correlation shock unstable
+- id: Q4_M13_S04
+  regime_id: Q4_M13
+  slot: fallback
+  signal_fn: S08_no_trade
+  name: Defensive — Flat is valid (M13)
+  win_rate_low: 0.0
+  win_rate_high: 0.0
+  rrr: 0.0
+  ev: -0.1
+  evidence: '[P][A correlation risk]'
+  family: defensive
+  enabled: false
+  status: not_tested
+  notes: 'Universal: missing a trade costs zero; wrong trade costs real money.'
+  regime_logic: Correlation shock unstable

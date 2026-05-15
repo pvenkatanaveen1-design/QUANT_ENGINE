@@ -13,18 +13,28 @@
       <aside class="border-b border-zinc-200 bg-white md:border-b-0 md:border-r">
         <div class="px-5 py-4 border-b border-zinc-200">
           <div class="text-lg font-semibold tracking-wide">Quanta Forex</div>
-          <div class="mt-2 status-pill status-red">Live Trading Disabled</div>
+          <p class="mt-2 text-xs leading-snug text-zinc-600">Live trading disabled — research-only build. No broker order routes.</p>
         </div>
         <nav class="p-3 text-sm">
-          <a class="nav-link" href="/">Monitor</a>
+          <a class="nav-link" href="/monitor">Monitor</a>
+          <a class="nav-link" href="/workflow">Workflow</a>
+          <a class="nav-link" href="/project-phases">Phases</a>
           <a class="nav-link" href="/mt5">MT5 Gateway</a>
           <a class="nav-link" href="/data">Data</a>
           <a class="nav-link" href="/regimes">Regimes</a>
           <a class="nav-link" href="/strategies">Strategies</a>
-          <a class="nav-link" href="/backtester">Backtester</a>
+          <a class="nav-link" href="/priority-setups">Priority setups</a>
+          <a class="nav-link" href="/strategy-gate">Enablement</a>
+          <a class="nav-link" href="/research">Backtester</a>
+          <a class="nav-link" href="/analysis" title="Runs list, DuckDB cache metadata">Analysis · DB &amp; runs</a>
+          <a class="nav-link" href="/analytics" title="Charts from analysis_cache">Analytics · charts</a>
+          <a class="nav-link" href="/evaluation-metrics">Metrics</a>
           <a class="nav-link" href="/risk">Risk</a>
-          <a class="nav-link" href="/decisions">Decisions</a>
+          <a class="nav-link" href="/position-sizing">Sizing math</a>
+          <a class="nav-link" href="/journal">Journal</a>
           <a class="nav-link" href="/settings">Settings</a>
+          <a class="nav-link" href="/testing-standard">Tests</a>
+          <a class="nav-link" href="/config-reference">Config</a>
         </nav>
       </aside>
       <main>
@@ -36,7 +46,6 @@
             hx-swap="outerHTML">
             <div class="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
               <span class="status-pill status-gray">Loading system status...</span>
-              <span class="status-pill status-red">Live trading disabled</span>
             </div>
           </div>
         </header>
