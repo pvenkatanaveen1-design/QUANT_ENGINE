@@ -1,0 +1,29 @@
+enabled: true
+max_bars: 5000
+default_bars: 500
+tick_poll_seconds: 1.0
+status_poll_seconds: 5.0
+status_cache_seconds: 2.0
+symbols_cache_seconds: 30.0
+allowed_timeframes:
+  - M1
+  - M5
+  - M15
+  - M30
+  - H1
+  - H4
+  - D1
+symbol_filter_mode: preferred_then_all
+preferred_symbols:
+  - EURUSD
+  - GBPUSD
+  - USDJPY
+  - USDCHF
+  - USDCAD
+  - AUDUSD
+  - NZDUSD
+  - EURJPY
+  - GBPJPY
+  - EURGBP
+  - XAUUSD
+  - XAGUSD

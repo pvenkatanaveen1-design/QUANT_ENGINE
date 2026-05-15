@@ -1,6 +1,8 @@
 systems:
   - name: Data
     page_url: /data
+  - name: MT5 Gateway
+    page_url: /mt5
   - name: Regime
     page_url: /regimes
   - name: Strategy Router
@@ -17,4 +19,3 @@ systems:
     page_url: /decisions
   - name: Monitoring
     page_url: /
-

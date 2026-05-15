@@ -15,11 +15,21 @@ sessions:
     end: "10:00"
     modifier: M04
     notes: London open expansion and sweep window.
+  - id: London_Mid
+    start: "10:00"
+    end: "13:00"
+    modifier: M01
+    notes: Post-open London trading; no special session modifier.
   - id: London_NY_Overlap
     start: "13:00"
     end: "16:00"
     modifier: M05
     notes: Highest major-session overlap liquidity.
+  - id: NY_Afternoon
+    start: "16:00"
+    end: "20:00"
+    modifier: M01
+    notes: Normal New York afternoon after overlap.
   - id: NY_Late
     start: "20:00"
     end: "22:00"
@@ -30,4 +40,8 @@ sessions:
     end: "23:15"
     modifier: M06
     notes: Broker rollover caution; spreads can widen sharply.
-
+  - id: Post_Rollover
+    start: "23:15"
+    end: "00:00"
+    modifier: M06
+    notes: Thin post-rollover liquidity before the next Asia window.

@@ -1,30 +1,70 @@
 {% extends "app/templates/base.html" %}
 {% block title %}Regimes | Quanta Forex{% endblock %}
 {% block content %}
+{% set symbol_list = options.symbols.symbols if options.symbols.available else [] %}
+{% set selected_symbol = symbol_list[0].symbol if symbol_list else "" %}
 <div class="space-y-5">
   <div class="flex flex-wrap items-end justify-between gap-3">
     <div>
-      <h1 class="text-2xl font-semibold">Regime Detector</h1>
-      <p class="mt-1 text-sm text-zinc-500">Q1-Q4 plus M01-M13</p>
+      <h1 class="text-2xl font-semibold">Regime Wizard</h1>
+      <p class="mt-1 text-sm text-zinc-500">MT5-only snapshot, one-week regime map, strategy playbook, and scenario estimate.</p>
     </div>
-    <form class="flex flex-wrap gap-2" hx-post="/api/regimes/detect" hx-target="#regime-api-result" hx-swap="textContent">
-      <input class="input w-28" name="symbol" value="EURUSD">
-      <input class="input w-24" name="timeframe" value="M15">
-      <button class="button" type="submit">Detect Regime</button>
-    </form>
+    <div class="flex flex-wrap gap-2">
+      <span class="status-pill {% if options.mt5_status.connected %}status-amber{% else %}status-gray{% endif %}" data-live-status>
+        MT5 {% if options.mt5_status.connected %}live{% else %}offline{% endif %}
+      </span>
+      <span class="status-pill status-red">Live trading disabled</span>
+    </div>
   </div>
-  <pre id="regime-api-result" class="hidden"></pre>
-  {% include "systems/regime/partials/latest_regime.html" %}
+
   <section class="panel">
-    <div class="label">Feature Snapshot</div>
-    {% set features = latest.features %}
-    {% include "systems/regime/partials/regime_feature_table.html" %}
+    {% if not options.mt5_status.connected or not selected_symbol %}
+      <div class="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        MT5 data is required for regime detection. Connect MT5 and refresh; no offline fallback will be used.
+      </div>
+    {% else %}
+    <form
+      class="grid gap-3 lg:grid-cols-[1fr_120px_120px_auto]"
+      hx-post="/partials/regime-wizard"
+      hx-target="#regime-wizard"
+      hx-swap="outerHTML">
+      <input type="hidden" name="source" value="mt5_demo">
+      <div class="grid gap-2">
+        <input class="input" data-symbol-filter="#regime-symbol-select" placeholder="Search MT5 symbols">
+        <select id="regime-symbol-select" class="input" name="symbol" data-live-symbol>
+          {% for item in symbol_list %}
+            <option value="{{ item.symbol }}" data-filter-text="{{ item.symbol }} {{ item.description or '' }} {{ item.popular_alias or '' }}" {% if item.symbol == selected_symbol %}selected{% endif %}>{{ item.symbol }}{% if item.popular_alias %} / {{ item.popular_alias }}{% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <select class="input" name="timeframe" data-live-timeframe>
+        {% for timeframe in options.timeframes %}
+          <option value="{{ timeframe.key }}" data-minutes="{{ timeframe.minutes }}" {% if timeframe.key == "M15" %}selected{% endif %}>{{ timeframe.label }}</option>
+        {% endfor %}
+      </select>
+      <input class="input" name="bars" type="number" min="60" max="5000" value="{{ options.default_bars }}">
+      <button class="button" type="submit">Refresh Snapshot</button>
+      <label class="text-sm"><input type="checkbox" name="killzone_enabled" checked> killzone</label>
+      <label class="text-sm"><input type="checkbox" name="include_spread_filter" checked> spread filter</label>
+      <label class="text-sm"><input type="checkbox" name="include_sweep_detection" checked> sweeps</label>
+      <label class="text-sm"><input type="checkbox" name="include_alpha_features" checked> alpha</label>
+    </form>
+    {% endif %}
   </section>
+
+  {% if selected_symbol %}
+  <div
+    id="regime-wizard"
+    class="panel"
+    hx-get="/partials/regime-wizard?source=mt5_demo&symbol={{ selected_symbol }}&timeframe=M15&bars=160&killzone_enabled=true&include_spread_filter=true&include_sweep_detection=true&include_alpha_features=true"
+    hx-trigger="load"
+    hx-swap="outerHTML">
+    <div class="text-sm text-zinc-500">Loading MT5 regime snapshot...</div>
+  </div>
+  {% endif %}
+
   <section class="panel">
-    {% include "systems/regime/partials/regime_reasons.html" %}
-  </section>
-  <section class="panel">
-    <div class="label">Definitions</div>
+    <div class="label">Full 52-Regime Library</div>
     <div class="mt-3 grid gap-4 lg:grid-cols-2">
       <div class="overflow-x-auto">
         <table class="table-compact">
@@ -49,4 +89,7 @@
     </div>
   </section>
 </div>
+<script>
+  window.QuantaLiveRegime = { symbol: "{{ selected_symbol }}", timeframe: "M15", tfMinutes: 15 };
+</script>
 {% endblock %}

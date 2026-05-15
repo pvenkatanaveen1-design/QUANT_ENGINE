@@ -17,6 +17,7 @@ LOGGER = logging.getLogger("quanta.app")
 
 ROUTER_MODULES = [
     ("monitoring", "systems.monitoring.ui", "/"),
+    ("mt5_gateway", "systems.mt5_gateway.ui", "/mt5"),
     ("data", "systems.data.ui", "/data"),
     ("regime", "systems.regime.ui", "/regimes"),
     ("strategy_router", "systems.strategy_router.ui", "/strategies"),

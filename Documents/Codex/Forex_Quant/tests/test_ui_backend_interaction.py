@@ -57,12 +57,12 @@ def test_htmx_partials_return_fragments():
         assert "<html" not in response.text.lower()
 
 
-def test_data_load_api_cleans_sample_csv():
+def test_data_load_csv_api_is_disabled_in_runtime():
     response = client.post("/api/data/load-csv", data={"symbol": "EURUSD", "timeframe": "M15"})
     payload = _assert_envelope(response)
-    assert response.status_code == 200
-    assert payload["ok"] is True
-    assert payload["data"]["rows_out"] > 0
+    assert response.status_code == 410
+    assert payload["ok"] is False
+    assert payload["errors"][0]["code"] == "mt5_only"
 
 
 def test_strategy_playbook_has_four_slots():
@@ -78,4 +78,3 @@ def test_dangerous_live_flags_are_blocked_from_settings_ui():
     assert response.status_code == 400
     assert payload["ok"] is False
     assert "live_trading_enabled" in payload["errors"][0]["detail"]
-

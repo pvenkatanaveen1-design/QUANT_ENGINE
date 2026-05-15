@@ -10,7 +10,7 @@ from core.models.market import Candle, DataQualityIssue, DataQualityReport, Tick
 class DataLoadRequest:
     symbol: str
     timeframe: str
-    source: str = "local_csv"
+    source: str = "mt5_demo"
     input_path: str | None = None
 
 
@@ -46,4 +46,3 @@ __all__ = [
     "DataQualityReport",
     "CleanedDatasetInfo",
 ]
-

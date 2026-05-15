@@ -12,6 +12,7 @@ from core.config_manager import ConfigManager
 from core.models.market import DataQualityIssue, DataQualityReport
 from core.time_utils import to_utc
 from systems.data.schemas import CleanedDatasetInfo, DataLoadResult
+from systems.mt5_gateway import backend as mt5_backend
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -211,6 +212,96 @@ def save_report(report: DataQualityReport, report_path: str | Path) -> None:
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
+def _clean_rows(
+    raw_rows: list[dict[str, Any]],
+    symbol: str,
+    timeframe: str,
+    source: str,
+    source_metadata: dict[str, Any] | None = None,
+) -> DataLoadResult:
+    rows_in = len(raw_rows)
+    issues: list[DataQualityIssue] = []
+    cleaned: list[dict[str, Any]] = []
+    seen_exact: set[tuple[Any, ...]] = set()
+    missing_count = 0
+    duplicate_exact = 0
+    parse_errors = 0
+    invalid_ohlc = 0
+    invalid_price = 0
+
+    for row_number, raw in enumerate(raw_rows, start=1):
+        normalized_keys = {str(key).strip().lower(): value for key, value in raw.items()}
+        if any(normalized_keys.get(column) in (None, "") for column in DEFAULT_REQUIRED_COLUMNS):
+            missing_count += 1
+            continue
+        exact_key = tuple(normalized_keys.get(column) for column in DEFAULT_REQUIRED_COLUMNS)
+        if exact_key in seen_exact:
+            duplicate_exact += 1
+            continue
+        seen_exact.add(exact_key)
+        try:
+            row = _normalize_row(normalized_keys, row_number)
+        except (TypeError, ValueError):
+            parse_errors += 1
+            continue
+        if row["high"] < row["low"]:
+            invalid_ohlc += 1
+            continue
+        if any(row[column] <= 0 for column in ("open", "high", "low", "close")):
+            invalid_price += 1
+            continue
+        cleaned.append(row)
+
+    if missing_count:
+        issues.append(_issue("missing_values", "warning", "Rows with missing values were removed.", missing_count))
+    if duplicate_exact:
+        issues.append(_issue("duplicate_exact_rows", "warning", "Exact duplicate rows were removed.", duplicate_exact))
+    if parse_errors:
+        issues.append(_issue("parse_errors", "warning", "Rows with invalid numeric/timestamp values were removed.", parse_errors))
+    if invalid_ohlc:
+        issues.append(_issue("invalid_ohlc", "warning", "Rows where high < low were removed.", invalid_ohlc))
+    if invalid_price:
+        issues.append(_issue("invalid_price", "warning", "Rows with non-positive OHLC prices were removed.", invalid_price))
+
+    report = build_quality_report(symbol, timeframe, cleaned, rows_in, issues)
+    config = _load_config()
+    minimum_rows = int(config.get("minimum_regime_rows", 120))
+    latest_time = report.metadata.get("latest_time")
+    if cleaned and latest_time:
+        stale_minutes = float(config.get("stale_data_minutes", 60))
+        latest_dt = to_utc(latest_time)
+        age_minutes = (datetime.now(timezone.utc) - latest_dt).total_seconds() / 60.0
+        report.metadata["latest_bar_age_minutes"] = round(age_minutes, 2)
+        if age_minutes > stale_minutes:
+            report.issues.append(_issue("stale_market_data", "warning", "Latest bar is older than the configured stale threshold. Market may be closed.", 1))
+    report.metadata.update(
+        {
+            "source": source,
+            "source_metadata": source_metadata or {},
+            "safe_for_regime_testing": report.status != "critical" and report.rows_out >= minimum_rows,
+        }
+    )
+
+    cleaned_dir = PROJECT_ROOT / config.get("cleaned_path", "data/cleaned")
+    cleaned_path = cleaned_dir / f"{symbol}_{timeframe}_cleaned.csv"
+    report_path = cleaned_dir / f"{symbol}_{timeframe}_quality.json"
+    save_cleaned_csv(cleaned, cleaned_path)
+    save_report(report, report_path)
+
+    return DataLoadResult(
+        symbol=symbol,
+        timeframe=timeframe,
+        source_path=source,
+        cleaned_path=str(cleaned_path),
+        report_path=str(report_path),
+        rows_in=report.rows_in,
+        rows_out=report.rows_out,
+        quality_status=report.status,
+        issues=report.issues,
+        metadata=report.metadata,
+    )
+
+
 def clean_dataset(input_path: str | Path, symbol: str = "UNKNOWN", timeframe: str = "UNKNOWN") -> DataLoadResult:
     config = _load_config()
     rows, rows_in, issues = read_csv_rows(input_path, config.get("required_columns", DEFAULT_REQUIRED_COLUMNS))
@@ -234,6 +325,54 @@ def clean_dataset(input_path: str | Path, symbol: str = "UNKNOWN", timeframe: st
         issues=report.issues,
         metadata=report.metadata,
     )
+
+
+def clean_market_rows(
+    rows: list[dict[str, Any]],
+    symbol: str,
+    timeframe: str,
+    source: str = "mt5_demo",
+    source_metadata: dict[str, Any] | None = None,
+) -> DataLoadResult:
+    return _clean_rows(rows, symbol=symbol, timeframe=timeframe, source=source, source_metadata=source_metadata)
+
+
+def fetch_mt5_dataset(symbol: str, timeframe: str, bars: int | None = None, save_cleaned: bool = True) -> DataLoadResult:
+    config = _load_config()
+    requested_bars = int(bars or config.get("default_bars", 672))
+    rates = mt5_backend.get_rates(symbol=symbol, timeframe=timeframe, bars=requested_bars)
+    result = _clean_rows(
+        rates.get("rows", []),
+        symbol=str(rates.get("metadata", {}).get("symbol") or symbol).upper(),
+        timeframe=str(rates.get("metadata", {}).get("timeframe") or timeframe).upper(),
+        source="mt5_demo",
+        source_metadata=rates.get("metadata", {}),
+    )
+    if not save_cleaned:
+        return result
+    return result
+
+
+def get_market_options() -> dict[str, Any]:
+    config = _load_config()
+    status = mt5_backend.get_status()
+    symbols = mt5_backend.get_symbols()
+    symbol_items = symbols.get("symbols", [])
+    popular = [item for item in symbol_items if item.get("popular")]
+    limit = int(config.get("ui_symbol_limit", 160))
+    display_symbols = popular or symbol_items[:limit]
+    return {
+        "sources": config.get("source_options", []),
+        "default_source": config.get("default_source", "mt5_demo"),
+        "default_bars": int(config.get("default_bars", 672)),
+        "mt5_status": status,
+        "symbols": {**symbols, "symbols": display_symbols, "total_symbols": len(symbol_items)},
+        "timeframes": mt5_backend.get_timeframes(),
+    }
+
+
+def get_latest_tick(symbol: str) -> dict[str, Any]:
+    return mt5_backend.get_tick(symbol)
 
 
 def load_cleaned_rows(symbol: str, timeframe: str) -> list[dict[str, Any]]:

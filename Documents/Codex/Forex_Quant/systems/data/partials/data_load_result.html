@@ -2,6 +2,8 @@
   {% if result.ok %}
     <div class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
       {{ result.message }} {{ result.symbol }} {{ result.timeframe }}: {{ result.rows_out }} / {{ result.rows_in }} rows kept.
+      {% if result.metadata.latest_time %} Latest bar: {{ result.metadata.latest_time }}.{% endif %}
+      {% if result.metadata.safe_for_regime_testing %} Safe for regime testing.{% else %} Review quality before regime testing.{% endif %}
     </div>
   {% else %}
     <div class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">

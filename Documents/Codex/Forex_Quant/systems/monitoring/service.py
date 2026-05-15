@@ -14,6 +14,7 @@ def system_grid(data_count: int, latest_regime: dict, registry_summary: dict, ri
     configured = ConfigManager(PROJECT_ROOT).load_yaml("systems/monitoring/config.yaml").get("systems", [])
     built_status = {
         "Data": ("idle" if data_count else "warning", "No cleaned files yet." if not data_count else f"{data_count} cleaned dataset(s)."),
+        "MT5 Gateway": ("idle", "MT5 Gateway routes are registered; connection depends on local terminal/package."),
         "Regime": ("idle", f"Latest regime {latest_regime.get('regime_id', 'unknown')}."),
         "Strategy Router": ("idle", f"{registry_summary.get('total', 0)} registered strategy names."),
         "Strategy Templates": ("not_built", "Template logic is staged for Phase 4."),
@@ -30,4 +31,3 @@ def system_grid(data_count: int, latest_regime: dict, registry_summary: dict, ri
         status, message = built_status.get(name, ("not_built", "System not registered yet."))
         heartbeats.append(SystemHeartbeat(name=name, status=status, last_heartbeat=now, last_message=message, page_url=item.get("page_url", "/")))
     return heartbeats
-

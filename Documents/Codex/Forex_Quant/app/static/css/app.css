@@ -1,26 +1,77 @@
+:root {
+  color-scheme: dark;
+  --bg: #07090d;
+  --panel: #11151d;
+  --panel-2: #171c26;
+  --border: #2b3442;
+  --text: #e8edf4;
+  --muted: #94a3b8;
+  --blue: #3b82f6;
+  --green: #22c55e;
+  --amber: #f59e0b;
+  --red: #ef4444;
+  --gray: #64748b;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+body.bg-zinc-100,
+.bg-white,
+.bg-zinc-50 {
+  background: var(--bg) !important;
+}
+
+aside,
+header {
+  background: #0c1017 !important;
+  border-color: var(--border) !important;
+}
+
+.border-zinc-200,
+.border-zinc-700 {
+  border-color: var(--border) !important;
+}
+
+.text-zinc-950,
+.text-zinc-800,
+.text-zinc-700 {
+  color: var(--text) !important;
+}
+
+.text-zinc-600,
+.text-zinc-500,
+.text-zinc-400 {
+  color: var(--muted) !important;
+}
+
 .nav-link {
   display: block;
   border-radius: 6px;
   padding: 0.625rem 0.75rem;
-  color: rgb(63 63 70);
+  color: var(--muted);
 }
 
-.nav-link:hover {
-  background: rgb(244 244 245);
-  color: rgb(9 9 11);
+.nav-link:hover,
+.nav-link-active {
+  background: #132238;
+  color: #dbeafe;
 }
 
 .panel {
-  border: 1px solid rgb(228 228 231);
-  background: white;
+  border: 1px solid var(--border);
+  background: var(--panel);
   border-radius: 8px;
   padding: 1rem;
-  box-shadow: 0 1px 2px rgba(9, 9, 11, 0.04);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
 }
 
 .label,
 .metric-label {
-  color: rgb(161 161 170);
+  color: var(--muted);
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0;
@@ -28,30 +79,38 @@
 }
 
 .metric-value {
-  color: rgb(24 24 27);
-  font-size: 1.75rem;
+  color: var(--text);
+  font-size: clamp(1.25rem, 1.6vw, 1.75rem);
   font-weight: 700;
   line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 
 .input {
-  border: 1px solid rgb(212 212 216);
-  background: white;
-  color: rgb(24 24 27);
+  border: 1px solid var(--border);
+  background: #0b0f16;
+  color: var(--text);
   border-radius: 6px;
   padding: 0.5rem 0.625rem;
+  min-width: 0;
+}
+
+.input:focus {
+  border-color: var(--blue);
+  outline: 2px solid rgba(59, 130, 246, 0.25);
 }
 
 .button {
   border-radius: 6px;
-  background: rgb(37 99 235);
+  background: var(--blue);
   color: white;
   font-weight: 700;
   padding: 0.5rem 0.75rem;
+  white-space: nowrap;
 }
 
 .button:hover {
-  background: rgb(29 78 216);
+  background: #2563eb;
 }
 
 .table,
@@ -65,7 +124,7 @@
 .table td,
 .table-compact th,
 .table-compact td {
-  border-bottom: 1px solid rgb(228 228 231);
+  border-bottom: 1px solid var(--border);
   padding: 0.625rem;
   text-align: left;
   vertical-align: top;
@@ -73,8 +132,17 @@
 
 .table th,
 .table-compact th {
-  color: rgb(82 82 91);
+  color: #cbd5e1;
   font-weight: 700;
+}
+
+.table tr:hover td,
+.table-compact tr:hover td {
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.strategy-card {
+  background: var(--panel-2) !important;
 }
 
 .status-pill {
@@ -89,31 +157,163 @@
 }
 
 .status-green {
-  background: rgb(220 252 231);
-  border-color: rgb(187 247 208);
-  color: rgb(22 101 52);
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(34, 197, 94, 0.45);
+  color: #86efac;
 }
 
 .status-amber {
-  background: rgb(254 243 199);
-  border-color: rgb(253 230 138);
-  color: rgb(146 64 14);
+  background: rgba(245, 158, 11, 0.16);
+  border-color: rgba(245, 158, 11, 0.45);
+  color: #fcd34d;
 }
 
 .status-red {
-  background: rgb(254 226 226);
-  border-color: rgb(254 202 202);
-  color: rgb(153 27 27);
+  background: rgba(239, 68, 68, 0.16);
+  border-color: rgba(239, 68, 68, 0.48);
+  color: #fca5a5;
 }
 
 .status-blue {
-  background: rgb(219 234 254);
-  border-color: rgb(191 219 254);
-  color: rgb(30 64 175);
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(59, 130, 246, 0.5);
+  color: #bfdbfe;
 }
 
 .status-gray {
-  background: rgb(244 244 245);
-  border-color: rgb(228 228 231);
-  color: rgb(63 63 70);
+  background: rgba(100, 116, 139, 0.18);
+  border-color: rgba(148, 163, 184, 0.25);
+  color: #cbd5e1;
+}
+
+.viz-track {
+  height: 0.6rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #080b11;
+  border: 1px solid var(--border);
+}
+
+.viz-bar {
+  height: 100%;
+  min-width: 0.25rem;
+  border-radius: inherit;
+  background: var(--blue);
+}
+
+.viz-bar-q1 {
+  background: var(--green);
+}
+
+.viz-bar-q2 {
+  background: var(--amber);
+}
+
+.viz-bar-q3 {
+  background: var(--blue);
+}
+
+.viz-bar-q4 {
+  background: var(--red);
+}
+
+.viz-chip {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #0b0f16;
+  padding: 0.45rem 0.55rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.viz-chip strong {
+  color: var(--text);
+}
+
+.regime-heatmap {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 0.5rem;
+}
+
+.regime-cell {
+  min-height: 58px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(59, 130, 246, var(--intensity, 0.12));
+  padding: 0.5rem;
+}
+
+.regime-cell span,
+.regime-cell small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.regime-cell span {
+  color: var(--text);
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.regime-cell small {
+  color: var(--muted);
+  margin-top: 0.25rem;
+}
+
+.regime-cell-current {
+  border-color: rgba(34, 197, 94, 0.8);
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.18);
+}
+
+.regime-cell-previous {
+  border-color: rgba(245, 158, 11, 0.75);
+}
+
+.regime-cell-not_observed {
+  background: rgba(100, 116, 139, 0.08);
+  opacity: 0.72;
+}
+
+.bg-green-50,
+.bg-blue-50,
+.bg-amber-50,
+.bg-red-50,
+.bg-zinc-900 {
+  background: var(--panel-2) !important;
+}
+
+.text-green-800,
+.text-blue-900,
+.text-amber-800,
+.text-red-800,
+.text-red-700 {
+  color: var(--text) !important;
+}
+
+.border-green-200,
+.border-blue-300,
+.border-amber-200,
+.border-amber-300,
+.border-red-200 {
+  border-color: var(--border) !important;
+}
+
+pre {
+  background: #090d13 !important;
+  color: var(--text);
+}
+
+@media (max-width: 760px) {
+  .panel {
+    padding: 0.875rem;
+  }
+
+  .table,
+  .table-compact {
+    min-width: 680px;
+  }
 }

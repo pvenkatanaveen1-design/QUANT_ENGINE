@@ -1,0 +1,17 @@
+<div>
+  <div class="flex flex-wrap items-center gap-2">
+    <span class="status-pill {% if status.available %}status-green{% else %}status-amber{% endif %}">available {{ status.available }}</span>
+    <span class="status-pill {% if status.connected %}status-green{% else %}status-amber{% endif %}">connected {{ status.connected }}</span>
+    <span class="status-pill status-red">orders disabled</span>
+  </div>
+  {% if status.reason %}
+    <div class="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{{ status.reason }}</div>
+  {% endif %}
+  <div class="mt-4 grid gap-3 md:grid-cols-4">
+    <div><div class="metric-label">Server</div><div class="text-lg font-semibold">{{ status.server or "unknown" }}</div></div>
+    <div><div class="metric-label">Currency</div><div class="text-lg font-semibold">{{ status.currency or "unknown" }}</div></div>
+    <div><div class="metric-label">Balance</div><div class="text-lg font-semibold">{{ status.balance if status.balance is not none else "n/a" }}</div></div>
+    <div><div class="metric-label">Equity</div><div class="text-lg font-semibold">{{ status.equity if status.equity is not none else "n/a" }}</div></div>
+  </div>
+</div>
+

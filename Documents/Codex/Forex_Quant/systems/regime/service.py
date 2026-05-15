@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import math
+from collections import Counter
+from dataclasses import asdict
 from pathlib import Path
-from statistics import mean, pstdev
+from statistics import mean, median, pstdev
 from typing import Any
 
 from core.config_manager import ConfigManager
 from core.models.regime import RegimeFeatureSet, RegimeReason, RegimeResult
-from core.time_utils import classify_session
+from core.time_utils import classify_session, to_utc
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -64,8 +66,9 @@ def _ema(values: list[float], period: int) -> float:
     if not values:
         return 0.0
     multiplier = 2 / (period + 1)
-    ema = values[0]
-    for value in values[1:]:
+    seed_size = min(period, len(values))
+    ema = _average(values[:seed_size])
+    for value in values[seed_size:]:
         ema = (value - ema) * multiplier + ema
     return ema
 
@@ -73,19 +76,47 @@ def _ema(values: list[float], period: int) -> float:
 def _simplified_adx(rows: list[dict[str, Any]], period: int = 14) -> float:
     if len(rows) <= period + 1:
         return 0.0
-    trs = _true_ranges(rows)
+    trs: list[float] = []
     plus_dm: list[float] = []
     minus_dm: list[float] = []
     for index in range(1, len(rows)):
+        high = float(rows[index]["high"])
+        low = float(rows[index]["low"])
+        prev_high = float(rows[index - 1]["high"])
+        prev_low = float(rows[index - 1]["low"])
+        prev_close = float(rows[index - 1]["close"])
+        trs.append(max(high - low, abs(high - prev_close), abs(low - prev_close)))
         up_move = float(rows[index]["high"]) - float(rows[index - 1]["high"])
         down_move = float(rows[index - 1]["low"]) - float(rows[index]["low"])
         plus_dm.append(up_move if up_move > down_move and up_move > 0 else 0.0)
         minus_dm.append(down_move if down_move > up_move and down_move > 0 else 0.0)
-    tr_period = sum(trs[-period:]) or 1e-12
-    plus_di = 100.0 * sum(plus_dm[-period:]) / tr_period
-    minus_di = 100.0 * sum(minus_dm[-period:]) / tr_period
-    denominator = plus_di + minus_di
-    return 100.0 * abs(plus_di - minus_di) / denominator if denominator else 0.0
+    if len(trs) < period:
+        return 0.0
+
+    smoothed_tr = sum(trs[:period]) or 1e-12
+    smoothed_plus_dm = sum(plus_dm[:period])
+    smoothed_minus_dm = sum(minus_dm[:period])
+    dx_values: list[float] = []
+
+    def _dx(tr_value: float, plus_value: float, minus_value: float) -> float:
+        plus_di = 100.0 * plus_value / tr_value
+        minus_di = 100.0 * minus_value / tr_value
+        denominator = plus_di + minus_di
+        return 100.0 * abs(plus_di - minus_di) / denominator if denominator else 0.0
+
+    dx_values.append(_dx(smoothed_tr, smoothed_plus_dm, smoothed_minus_dm))
+    for index in range(period, len(trs)):
+        smoothed_tr = smoothed_tr - (smoothed_tr / period) + trs[index]
+        smoothed_plus_dm = smoothed_plus_dm - (smoothed_plus_dm / period) + plus_dm[index]
+        smoothed_minus_dm = smoothed_minus_dm - (smoothed_minus_dm / period) + minus_dm[index]
+        dx_values.append(_dx(max(smoothed_tr, 1e-12), smoothed_plus_dm, smoothed_minus_dm))
+
+    if len(dx_values) < period:
+        return _average(dx_values)
+    adx = _average(dx_values[:period])
+    for dx in dx_values[period:]:
+        adx = ((adx * (period - 1)) + dx) / period
+    return adx
 
 
 def _jump_z(closes: list[float], lookback: int = 30) -> float:
@@ -135,6 +166,142 @@ def _sweep_flags(rows: list[dict[str, Any]], lookback: int, spread_percentile: f
     return sweep_high, sweep_low
 
 
+def _pip_size(price: float) -> float:
+    return 0.01 if abs(price) >= 10 else 0.0001
+
+
+def _volume_ratio(rows: list[dict[str, Any]], lookback: int = 20) -> float:
+    volumes = [float(row.get("tick_volume", 0) or 0) for row in rows]
+    if len(volumes) < 2:
+        return 1.0
+    history = volumes[-lookback - 1:-1] or volumes[:-1]
+    baseline = _average(history) or 1.0
+    return volumes[-1] / baseline
+
+
+def _round_number_context(price: float) -> dict[str, Any]:
+    pip = _pip_size(price)
+    step = pip * 50.0
+    nearest = round(price / step) * step if step else price
+    distance_pips = abs(price - nearest) / pip if pip else 0.0
+    decimals = 3 if pip >= 0.01 else 5
+    return {
+        "nearest_round_number": round(nearest, decimals),
+        "round_number_distance_pips": round(distance_pips, 2),
+        "near_round_number": distance_pips <= 5.0,
+    }
+
+
+def _equal_level_context(rows: list[dict[str, Any]], lookback: int, pip: float) -> dict[str, Any]:
+    if len(rows) <= lookback + 1:
+        return {"equal_high_cluster": False, "equal_low_cluster": False, "prior_cluster_high": None, "prior_cluster_low": None}
+    prior = rows[-lookback - 1:-1]
+    tolerance = max(pip * 3.0, 1e-12)
+    prior_high = max(float(row["high"]) for row in prior)
+    prior_low = min(float(row["low"]) for row in prior)
+    high_touches = sum(1 for row in prior if abs(float(row["high"]) - prior_high) <= tolerance)
+    low_touches = sum(1 for row in prior if abs(float(row["low"]) - prior_low) <= tolerance)
+    decimals = 3 if pip >= 0.01 else 5
+    return {
+        "equal_high_cluster": high_touches >= 2,
+        "equal_low_cluster": low_touches >= 2,
+        "prior_cluster_high": round(prior_high, decimals),
+        "prior_cluster_low": round(prior_low, decimals),
+        "equal_high_touches": high_touches,
+        "equal_low_touches": low_touches,
+    }
+
+
+def _asian_range_context(rows: list[dict[str, Any]], sessions_config: dict[str, Any], pip: float) -> dict[str, Any]:
+    if len(rows) < 3:
+        return {"asian_range_high": None, "asian_range_low": None, "asian_high_swept": False, "asian_low_swept": False}
+    current_time = to_utc(rows[-1]["time"])
+    current = rows[-1]
+    asia_rows: list[dict[str, Any]] = []
+    for row in reversed(rows[:-1]):
+        row_time = to_utc(row["time"])
+        if (current_time - row_time).total_seconds() > 36 * 3600:
+            break
+        if classify_session(row["time"], sessions_config).get("session") == "Asia":
+            asia_rows.append(row)
+    if not asia_rows:
+        return {"asian_range_high": None, "asian_range_low": None, "asian_high_swept": False, "asian_low_swept": False}
+    high = max(float(row["high"]) for row in asia_rows)
+    low = min(float(row["low"]) for row in asia_rows)
+    tolerance = max(pip * 1.0, 1e-12)
+    decimals = 3 if pip >= 0.01 else 5
+    return {
+        "asian_range_high": round(high, decimals),
+        "asian_range_low": round(low, decimals),
+        "asian_high_swept": float(current["high"]) > high + tolerance and float(current["close"]) < high,
+        "asian_low_swept": float(current["low"]) < low - tolerance and float(current["close"]) > low,
+    }
+
+
+def _microstructure_context(
+    *,
+    rows: list[dict[str, Any]],
+    sessions_config: dict[str, Any],
+    swing_lookback: int,
+    close: float,
+    spread_percentile: float,
+    sweep_high: bool,
+    sweep_low: bool,
+    upper_wick_ratio: float,
+    lower_wick_ratio: float,
+) -> dict[str, Any]:
+    pip = _pip_size(close)
+    volume_ratio = _volume_ratio(rows, lookback=20)
+    round_ctx = _round_number_context(close)
+    equal_ctx = _equal_level_context(rows, swing_lookback, pip)
+    asia_ctx = _asian_range_context(rows, sessions_config, pip)
+    stop_zones: list[str] = []
+    if round_ctx["near_round_number"]:
+        stop_zones.append("round_number")
+    if equal_ctx["equal_high_cluster"]:
+        stop_zones.append("equal_highs")
+    if equal_ctx["equal_low_cluster"]:
+        stop_zones.append("equal_lows")
+    if asia_ctx["asian_high_swept"]:
+        stop_zones.append("asian_high_sweep")
+    if asia_ctx["asian_low_swept"]:
+        stop_zones.append("asian_low_sweep")
+
+    trap_score = 0
+    trap_score += 30 if sweep_high or sweep_low or asia_ctx["asian_high_swept"] or asia_ctx["asian_low_swept"] else 0
+    trap_score += 20 if volume_ratio >= 1.5 else 0
+    trap_score += 15 if round_ctx["near_round_number"] else 0
+    trap_score += 15 if equal_ctx["equal_high_cluster"] or equal_ctx["equal_low_cluster"] else 0
+    trap_score += 10 if max(upper_wick_ratio, lower_wick_ratio) >= 0.55 else 0
+    trap_score += 10 if spread_percentile >= 80 else 0
+    if sweep_high or asia_ctx["asian_high_swept"]:
+        sweep_direction = "high_sweep_reversal_short_watch"
+    elif sweep_low or asia_ctx["asian_low_swept"]:
+        sweep_direction = "low_sweep_reversal_long_watch"
+    else:
+        sweep_direction = "none"
+
+    return {
+        **round_ctx,
+        **equal_ctx,
+        **asia_ctx,
+        "pip_size": pip,
+        "tick_volume": float(rows[-1].get("tick_volume", 0) or 0),
+        "tick_volume_ratio": round(volume_ratio, 3),
+        "volume_spike": volume_ratio >= 1.5,
+        "retail_stop_zones": stop_zones,
+        "institutional_trap_score": min(100, trap_score),
+        "liquidity_sweep_direction": sweep_direction,
+        "news_proxy": {
+            "status": "proxy_only_no_calendar",
+            "jump_z": None,
+            "spread_percentile": round(spread_percentile, 2),
+            "tick_volume_ratio": round(volume_ratio, 3),
+        },
+        "sentiment_status": "unavailable_without_feed",
+    }
+
+
 def calculate_feature_snapshot(rows: list[dict[str, Any]], context: dict[str, Any] | None = None) -> RegimeFeatureSet:
     regimes_config, local_config, sessions_config = _cfg()
     thresholds = regimes_config.get("thresholds", {})
@@ -167,6 +334,19 @@ def calculate_feature_snapshot(rows: list[dict[str, Any]], context: dict[str, An
     body_ratio, upper_wick_ratio, lower_wick_ratio = _candle_ratios(rows[-1])
     sweep_high, sweep_low = _sweep_flags(rows, swing_lookback, spread_percentile)
     session = classify_session(rows[-1]["time"], sessions_config)
+    jump_z = _jump_z(closes, trend_period)
+    microstructure = _microstructure_context(
+        rows=rows,
+        sessions_config=sessions_config,
+        swing_lookback=swing_lookback,
+        close=close,
+        spread_percentile=spread_percentile,
+        sweep_high=sweep_high,
+        sweep_low=sweep_low,
+        upper_wick_ratio=upper_wick_ratio,
+        lower_wick_ratio=lower_wick_ratio,
+    )
+    microstructure["news_proxy"]["jump_z"] = round(jump_z, 3)
 
     slope = (closes[-1] - closes[-min(trend_period + 1, len(closes))]) / max(1, min(trend_period, len(closes) - 1))
     slope_score = slope / atr if atr else 0.0
@@ -179,7 +359,7 @@ def calculate_feature_snapshot(rows: list[dict[str, Any]], context: dict[str, An
         adx=_simplified_adx(rows, atr_period),
         slope_score=slope_score,
         spread_percentile=spread_percentile,
-        jump_z=_jump_z(closes, trend_period),
+        jump_z=jump_z,
         compression_percentile=_compression_percentile(rows, trend_period),
         body_ratio=body_ratio,
         upper_wick_ratio=upper_wick_ratio,
@@ -192,6 +372,7 @@ def calculate_feature_snapshot(rows: list[dict[str, Any]], context: dict[str, An
             "session_modifier": session.get("modifier") or "M01",
             "ema_50": _ema(closes[-50:], 50),
             "close": close,
+            **microstructure,
         },
     )
 
@@ -308,3 +489,456 @@ def dataframe_to_rows(dataframe: Any) -> list[dict[str, Any]]:
     if hasattr(dataframe, "to_dict"):
         return list(dataframe.to_dict(orient="records"))
     return list(dataframe)
+
+
+def regime_to_dict(result: RegimeResult) -> dict[str, Any]:
+    return asdict(result)
+
+
+def _row_time(row: dict[str, Any]) -> Any:
+    return to_utc(row["time"])
+
+
+def _is_killzone(row: dict[str, Any], sessions_config: dict[str, Any]) -> bool:
+    session = classify_session(row["time"], sessions_config).get("session")
+    return session in {"London_Open", "London_NY_Overlap"}
+
+
+def _window_label(start: Any, end: Any | None = None) -> str:
+    start_text = to_utc(start).isoformat()
+    if end is None:
+        return start_text
+    return f"{start_text} -> {to_utc(end).isoformat()}"
+
+
+def _timeframe_minutes(timeframe: str) -> int:
+    key = str(timeframe).upper()
+    if key.startswith("M"):
+        return max(1, int(key[1:] or 1))
+    if key.startswith("H"):
+        return max(1, int(key[1:] or 1) * 60)
+    if key.startswith("D"):
+        return max(1, int(key[1:] or 1) * 1440)
+    return 15
+
+
+def _regime_library(regimes_config: dict[str, Any]) -> list[str]:
+    return [
+        f"{base}_{modifier}"
+        for base in regimes_config.get("base_regimes", {})
+        for modifier in regimes_config.get("modifiers", {})
+    ]
+
+
+def _build_segments(timeline: list[dict[str, Any]], bar_minutes: int) -> list[dict[str, Any]]:
+    if not timeline:
+        return []
+    segments: list[dict[str, Any]] = []
+    start = timeline[0]
+    end = timeline[0]
+    bars = 1
+    for entry in timeline[1:]:
+        if entry["regime_id"] == end["regime_id"]:
+            end = entry
+            bars += 1
+            continue
+        segments.append(
+            {
+                "regime_id": end["regime_id"],
+                "start": start["time"],
+                "end": end["time"],
+                "bars": bars,
+                "duration_minutes": round(float(max(1, bars) * bar_minutes), 2),
+            }
+        )
+        start = entry
+        end = entry
+        bars = 1
+    segments.append(
+        {
+            "regime_id": end["regime_id"],
+            "start": start["time"],
+            "end": end["time"],
+            "bars": bars,
+            "duration_minutes": round(float(max(1, bars) * bar_minutes), 2),
+        }
+    )
+    return segments
+
+
+def _status_for_regime(regime_id: str, current_id: str | None, previous_id: str | None, observed: bool) -> str:
+    if regime_id == current_id:
+        return "current"
+    if regime_id == previous_id:
+        return "previous"
+    if observed:
+        return "observed"
+    return "not_observed"
+
+
+def _build_regime_scan_table(
+    *,
+    regimes_config: dict[str, Any],
+    timeline: list[dict[str, Any]],
+    regime_counts: Counter[str],
+    transitions: list[dict[str, Any]],
+    current_id: str | None,
+    previous_id: str | None,
+    segments: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    total_bars = len(timeline)
+    latest_by_regime: dict[str, dict[str, Any]] = {}
+    confidence_by_regime: dict[str, list[float]] = {}
+    first_seen: dict[str, str] = {}
+    tradable_counts: Counter[str] = Counter()
+    no_trade_counts: Counter[str] = Counter()
+    killzone_counts: Counter[str] = Counter()
+    spread_stress_counts: Counter[str] = Counter()
+    sweep_counts: Counter[str] = Counter()
+    trap_counts: Counter[str] = Counter()
+    volume_spike_counts: Counter[str] = Counter()
+    round_number_counts: Counter[str] = Counter()
+    transition_counts: Counter[str] = Counter()
+    durations_by_regime: dict[str, list[float]] = {}
+
+    for entry in timeline:
+        regime_id = entry["regime_id"]
+        latest_by_regime[regime_id] = entry
+        first_seen.setdefault(regime_id, entry["time"])
+        confidence_by_regime.setdefault(regime_id, []).append(float(entry.get("confidence") or 0.0))
+        if entry.get("tradable"):
+            tradable_counts[regime_id] += 1
+        else:
+            no_trade_counts[regime_id] += 1
+        if entry.get("killzone"):
+            killzone_counts[regime_id] += 1
+        features = entry.get("features") or {}
+        if float(features.get("spread_percentile") or 0.0) >= 90.0:
+            spread_stress_counts[regime_id] += 1
+        if features.get("sweep_high") or features.get("sweep_low"):
+            sweep_counts[regime_id] += 1
+        extra = features.get("extra") or {}
+        if float(extra.get("institutional_trap_score") or 0.0) >= 60.0:
+            trap_counts[regime_id] += 1
+        if extra.get("volume_spike"):
+            volume_spike_counts[regime_id] += 1
+        if extra.get("near_round_number"):
+            round_number_counts[regime_id] += 1
+
+    for transition in transitions:
+        transition_counts[str(transition.get("from"))] += 1
+        transition_counts[str(transition.get("to"))] += 1
+
+    for segment in segments:
+        durations_by_regime.setdefault(segment["regime_id"], []).append(float(segment["duration_minutes"]))
+
+    rows: list[dict[str, Any]] = []
+    for regime_id in _regime_library(regimes_config):
+        base, _, modifier = regime_id.partition("_")
+        observed = regime_counts.get(regime_id, 0) > 0
+        durations = durations_by_regime.get(regime_id, [])
+        confidences = confidence_by_regime.get(regime_id, [])
+        latest = latest_by_regime.get(regime_id)
+        rows.append(
+            {
+                "regime_id": regime_id,
+                "quadrant": base,
+                "modifier": modifier,
+                "observed": observed,
+                "bars_count": int(regime_counts.get(regime_id, 0)),
+                "pct_of_period": round(100.0 * regime_counts.get(regime_id, 0) / total_bars, 3) if total_bars else 0.0,
+                "first_seen": first_seen.get(regime_id),
+                "last_seen": latest.get("time") if latest else None,
+                "avg_duration_minutes": round(mean(durations), 2) if durations else 0.0,
+                "median_duration_minutes": round(median(durations), 2) if durations else 0.0,
+                "last_duration_minutes": round(durations[-1], 2) if durations else 0.0,
+                "transition_count": int(transition_counts.get(regime_id, 0)),
+                "tradable_count": int(tradable_counts.get(regime_id, 0)),
+                "no_trade_count": int(no_trade_counts.get(regime_id, 0)),
+                "killzone_count": int(killzone_counts.get(regime_id, 0)),
+                "spread_stress_count": int(spread_stress_counts.get(regime_id, 0)),
+                "sweep_count": int(sweep_counts.get(regime_id, 0)),
+                "institutional_trap_count": int(trap_counts.get(regime_id, 0)),
+                "volume_spike_count": int(volume_spike_counts.get(regime_id, 0)),
+                "round_number_count": int(round_number_counts.get(regime_id, 0)),
+                "confidence_avg": round(mean(confidences), 4) if confidences else 0.0,
+                "confidence_latest_if_current": round(float(latest.get("confidence") or 0.0), 4) if regime_id == current_id and latest else None,
+                "status": _status_for_regime(regime_id, current_id, previous_id, observed),
+            }
+        )
+    return rows
+
+
+def _build_change_stats(
+    *,
+    segments: list[dict[str, Any]],
+    transitions: list[dict[str, Any]],
+    current_duration_minutes: float,
+    bars_analyzed: int,
+    bar_minutes: int,
+) -> dict[str, Any]:
+    durations = [float(segment["duration_minutes"]) for segment in segments]
+    previous_durations = durations[:-1] if len(durations) > 1 else durations
+    period_minutes = max(float(bars_analyzed * bar_minutes), 1.0)
+    period_days = max(period_minutes / 1440.0, 1.0 / 1440.0)
+    typical = median(previous_durations) if previous_durations else current_duration_minutes
+    if typical <= 0:
+        age_state = "unknown"
+    elif current_duration_minutes < typical * 0.5:
+        age_state = "young"
+    elif current_duration_minutes > typical * 1.5:
+        age_state = "extended"
+    else:
+        age_state = "normal"
+    return {
+        "total_transitions": len(transitions),
+        "changes_per_day": round(len(transitions) / period_days, 3),
+        "avg_minutes_between_changes": round(mean(previous_durations), 2) if previous_durations else 0.0,
+        "median_minutes_between_changes": round(median(previous_durations), 2) if previous_durations else 0.0,
+        "fastest_change_minutes": round(min(previous_durations), 2) if previous_durations else 0.0,
+        "slowest_change_minutes": round(max(previous_durations), 2) if previous_durations else 0.0,
+        "current_regime_age_minutes": round(current_duration_minutes, 2),
+        "current_regime_age_vs_typical": age_state,
+        "by_timeframe_explanation": f"Duration uses contiguous regime segments on {bar_minutes}-minute bars.",
+    }
+
+
+def analyze_regime_window(
+    rows: list[dict[str, Any]],
+    symbol: str = "UNKNOWN",
+    timeframe: str = "UNKNOWN",
+    killzone_enabled: bool = True,
+    include_spread_filter: bool = True,
+    include_sweep_detection: bool = True,
+    include_alpha_features: bool = True,
+) -> dict[str, Any]:
+    regimes_config, _, sessions_config = _cfg()
+    ordered = sorted(rows, key=lambda row: row["time"])
+    warnings: list[str] = []
+    bar_minutes = _timeframe_minutes(timeframe)
+    if len(ordered) < 30:
+        warnings.append("Data is thin; regime confidence is limited.")
+    if not ordered:
+        return {
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "current_regime": None,
+            "previous_regime": None,
+            "active_since": None,
+            "bars_analyzed": 0,
+            "bars_by_regime": {},
+            "bars_by_quadrant": {},
+            "bars_by_modifier": {},
+            "regime_timeline": [],
+            "regime_transition_table": [],
+            "killzone_summary": {"enabled": killzone_enabled, "killzone_bars": 0, "non_killzone_bars": 0, "by_regime": {}},
+            "spread_summary": {"stress_bars": 0, "max_spread_percentile": 0.0, "windows": []},
+            "sweep_summary": {"events": 0, "windows": []},
+            "institutional_summary": {
+                "trap_events": 0,
+                "volume_spike_events": 0,
+                "round_number_events": 0,
+                "retail_stop_zones": {},
+                "high_trap_windows": [],
+                "news_proxy_events": 0,
+                "sentiment_status": "unavailable_without_feed",
+            },
+            "alpha_feature_summary": {"compression_events": 0, "trend_exhaustion_events": 0, "notes": []},
+            "no_trade_periods": [],
+            "observed_regimes": [],
+            "regime_scan_table": _build_regime_scan_table(
+                regimes_config=regimes_config,
+                timeline=[],
+                regime_counts=Counter(),
+                transitions=[],
+                current_id=None,
+                previous_id=None,
+                segments=[],
+            ),
+            "change_stats": _build_change_stats(
+                segments=[],
+                transitions=[],
+                current_duration_minutes=0.0,
+                bars_analyzed=0,
+                bar_minutes=bar_minutes,
+            ),
+            "latest_observation_by_regime": {},
+            "warnings": warnings or ["No bars available for regime analysis."],
+        }
+
+    timeline: list[dict[str, Any]] = []
+    regime_counts: Counter[str] = Counter()
+    quadrant_counts: Counter[str] = Counter()
+    modifier_counts: Counter[str] = Counter()
+    killzone_counts: Counter[str] = Counter()
+    non_killzone_counts: Counter[str] = Counter()
+    transitions: list[dict[str, Any]] = []
+    spread_windows: list[dict[str, Any]] = []
+    sweep_windows: list[dict[str, Any]] = []
+    high_trap_windows: list[dict[str, Any]] = []
+    no_trade_periods: list[dict[str, Any]] = []
+    retail_stop_zone_counts: Counter[str] = Counter()
+    compression_events = 0
+    trend_exhaustion_events = 0
+    trap_events = 0
+    volume_spike_events = 0
+    round_number_events = 0
+    news_proxy_events = 0
+    previous_entry: dict[str, Any] | None = None
+    max_spread_percentile = 0.0
+
+    for index in range(len(ordered)):
+        window = ordered[max(0, index - 320) : index + 1]
+        result = detect_regime_for_rows(window, symbol=symbol, timeframe=timeframe)
+        result_dict = regime_to_dict(result)
+        row = ordered[index]
+        session = classify_session(row["time"], sessions_config)
+        killzone = _is_killzone(row, sessions_config)
+        entry = {
+            "time": _row_time(row).isoformat(),
+            "regime_id": result.regime_id,
+            "base_regime": result.base_regime,
+            "modifier": result.modifier,
+            "confidence": result.confidence,
+            "tradable": result.tradable,
+            "risk_posture": result.risk_posture,
+            "session": session.get("session"),
+            "killzone": killzone,
+            "spread": float(row.get("spread", 0) or 0),
+            "close": float(row.get("close", 0) or 0),
+            "features": result_dict.get("features", {}),
+            "microstructure": (result_dict.get("features", {}).get("extra", {}) if result_dict.get("features") else {}),
+            "reasons": result_dict.get("reasons", []),
+        }
+        timeline.append(entry)
+        regime_counts[result.regime_id] += 1
+        quadrant_counts[result.base_regime] += 1
+        modifier_counts[result.modifier] += 1
+        if killzone:
+            killzone_counts[result.regime_id] += 1
+        else:
+            non_killzone_counts[result.regime_id] += 1
+        features = result.features
+        max_spread_percentile = max(max_spread_percentile, float(features.spread_percentile))
+        if include_spread_filter and features.spread_percentile >= 90:
+            spread_windows.append({"time": entry["time"], "regime_id": result.regime_id, "spread_percentile": round(features.spread_percentile, 2)})
+        if include_sweep_detection and (features.sweep_high or features.sweep_low):
+            sweep_windows.append({"time": entry["time"], "regime_id": result.regime_id, "sweep_high": features.sweep_high, "sweep_low": features.sweep_low})
+        extra = features.extra or {}
+        trap_score = float(extra.get("institutional_trap_score") or 0.0)
+        if trap_score >= 60.0:
+            trap_events += 1
+            high_trap_windows.append(
+                {
+                    "time": entry["time"],
+                    "regime_id": result.regime_id,
+                    "trap_score": round(trap_score, 2),
+                    "retail_stop_zones": extra.get("retail_stop_zones", []),
+                    "sweep_direction": extra.get("liquidity_sweep_direction"),
+                }
+            )
+        if extra.get("volume_spike"):
+            volume_spike_events += 1
+        if extra.get("near_round_number"):
+            round_number_events += 1
+        for zone in extra.get("retail_stop_zones", []):
+            retail_stop_zone_counts[str(zone)] += 1
+        news_proxy = extra.get("news_proxy") or {}
+        if float(news_proxy.get("jump_z") or 0.0) >= 2.0 or float(news_proxy.get("spread_percentile") or 0.0) >= 90.0 or float(news_proxy.get("tick_volume_ratio") or 0.0) >= 2.0:
+            news_proxy_events += 1
+        if include_alpha_features and features.compression_percentile <= 25:
+            compression_events += 1
+        if include_alpha_features and result.modifier == "M11":
+            trend_exhaustion_events += 1
+        if not result.tradable:
+            no_trade_periods.append({"time": entry["time"], "regime_id": result.regime_id, "reason": result.risk_posture})
+        if previous_entry and previous_entry["regime_id"] != entry["regime_id"]:
+            transitions.append(
+                {
+                    "from": previous_entry["regime_id"],
+                    "to": entry["regime_id"],
+                    "time": entry["time"],
+                    "from_time": previous_entry["time"],
+                    "to_time": entry["time"],
+                }
+            )
+        previous_entry = entry
+
+    current = timeline[-1]
+    previous_regime = next((entry for entry in reversed(timeline[:-1]) if entry["regime_id"] != current["regime_id"]), None)
+    active_since = current["time"]
+    for entry in reversed(timeline):
+        if entry["regime_id"] != current["regime_id"]:
+            break
+        active_since = entry["time"]
+    segments = _build_segments(timeline, bar_minutes)
+    current_duration_minutes = float(segments[-1]["duration_minutes"]) if segments else 0.0
+    current["active_duration_minutes"] = round(current_duration_minutes, 2)
+    current["latest_bar_time"] = current["time"]
+    latest_by_regime: dict[str, dict[str, Any]] = {}
+    for entry in timeline:
+        latest_by_regime[entry["regime_id"]] = entry
+    scan_table = _build_regime_scan_table(
+        regimes_config=regimes_config,
+        timeline=timeline,
+        regime_counts=regime_counts,
+        transitions=transitions,
+        current_id=current["regime_id"],
+        previous_id=previous_regime["regime_id"] if previous_regime else None,
+        segments=segments,
+    )
+    change_stats = _build_change_stats(
+        segments=segments,
+        transitions=transitions,
+        current_duration_minutes=current_duration_minutes,
+        bars_analyzed=len(timeline),
+        bar_minutes=bar_minutes,
+    )
+
+    observed_regimes = sorted(regime_counts)
+    if not observed_regimes:
+        warnings.append("No regime observed in selected period.")
+
+    return {
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "current_regime": current,
+        "previous_regime": previous_regime,
+        "active_since": active_since,
+        "active_duration_minutes": round(current_duration_minutes, 2),
+        "bars_analyzed": len(timeline),
+        "bars_by_regime": dict(regime_counts),
+        "bars_by_quadrant": dict(quadrant_counts),
+        "bars_by_modifier": dict(modifier_counts),
+        "regime_timeline": timeline[-160:],
+        "regime_transition_table": transitions,
+        "regime_segments": segments[-120:],
+        "regime_scan_table": scan_table,
+        "change_stats": change_stats,
+        "latest_observation_by_regime": latest_by_regime,
+        "killzone_summary": {
+            "enabled": killzone_enabled,
+            "killzone_bars": sum(killzone_counts.values()),
+            "non_killzone_bars": sum(non_killzone_counts.values()),
+            "by_regime": dict(killzone_counts if killzone_enabled else non_killzone_counts),
+        },
+        "spread_summary": {"stress_bars": len(spread_windows), "max_spread_percentile": round(max_spread_percentile, 2), "windows": spread_windows[-25:]},
+        "sweep_summary": {"events": len(sweep_windows), "windows": sweep_windows[-25:]},
+        "institutional_summary": {
+            "trap_events": trap_events,
+            "volume_spike_events": volume_spike_events,
+            "round_number_events": round_number_events,
+            "retail_stop_zones": dict(retail_stop_zone_counts),
+            "high_trap_windows": high_trap_windows[-25:],
+            "news_proxy_events": news_proxy_events,
+            "sentiment_status": "unavailable_without_feed",
+        },
+        "alpha_feature_summary": {
+            "compression_events": compression_events,
+            "trend_exhaustion_events": trend_exhaustion_events,
+            "notes": ["trend alpha", "range alpha", "breakout alpha", "sweep alpha"] if include_alpha_features else [],
+        },
+        "no_trade_periods": no_trade_periods[-40:],
+        "observed_regimes": observed_regimes,
+        "warnings": warnings,
+    }
