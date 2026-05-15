@@ -1,0 +1,99 @@
+{% extends "app/templates/base.html" %}
+{% block title %}Strategies | Quanta Forex{% endblock %}
+{% block content %}
+<div class="space-y-5 max-w-6xl">
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-semibold">Strategies</h1>
+      <p class="mt-1 max-w-2xl text-sm text-zinc-500">
+        Four slots per regime from primary to fallback. All implemented signal templates are active for research and backtesting from the UI.
+        Paper and live routing stay blocked until the evidence gates are satisfied.
+      </p>
+    </div>
+    <form class="flex flex-wrap items-center gap-2" hx-get="/partials/regime-playbook" hx-target="#regime-playbook" hx-swap="outerHTML">
+      <label class="text-xs text-zinc-500">Regime</label>
+      <input class="input w-32 font-mono text-sm" name="regime_id" value="{{ selected.regime_id }}" placeholder="Q3_M04" autocomplete="off" title="Must match regime_id from detection (e.g. Q1_M05)">
+      <button class="button" type="submit">Load playbook</button>
+    </form>
+  </div>
+
+  <section class="grid gap-3 md:grid-cols-4">
+    <div class="panel">
+      <div class="metric-label">Research Active</div>
+      <div class="metric-value">{{ summary.research_active }}/{{ summary.total }}</div>
+      <div class="metric-sub">Signal templates executable for analysis</div>
+    </div>
+    <div class="panel">
+      <div class="metric-label">Regimes Covered</div>
+      <div class="metric-value">{{ summary.regimes }}/52</div>
+      <div class="metric-sub">Four strategy slots per regime</div>
+    </div>
+    <div class="panel">
+      <div class="metric-label">Paper Enabled</div>
+      <div class="metric-value">{{ summary.paper_enabled }}</div>
+      <div class="metric-sub">Requires validated backtests</div>
+    </div>
+    <div class="panel">
+      <div class="metric-label">Live Enabled</div>
+      <div class="metric-value">{{ summary.live_enabled }}</div>
+      <div class="metric-sub">Real order routing remains blocked</div>
+    </div>
+  </section>
+
+  <section class="panel">
+    {% include "systems/strategy_router/partials/regime_playbook.html" %}
+  </section>
+
+  <section class="panel">
+    <div class="label">Signal Check API</div>
+    <p class="mt-2 text-sm text-zinc-500">
+      Runs the detected regime's four candidates on the latest cleaned bars for a symbol/timeframe, using the same rows as the Data page.
+    </p>
+    <pre class="mt-2 overflow-x-auto rounded border border-zinc-700 bg-zinc-950 p-3 text-xs text-zinc-400">curl -X POST "{{ request.base_url }}api/strategies/run-signal" -F symbol=EURUSD -F timeframe=M15 -F mode=research</pre>
+  </section>
+
+  <details class="panel">
+    <summary class="cursor-pointer text-sm font-semibold text-zinc-300">
+      Show full strategy registry
+      <span class="font-normal text-zinc-500">({{ summary.total }} rows - audit / search)</span>
+    </summary>
+    <div class="mt-4 max-h-[min(70vh,520px)] overflow-auto border-t border-zinc-700 pt-4">
+      <table class="table-compact text-xs">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Regime</th>
+            <th>Slot</th>
+            <th>Name</th>
+            <th>Family</th>
+            <th>Signal</th>
+            <th>Research</th>
+            <th>Paper Gate</th>
+            <th>Live</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in registry %}
+            <tr class="{% if item.regime_id == selected.regime_id %}bg-sky-950/40{% endif %}">
+              <td class="font-mono">{{ item.id }}</td>
+              <td>{{ item.regime_id }}</td>
+              <td>{{ item.slot }}</td>
+              <td>{{ item.name }}</td>
+              <td>{{ item.family }}</td>
+              <td class="font-mono">{{ item.signal_fn }}</td>
+              <td>{{ "active" if item.research_active else "missing" }}</td>
+              <td>{{ item.status }}</td>
+              <td>{{ "allowed" if item.live_allowed else "blocked" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <p class="text-xs text-zinc-500">
+    <a class="text-sky-400 underline" href="/priority-setups">Priority setups</a> /
+    <a class="text-sky-400 underline" href="/strategy-gate">Enablement gate</a>
+  </p>
+</div>
+{% endblock %}

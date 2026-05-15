@@ -1,0 +1,12 @@
+<div id="regime-reasons">
+  <div class="label">Rule Reasons</div>
+  <ul class="mt-3 space-y-2 text-sm">
+    {% for reason in latest.reasons %}
+      <li class="rounded border border-zinc-200 bg-zinc-50 px-3 py-2">
+        <span class="font-semibold">{{ reason.code }}</span>: {{ reason.message }}
+      </li>
+    {% else %}
+      <li class="text-zinc-500">No regime reasons available. Load cleaned data first.</li>
+    {% endfor %}
+  </ul>
+</div>

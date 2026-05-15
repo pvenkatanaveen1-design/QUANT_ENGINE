@@ -1,0 +1,43 @@
+{% extends "app/templates/base.html" %}
+{% block title %}Risk | Quanta Forex{% endblock %}
+{% block content %}
+<div class="space-y-5">
+  <div>
+    <h1 class="text-2xl font-semibold">Risk Manager</h1>
+    <p class="mt-1 text-sm text-zinc-500">Cost guard, funded rules, kill switch · <a class="text-sky-700 underline" href="/position-sizing">Kelly &amp; sizing math</a></p>
+  </div>
+  {% include "systems/risk/partials/risk_summary.html" %}
+  <section class="panel">
+    <div class="label">Position Sizing Preview</div>
+    <form
+      class="mt-3 grid gap-3 md:grid-cols-6"
+      hx-post="/partials/risk-preview"
+      hx-target="#risk-preview"
+      hx-swap="outerHTML">
+      <input class="input" name="account_balance" type="number" value="10000" step="100">
+      <input class="input" name="stop_distance_pips" type="number" value="10" step="0.1">
+      <input class="input" name="regime_confidence" type="number" value="0.75" step="0.05">
+      <input class="input" name="historical_trust_factor" type="number" value="0.25" step="0.05">
+      <input class="input" name="present_risk_factor" type="number" value="1.0" step="0.05">
+      <button class="button" type="submit">Preview</button>
+    </form>
+    <div id="risk-preview" class="mt-3 rounded border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-500">Run preview to see final risk, risk amount, and lot size.</div>
+  </section>
+  <section class="panel">
+    <div class="label">Rules</div>
+    <div class="mt-3 grid gap-4 lg:grid-cols-3">
+      <div class="overflow-x-auto">
+        <table class="table-compact">
+          <tbody>
+            {% for key, value in rules.items() %}
+              <tr><th>{{ key }}</th><td>{{ value }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="rounded border border-zinc-200 p-3">{% include "systems/risk/partials/funded_rules.html" %}</div>
+      <div class="rounded border border-zinc-200 p-3">{% include "systems/risk/partials/kill_switch.html" %}</div>
+    </div>
+  </section>
+</div>
+{% endblock %}

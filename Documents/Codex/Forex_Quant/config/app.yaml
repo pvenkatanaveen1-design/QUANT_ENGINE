@@ -1,0 +1,9 @@
+app_name: Quanta Forex Control Center
+environment: local
+timezone: UTC
+data_root: data
+live_trading_enabled: false
+paper_trading_enabled: false
+default_symbol: EURUSD
+default_timeframe: M15
+

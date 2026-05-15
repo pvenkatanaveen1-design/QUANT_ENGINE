@@ -1,0 +1,303 @@
+{% extends "app/templates/base.html" %}
+{% block title %}Analytics | Quanta Forex{% endblock %}
+{% block content %}
+<div class="space-y-6 px-4 py-5 md:px-6">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold">Analytics</h1>
+      <p class="mt-1 max-w-3xl text-sm text-zinc-500">
+        Visualizations read from <code class="rounded bg-zinc-200 px-1 text-xs">analysis_cache</code> populated by signal-engine walk-forward runs (<code class="rounded bg-zinc-200 px-1 text-xs">/api/backtests/signal-engine</code>).
+        <a class="text-sky-700 underline" href="/evaluation-metrics">Metric definitions &amp; targets</a>
+      </p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <label class="text-xs font-medium text-zinc-600">Run</label>
+      <select id="run-select" class="rounded border border-zinc-300 bg-white px-2 py-1 text-sm">
+        {% for r in wf_runs %}
+          <option value="{{ r.run_id }}" {% if r.run_id == default_run_id %}selected{% endif %}>{{ r.created_at[:19] }} — {{ r.symbol }} {{ r.timeframe }} ({{ r.regime_id_filter }})</option>
+        {% else %}
+          <option value="">No runs</option>
+        {% endfor %}
+      </select>
+      <button type="button" id="reload-btn" class="rounded border border-zinc-300 bg-white px-3 py-1 text-sm hover:bg-zinc-50">Reload</button>
+    </div>
+  </div>
+
+  <section id="kpi-row" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+    <div class="panel"><div class="metric-label">Net P&amp;L ($)</div><div class="metric-value" id="kpi-pnl">—</div></div>
+    <div class="panel"><div class="metric-label">Total Return (%)</div><div class="metric-value" id="kpi-ret">—</div></div>
+    <div class="panel"><div class="metric-label">Win Rate</div><div class="metric-value" id="kpi-wr">—</div></div>
+    <div class="panel"><div class="metric-label">Profit Factor</div><div class="metric-value" id="kpi-pf">—</div></div>
+    <div class="panel"><div class="metric-label">Sharpe (R)</div><div class="metric-value" id="kpi-sharpe">—</div></div>
+    <div class="panel"><div class="metric-label">Sortino (R)</div><div class="metric-value" id="kpi-sortino">—</div></div>
+    <div class="panel"><div class="metric-label">Max DD (%)</div><div class="metric-value" id="kpi-dd">—</div></div>
+    <div class="panel"><div class="metric-label">Expectancy (R)</div><div class="metric-value" id="kpi-exp">—</div></div>
+  </section>
+
+  <p id="validation-banner" class="hidden rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"></p>
+
+  <section class="panel">
+    <div class="label">1) Equity curve</div>
+    <p class="mt-1 text-xs text-zinc-500">Equity after each closed trade. Baseline $10,000.</p>
+    <div class="mt-4 h-64"><canvas id="chart-equity"></canvas></div>
+  </section>
+
+  <section class="panel">
+    <div class="label">2) Strategy ranking</div>
+    <div class="mt-3 overflow-x-auto">
+      <table class="table-compact text-sm" id="strategy-table">
+        <thead><tr><th>Strategy</th><th>Trades</th><th>Win%</th><th>PF</th><th>Exp(R)</th><th>P&amp;L$</th><th>Sample</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="label">3) Regime &times; strategy slot (S01–S04)</div>
+    <p class="mt-1 text-xs text-zinc-500">&lt;10 trades shows “—”. Green &gt;60% WR, yellow 50–60%, red &lt;50%.</p>
+    <div class="mt-3 overflow-x-auto max-h-96" id="matrix-wrap"></div>
+  </section>
+
+  <div class="grid gap-4 lg:grid-cols-2">
+    <section class="panel">
+      <div class="label">4) Condition comparison</div>
+      <div class="mt-3 h-56"><canvas id="chart-conditions"></canvas></div>
+    </section>
+    <section class="panel">
+      <div class="label">5) Session breakdown</div>
+      <div class="mt-3 h-56"><canvas id="chart-session"></canvas></div>
+    </section>
+  </div>
+
+  <div class="grid gap-4 lg:grid-cols-2">
+    <section class="panel">
+      <div class="label">6) Confidence buckets</div>
+      <div class="mt-3 h-56"><canvas id="chart-conf"></canvas></div>
+    </section>
+    <section class="panel">
+      <div class="label">7) Rolling edge (30 trades)</div>
+      <p class="mt-1 text-xs text-zinc-500">First strategy in run. Red zone if rolling WR drops 8%+ vs overall WR.</p>
+      <div class="mt-3 h-56"><canvas id="chart-roll"></canvas></div>
+    </section>
+  </div>
+
+  <div class="grid gap-4 lg:grid-cols-2">
+    <section class="panel">
+      <div class="label">8) Day of week</div>
+      <div class="mt-3 h-56"><canvas id="chart-dow"></canvas></div>
+    </section>
+    <section class="panel">
+      <div class="label">9) Regime frequency (trade counts)</div>
+      <div class="mt-3 h-64"><canvas id="chart-freq"></canvas></div>
+    </section>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  const charts = {};
+  function destroyChart(id) {
+    if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+  }
+  function wrColor(wr) {
+    if (wr >= 60) return '#15803d';
+    if (wr >= 50) return '#ca8a04';
+    return '#b91c1c';
+  }
+  function byType(cache, t) { return (cache || []).filter(r => r.cache_type === t); }
+
+  async function loadData() {
+    const sel = document.getElementById('run-select');
+    const runId = sel && sel.value ? sel.value : '';
+    const url = runId ? `/api/analytics/data?run_id=${encodeURIComponent(runId)}` : '/api/analytics/data';
+    const res = await fetch(url);
+    const body = await res.json();
+    if (!body.ok) return;
+    const d = body.data;
+    const cache = d.cache || [];
+    const equity = d.equity || [];
+    const wf = byType(cache, 'WF_RUN_SUMMARY')[0] || {};
+    const summary = wf.payload || {};
+
+    document.getElementById('kpi-pnl').textContent = wf.total_pnl_usd != null ? Number(wf.total_pnl_usd).toFixed(0) : '—';
+    document.getElementById('kpi-ret').textContent = summary.total_return_pct != null ? Number(summary.total_return_pct).toFixed(2) + '%' : '—';
+    document.getElementById('kpi-wr').textContent = wf.win_rate != null ? Number(wf.win_rate).toFixed(1) + '%' : '—';
+    document.getElementById('kpi-pf').textContent = wf.profit_factor != null ? Number(wf.profit_factor).toFixed(2) : '—';
+    document.getElementById('kpi-sharpe').textContent = summary.sharpe_r != null ? Number(summary.sharpe_r).toFixed(2) : '—';
+    document.getElementById('kpi-sortino').textContent = summary.sortino_r != null ? Number(summary.sortino_r).toFixed(2) : '—';
+    document.getElementById('kpi-dd').textContent = wf.max_drawdown != null ? Number(wf.max_drawdown).toFixed(1) + '%' : '—';
+    document.getElementById('kpi-exp').textContent = wf.expectancy_r != null ? Number(wf.expectancy_r).toFixed(2) : '—';
+
+    const ban = document.getElementById('validation-banner');
+    if (summary.validation_note) {
+      ban.textContent = summary.validation_note;
+      ban.classList.remove('hidden');
+    } else ban.classList.add('hidden');
+
+    destroyChart('equity');
+    const eqCtx = document.getElementById('chart-equity');
+    charts.equity = new Chart(eqCtx, {
+      type: 'line',
+      data: {
+        labels: equity.map(e => e.trade_number),
+        datasets: [{
+          label: 'Equity $',
+          data: equity.map(e => e.equity),
+          borderColor: '#0f766e',
+          tension: 0.15,
+          fill: false,
+        }, {
+          label: 'Baseline',
+          data: equity.map(() => 10000),
+          borderColor: '#a1a1aa',
+          borderDash: [4, 4],
+          pointRadius: 0,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { y: { grid: { color: '#e4e4e7' } }, x: { title: { display: true, text: 'Trade #' } } }
+      }
+    });
+
+    const stRows = byType(cache, 'STRATEGY_STATS').sort((a, b) => (b.expectancy_r || 0) - (a.expectancy_r || 0));
+    const tb = document.querySelector('#strategy-table tbody');
+    tb.innerHTML = '';
+    stRows.forEach(r => {
+      const n = r.trades_count || 0;
+      const wr = r.win_rate || 0;
+      const flag = n < 30 ? '<span class="text-amber-600">&lt;30 trades</span>' : '';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${r.group_key || r.strategy_id}</td><td>${n}</td><td style="color:${wrColor(wr)}">${wr.toFixed(1)}%</td><td>${(r.profit_factor || 0).toFixed(2)}</td><td>${(r.expectancy_r || 0).toFixed(2)}</td><td>${(r.total_pnl_usd || 0).toFixed(0)}</td><td>${flag}</td>`;
+      tb.appendChild(tr);
+    });
+
+    const mat = byType(cache, 'STRATEGY_REGIME_MATRIX');
+    const regimes = [...new Set(mat.map(m => (m.group_key || '').split('__')[0]))].filter(Boolean).sort();
+    const slots = ['S01','S02','S03','S04'];
+    let html = '<table class="table-compact text-xs"><thead><tr><th>Regime</th>';
+    slots.forEach(s => { html += `<th>${s}</th>`; });
+    html += '</tr></thead><tbody>';
+    regimes.slice(0, 52).forEach(reg => {
+      html += `<tr><td class="whitespace-nowrap font-medium">${reg}</td>`;
+      slots.forEach(s => {
+        const row = mat.find(m => m.group_key === `${reg}__${s}`);
+        const pay = row && row.payload ? row.payload : {};
+        const disp = pay.display_wr != null ? pay.display_wr : (row && row.trades_count >= 10 ? (row.win_rate || 0).toFixed(1) + '%' : '—');
+        const wr = row ? (row.win_rate || 0) : 0;
+        const bg = row && row.trades_count >= 10 ? (wr >= 60 ? '#dcfce7' : wr >= 50 ? '#fef9c3' : '#fee2e2') : '#f4f4f5';
+        html += `<td style="background:${bg};text-align:center">${disp}<div class="text-[10px] text-zinc-500">n=${row ? row.trades_count : 0}</div></td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById('matrix-wrap').innerHTML = html;
+
+    const cond = byType(cache, 'CONDITION_STATS').filter(c => ['kill_zone','no_kill_zone','high_confidence','low_confidence'].includes(c.group_key));
+    destroyChart('conditions');
+    charts.conditions = new Chart(document.getElementById('chart-conditions'), {
+      type: 'bar',
+      data: {
+        labels: cond.map(c => c.group_key),
+        datasets: [{
+          label: 'Win %',
+          data: cond.map(c => c.win_rate || 0),
+          backgroundColor: '#6366f1',
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+
+    const sess = byType(cache, 'SESSION_STATS');
+    destroyChart('session');
+    charts.session = new Chart(document.getElementById('chart-session'), {
+      type: 'bar',
+      data: {
+        labels: sess.map(s => s.group_key),
+        datasets: [{
+          label: 'Win %',
+          data: sess.map(s => s.win_rate || 0),
+          backgroundColor: '#0ea5e9',
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+
+    const confRows = byType(cache, 'CONFIDENCE_BUCKETS');
+    destroyChart('conf');
+    charts.conf = new Chart(document.getElementById('chart-conf'), {
+      type: 'bar',
+      data: {
+        labels: confRows.map(c => c.group_key),
+        datasets: [{ label: 'Win %', data: confRows.map(c => c.win_rate || 0), backgroundColor: '#8b5cf6' }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+
+    const rollAll = byType(cache, 'ROLLING_EDGE');
+    const roll = rollAll[0];
+    destroyChart('roll');
+    const series = (roll && roll.payload && roll.payload.series) ? roll.payload.series : [];
+    const overall = roll && roll.win_rate ? roll.win_rate : 0;
+    charts.roll = new Chart(document.getElementById('chart-roll'), {
+      type: 'line',
+      data: {
+        labels: series.map(p => p.trade_num),
+        datasets: [{
+          label: 'Rolling 30 WR %',
+          data: series.map(p => p.rolling_wr_pct),
+          borderColor: '#be123c',
+          tension: 0.2,
+        }, {
+          label: 'Overall WR %',
+          data: series.map(() => overall),
+          borderColor: '#64748b',
+          borderDash: [4,4],
+          pointRadius: 0,
+        }, {
+          label: 'Alert −8%',
+          data: series.map(() => Math.max(0, overall - 8)),
+          borderColor: '#f97316',
+          borderDash: [2,2],
+          pointRadius: 0,
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    const dow = byType(cache, 'DAY_OF_WEEK_STATS');
+    destroyChart('dow');
+    charts.dow = new Chart(document.getElementById('chart-dow'), {
+      type: 'bar',
+      data: {
+        labels: dow.map(d => d.group_key),
+        datasets: [{ label: 'Win %', data: dow.map(d => d.win_rate || 0), backgroundColor: '#14b8a6' }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+
+    const freq = byType(cache, 'REGIME_FREQUENCY').slice(0, 24);
+    destroyChart('freq');
+    const colMap = { Q1: '#0d9488', Q2: '#d97706', Q3: '#9333ea', Q4: '#dc2626' };
+    charts.freq = new Chart(document.getElementById('chart-freq'), {
+      type: 'bar',
+      data: {
+        labels: freq.map(f => f.group_key),
+        datasets: [{
+          label: 'Share of trades %',
+          data: freq.map(f => f.win_rate || 0),
+          backgroundColor: freq.map(f => colMap[(f.group_key || '').slice(0,2)] || '#71717a'),
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } } }
+    });
+  }
+
+  document.getElementById('reload-btn').addEventListener('click', loadData);
+  document.getElementById('run-select').addEventListener('change', loadData);
+  loadData();
+})();
+</script>
+{% endblock %}

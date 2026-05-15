@@ -1,0 +1,59 @@
+<div id="strategy-backtest-detail" class="rounded border border-zinc-700 bg-zinc-950/40 p-3">
+  {% if result.blocked %}
+    <div class="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+      Strategy detail blocked: {{ result.reason }}
+    </div>
+  {% else %}
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <div class="label">Strategy Detail: {{ result.selected_strategy }}</div>
+        <div class="mt-1 text-sm text-zinc-500">{{ result.strategy.name }} / {{ result.selected_regime }} / {{ result.investment_amount }} USD</div>
+      </div>
+      {% if result.best_timeframe %}
+        <div class="rounded border border-emerald-700 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-200">
+          Best TF {{ result.best_timeframe.timeframe }} / P&L {{ result.best_timeframe.net_pl }} / WR {{ result.best_timeframe.win_rate }}%
+        </div>
+      {% endif %}
+    </div>
+    <div class="mt-3 grid gap-3 md:grid-cols-4">
+      {% for row in result.results %}
+        <section class="panel">
+          <div class="metric-label">{{ row.timeframe }} / {{ row.modifier }}</div>
+          <div class="metric-value">{{ row.net_pl }}</div>
+          <div class="mt-2 text-sm text-zinc-500">{{ row.trades }} trades / {{ row.win_rate }}% WR / PF {{ row.profit_factor }}</div>
+        </section>
+      {% endfor %}
+    </div>
+    <div class="mt-3 overflow-x-auto">
+      <table class="table-compact">
+        <thead><tr><th>TF</th><th>Bars</th><th>Trades</th><th>Wins</th><th>Losses</th><th>WR</th><th>P/L</th><th>Return</th><th>Expectancy</th><th>DD</th><th>Cache</th></tr></thead>
+        <tbody>
+          {% for row in result.results %}
+            <tr>
+              <td>{{ row.timeframe }}</td><td>{{ row.bars }}</td><td>{{ row.trades }}</td><td>{{ row.wins }}</td><td>{{ row.losses }}</td>
+              <td>{{ row.win_rate }}%</td><td>{{ row.net_pl }}</td><td>{{ row.return_percent }}%</td><td>{{ row.expectancy }}</td><td>{{ row.max_drawdown }}</td>
+              <td>{{ row.from_cache }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if result.results and result.results[0].recent_trades %}
+      <div class="mt-3 overflow-x-auto">
+        <div class="label">Recent Trades</div>
+        <table class="table-compact">
+          <thead><tr><th>#</th><th>Time</th><th>Side</th><th>Entry</th><th>Stop</th><th>Target</th><th>R</th><th>P/L</th><th>Reason</th></tr></thead>
+          <tbody>
+            {% for trade in result.results[0].recent_trades %}
+              <tr><td>{{ trade.trade_number }}</td><td>{{ trade.time }}</td><td>{{ trade.side }}</td><td>{{ trade.entry }}</td><td>{{ trade.stop }}</td><td>{{ trade.target }}</td><td>{{ trade.r }}</td><td>{{ trade.pnl }}</td><td>{{ trade.reason }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+    <details class="mt-3" open>
+      <summary class="cursor-pointer text-sm text-zinc-300">Copy strategy JSON</summary>
+      <pre class="mt-2 max-h-[34rem] overflow-auto rounded border border-zinc-700 p-3 text-xs">{{ result | tojson(indent=2) }}</pre>
+    </details>
+  {% endif %}
+</div>

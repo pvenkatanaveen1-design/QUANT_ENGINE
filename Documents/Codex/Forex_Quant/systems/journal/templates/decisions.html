@@ -1,0 +1,14 @@
+{% extends "app/templates/base.html" %}
+{% block title %}Decisions | Quanta Forex{% endblock %}
+{% block content %}
+<div class="space-y-5">
+  <div>
+    <h1 class="text-2xl font-semibold">Decision Journal</h1>
+    <p class="mt-1 text-sm text-zinc-500">Approved, rejected, and no-trade decisions</p>
+  </div>
+  <section class="panel" hx-get="/partials/decision-log" hx-trigger="load, every 10s" hx-swap="innerHTML">
+    {% include "systems/journal/partials/decision_log.html" %}
+  </section>
+  <section class="panel">{% include "systems/journal/partials/decision_detail.html" %}</section>
+</div>
+{% endblock %}

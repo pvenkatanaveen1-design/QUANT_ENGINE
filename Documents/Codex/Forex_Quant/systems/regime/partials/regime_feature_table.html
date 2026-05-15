@@ -1,0 +1,13 @@
+<div class="mt-3 overflow-x-auto">
+  <table class="table-compact">
+    <tbody>
+      {% for key, value in features.items() %}
+        {% if key != "extra" %}
+          <tr><th>{{ key }}</th><td>{{ value }}</td></tr>
+        {% endif %}
+      {% else %}
+        <tr><td class="text-zinc-500">No feature snapshot yet. Load cleaned data on the Data page first.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

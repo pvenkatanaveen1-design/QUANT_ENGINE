@@ -1,0 +1,23 @@
+systems:
+  - name: Data
+    page_url: /data
+  - name: MT5 Gateway
+    page_url: /mt5
+  - name: Regime
+    page_url: /regimes
+  - name: Strategy Router
+    page_url: /strategies
+  - name: Strategy Templates
+    page_url: /strategies
+  - name: Research/Backtest
+    page_url: /backtester
+  - name: Analysis Cache
+    page_url: /analysis
+  - name: Risk
+    page_url: /risk
+  - name: Execution
+    page_url: /decisions
+  - name: Journal
+    page_url: /decisions
+  - name: Monitoring
+    page_url: /

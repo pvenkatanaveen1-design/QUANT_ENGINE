@@ -1,0 +1,48 @@
+<div
+  id="system-grid"
+  hx-get="/partials/system-grid"
+  hx-trigger="every 10s"
+  hx-swap="outerHTML"
+  class="space-y-4">
+  <div class="grid gap-4 lg:grid-cols-4">
+    <section class="panel">
+      <div class="metric-label">Latest Regime</div>
+      <div class="metric-value mt-2">{{ status.latest_regime.regime_id }}</div>
+      <div class="mt-1 text-sm text-zinc-500">{{ status.latest_regime.risk_posture }}</div>
+    </section>
+    <section class="panel">
+      <div class="metric-label">Data Sets</div>
+      <div class="metric-value mt-2">{{ status.data.count }}</div>
+      <div class="mt-1 text-sm text-zinc-500">cleaned files</div>
+    </section>
+    <section class="panel">
+      <div class="metric-label">Strategies</div>
+      <div class="metric-value mt-2">{{ status.strategy_registry.total }}</div>
+      <div class="mt-1 text-sm text-zinc-500">{{ status.strategy_registry.regimes }} regimes</div>
+    </section>
+    <section class="panel">
+      <div class="metric-label">Execution</div>
+      <div class="metric-value mt-2">Off</div>
+      <div class="mt-1 text-sm text-zinc-500">MT5 disabled</div>
+    </section>
+  </div>
+  <section class="panel">
+    <div class="label">System Grid</div>
+    <div class="mt-3 overflow-x-auto">
+      <table class="table-compact">
+        <thead><tr><th>System</th><th>Status</th><th>Heartbeat</th><th>Message</th><th></th></tr></thead>
+        <tbody>
+          {% for system in status.systems %}
+            <tr>
+              <td class="font-semibold">{{ system.name }}</td>
+              <td><span class="status-pill {% if system.status in ['idle','running'] %}status-green{% elif system.status in ['warning'] %}status-amber{% elif system.status in ['critical'] %}status-red{% else %}status-gray{% endif %}">{{ system.status }}</span></td>
+              <td class="text-zinc-500">{{ system.last_heartbeat }}</td>
+              <td>{{ system.last_message }}</td>
+              <td><a class="button inline-flex" href="{{ system.page_url }}">Open</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

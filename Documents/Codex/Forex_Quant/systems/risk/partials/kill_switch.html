@@ -1,0 +1,8 @@
+<div class="label">Kill Switch</div>
+<div class="mt-3 flex flex-wrap gap-2">
+  <span class="status-pill {% if summary.manual_kill_switch %}status-red{% else %}status-green{% endif %}">manual {{ summary.manual_kill_switch }}</span>
+  <span class="status-pill status-gray">data critical placeholder</span>
+  <span class="status-pill status-gray">broker disconnected placeholder</span>
+  <span class="status-pill status-red">live disabled</span>
+</div>
+

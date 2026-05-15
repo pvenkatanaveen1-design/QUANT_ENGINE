@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Quanta Forex{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/tailwind.generated.css">
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <link rel="stylesheet" href="/static/css/app.css">
+  </head>
+  <body class="bg-zinc-100 text-zinc-950">
+    {% set path = request.url.path if request else "" %}
+    <div class="app-shell min-h-screen">
+      <aside class="app-sidebar border-b border-zinc-200 bg-white md:border-b-0 md:border-r md:min-h-0">
+        <div class="px-5 py-4 border-b border-zinc-200">
+          <a href="/" class="block text-lg font-semibold tracking-wide text-inherit no-underline hover:opacity-90">Quanta Forex</a>
+          <p class="mt-2 text-xs leading-snug text-zinc-600">Research stack · no live orders. Data → regime → playbook → risk.</p>
+        </div>
+        <nav class="p-3 pb-6 text-sm" aria-label="Primary">
+          <div class="nav-section-title">Desk</div>
+          <a class="nav-link {{ 'nav-link-active' if path in ('/', '/monitor') else '' }}" href="/">Monitor</a>
+          <a class="nav-link {{ 'nav-link-active' if path == '/workflow' else '' }}" href="/workflow">Session checklist</a>
+          <a class="nav-link {{ 'nav-link-active' if path == '/data' else '' }}" href="/data">Data</a>
+          <a class="nav-link {{ 'nav-link-active' if path == '/regimes' else '' }}" href="/regimes">Regimes</a>
+          <a class="nav-link {{ 'nav-link-active' if path == '/strategies' else '' }}" href="/strategies">Strategies</a>
+          <a class="nav-link {{ 'nav-link-active' if path == '/risk' else '' }}" href="/risk">Risk</a>
+          <a class="nav-link {{ 'nav-link-active' if path in ('/journal', '/decisions') else '' }}" href="/journal">Journal</a>
+
+          <div class="nav-section-title">Research</div>
+          <a class="nav-link {{ 'nav-link-active' if path in ('/research', '/backtester') else '' }}" href="/research">Backtester</a>
+          <a class="nav-link {{ 'nav-link-active' if path == '/analytics' else '' }}" href="/analytics" title="Win rate, equity, cache-driven charts">Performance</a>
+          <a class="nav-link {{ 'nav-link-active' if path == '/analysis' else '' }}" href="/analysis" title="Backtest run index, DuckDB">Run archive</a>
+          <a class="nav-link {{ 'nav-link-active' if path == '/evaluation-metrics' else '' }}" href="/evaluation-metrics">Metric glossary</a>
+
+          <div class="nav-section-title">Playbooks &amp; governance</div>
+          <a class="nav-link {{ 'nav-link-active' if path == '/priority-setups' else '' }}" href="/priority-setups">Priority setups</a>
+          <a class="nav-link {{ 'nav-link-active' if path == '/strategy-gate' else '' }}" href="/strategy-gate">Enablement gate</a>
+
+          <div class="nav-section-title">Connectivity</div>
+          <a class="nav-link {{ 'nav-link-active' if path == '/mt5' else '' }}" href="/mt5">MT5</a>
+          <a class="nav-link {{ 'nav-link-active' if path == '/settings' else '' }}" href="/settings">Settings</a>
+
+          <details class="nav-ops">
+            <summary class="nav-section-title">Build &amp; QA</summary>
+            <a class="nav-link nav-link-sub" href="/project-phases">Implementation phases</a>
+            <a class="nav-link nav-link-sub" href="/config-reference">Config reference</a>
+            <a class="nav-link nav-link-sub" href="/testing-standard">Test standard</a>
+            <a class="nav-link nav-link-sub" href="/position-sizing">Sizing math (deep dive)</a>
+          </details>
+        </nav>
+      </aside>
+      <main class="app-main">
+        <header class="border-b border-zinc-200 bg-white px-4 py-3 md:px-5">
+          <div
+            id="system-summary"
+            hx-get="/partials/system-summary"
+            hx-trigger="load, every 5s"
+            hx-swap="outerHTML">
+            <div class="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+              <span class="status-pill status-gray">Loading system status...</span>
+            </div>
+          </div>
+        </header>
+        <section class="p-4 md:p-6">
+          {% block content %}{% endblock %}
+        </section>
+      </main>
+    </div>
+    <script src="/static/js/app.js"></script>
+  </body>
+</html>
