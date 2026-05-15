@@ -9,6 +9,10 @@ from systems.strategy_router.service import StrategyRegistryError, get_candidate
 def test_total_entries_and_regime_slots():
     registry = load_registry()
     assert len(registry) == 208
+    assert sum(1 for item in registry if item.research_active) == 208
+    assert all(item.logic_status == "template_executable" for item in registry)
+    assert not any(item.enabled for item in registry)
+    assert not any(item.live_allowed for item in registry)
     q1_m01, reasons = get_candidates_for_regime("Q1_M01", mode="research")
     assert len(q1_m01) == 4
     assert q1_m01[0].slot == "primary"
@@ -31,4 +35,3 @@ def test_duplicate_id_fails_validation():
     candidate = StrategyCandidate(id="DUP", name="x", regime_id="Q1_M01", slot="primary", family="general")
     with pytest.raises(StrategyRegistryError):
         validate_registry([candidate] * 208)
-

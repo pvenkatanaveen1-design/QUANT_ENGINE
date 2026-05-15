@@ -29,8 +29,9 @@ def priority_setups_page(request: Request) -> HTMLResponse:
 
 @router.get("/strategies", response_class=HTMLResponse)
 def strategies_page(request: Request, regime_id: str = "Q1_M01") -> HTMLResponse:
+    rid = regime_id.strip().upper() or "Q1_M01"
     registry = backend.get_registry()
-    selected = backend.get_by_regime(regime_id)
+    selected = backend.get_by_regime(rid)
     summary = backend.get_registry_summary()
     return templates.TemplateResponse(
         request,

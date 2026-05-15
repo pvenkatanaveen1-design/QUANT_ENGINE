@@ -23,6 +23,8 @@ from systems.strategy_router import backend as strategy_backend
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 EXECUTABLE_FAMILIES = {"trend_momentum", "breakout", "mean_reversion", "sweep_reversal", "defensive"}
+DEFAULT_MATRIX_TIMEFRAMES = ("M15", "H1", "H4", "D1")
+TIMEFRAME_MINUTES = {"M1": 1, "M5": 5, "M15": 15, "M30": 30, "H1": 60, "H4": 240, "D1": 1440}
 
 
 @dataclass
@@ -814,3 +816,433 @@ def run_walk_forward_backtest(
         "window_count": len(windows),
         "successful_windows": len(wins),
     }
+
+
+def parse_timeframes(value: str | list[str] | tuple[str, ...] | None = None) -> list[str]:
+    if value is None or value == "":
+        return list(DEFAULT_MATRIX_TIMEFRAMES)
+    if isinstance(value, str):
+        raw = [item.strip().upper() for item in value.replace(";", ",").split(",")]
+    else:
+        raw = [str(item).strip().upper() for item in value]
+    clean: list[str] = []
+    for item in raw:
+        if item and item in TIMEFRAME_MINUTES and item not in clean:
+            clean.append(item)
+    return clean or list(DEFAULT_MATRIX_TIMEFRAMES)
+
+
+def lookback_bars_for_months(timeframe: str, months: int = 6, max_bars: int | None = None) -> int:
+    minutes = TIMEFRAME_MINUTES.get(str(timeframe).upper(), 15)
+    bars = int((max(1, months) * 30.5 * 24 * 60) / max(minutes, 1)) + 260
+    if max_bars:
+        bars = min(bars, int(max_bars))
+    return max(80, bars)
+
+
+def _mt5_max_bars() -> int:
+    try:
+        return int(ConfigManager(PROJECT_ROOT).load_yaml("systems/mt5_gateway/config.yaml").get("max_bars", 5000))
+    except Exception:
+        return 5000
+
+
+def _scenario_conditions(
+    *,
+    bars: int,
+    investment_amount: float,
+    selected_regime: str,
+    killzone_enabled: bool,
+    breakout_enabled: bool,
+    sweep_enabled: bool,
+    alpha_enabled: bool,
+    spread_filter_enabled: bool,
+) -> dict[str, Any]:
+    return {
+        "bars": int(bars),
+        "investment_amount": float(investment_amount),
+        "killzone_enabled": bool(killzone_enabled),
+        "breakout_enabled": bool(breakout_enabled),
+        "sweep_enabled": bool(sweep_enabled),
+        "alpha_enabled": bool(alpha_enabled),
+        "spread_filter_enabled": bool(spread_filter_enabled),
+        "regime_scope": selected_regime,
+    }
+
+
+def _summary_from_scenario(result: dict[str, Any], *, timeframe: str, bars: int, from_cache: bool) -> dict[str, Any]:
+    if result.get("blocked"):
+        return {
+            "timeframe": timeframe,
+            "bars": bars,
+            "from_cache": from_cache,
+            "blocked": True,
+            "reason": result.get("reason"),
+            "trades": 0,
+            "win_rate": 0.0,
+            "net_pl": 0.0,
+            "profit_factor": 0.0,
+            "expectancy": 0.0,
+            "max_drawdown": 0.0,
+            "return_percent": 0.0,
+            "run_id": None,
+        }
+    save_status = result.get("save_status") or {}
+    return {
+        "timeframe": timeframe,
+        "bars": bars,
+        "from_cache": from_cache,
+        "blocked": False,
+        "run_id": save_status.get("run_id") or result.get("run_id"),
+        "period": result.get("period"),
+        "trades": int(result.get("executed_simulated_trades") or 0),
+        "wins": int(result.get("wins") or 0),
+        "losses": int(result.get("losses") or 0),
+        "win_rate": float(result.get("win_rate") or 0.0),
+        "net_pl": float(result.get("net_pl") or 0.0),
+        "return_percent": float(result.get("return_percent") or 0.0),
+        "profit_factor": float(result.get("profit_factor") or 0.0),
+        "expectancy": float(result.get("expectancy") or 0.0),
+        "average_r": float(result.get("average_r") or 0.0),
+        "max_drawdown": float(result.get("max_drawdown") or 0.0),
+        "trade_frequency_per_100_bars": float(result.get("trade_frequency_per_100_bars") or 0.0),
+        "fail_reason_counts": result.get("fail_reason_counts") or {},
+        "institutional_impact_flags": result.get("institutional_impact_flags") or {},
+    }
+
+
+def _summary_from_cached(cached: dict[str, Any]) -> dict[str, Any]:
+    metrics = cached.get("metrics") or {}
+    return {
+        "timeframe": cached.get("timeframe"),
+        "bars": cached.get("bars"),
+        "from_cache": True,
+        "blocked": False,
+        "run_id": cached.get("run_id"),
+        "period": {"start": cached.get("period_start"), "end": cached.get("period_end"), "bars": cached.get("bars")},
+        "trades": int(metrics.get("executed_simulated_trades") or 0),
+        "wins": int(metrics.get("wins") or 0),
+        "losses": int(metrics.get("losses") or 0),
+        "win_rate": float(metrics.get("win_rate") or 0.0),
+        "net_pl": float(metrics.get("net_pl") or 0.0),
+        "return_percent": float(metrics.get("return_percent") or 0.0),
+        "profit_factor": float(metrics.get("profit_factor") or 0.0),
+        "expectancy": float(metrics.get("expectancy") or 0.0),
+        "average_r": float(metrics.get("average_r") or 0.0),
+        "max_drawdown": float(metrics.get("max_drawdown") or 0.0),
+    }
+
+
+def _run_or_load_scenario(
+    *,
+    symbol: str,
+    timeframe: str,
+    selected_regime: str,
+    selected_strategy: str,
+    investment_amount: float,
+    bars: int,
+    source: str,
+    killzone_enabled: bool,
+    breakout_enabled: bool,
+    sweep_enabled: bool,
+    alpha_enabled: bool,
+    spread_filter_enabled: bool,
+    force_refresh: bool,
+    rows: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    conditions = _scenario_conditions(
+        bars=bars,
+        investment_amount=investment_amount,
+        selected_regime=selected_regime,
+        killzone_enabled=killzone_enabled,
+        breakout_enabled=breakout_enabled,
+        sweep_enabled=sweep_enabled,
+        alpha_enabled=alpha_enabled,
+        spread_filter_enabled=spread_filter_enabled,
+    )
+    cached = None if force_refresh else analysis_db.find_backtest_run(
+        symbol=symbol.upper(),
+        timeframe=timeframe.upper(),
+        selected_regime=selected_regime.upper(),
+        selected_strategy=selected_strategy,
+        conditions=conditions,
+    )
+    if cached:
+        detail = analysis_db.get_backtest_run_detail(cached["run_id"]) or cached
+        summary = _summary_from_cached(cached)
+        return {
+            "from_cache": True,
+            "summary": summary,
+            "detail": detail,
+            "json_copy": detail,
+        }
+    result = run_scenario(
+        symbol=symbol.upper(),
+        timeframe=timeframe.upper(),
+        selected_regime=selected_regime.upper(),
+        selected_strategy=selected_strategy,
+        investment_amount=investment_amount,
+        bars=bars,
+        source=source,
+        regime_scope=selected_regime.upper(),
+        killzone_enabled=killzone_enabled,
+        breakout_enabled=breakout_enabled,
+        sweep_enabled=sweep_enabled,
+        alpha_enabled=alpha_enabled,
+        spread_filter_enabled=spread_filter_enabled,
+        save_result=True,
+        rows=rows,
+    )
+    return {
+        "from_cache": False,
+        "summary": _summary_from_scenario(result, timeframe=timeframe.upper(), bars=bars, from_cache=False),
+        "detail": result,
+        "json_copy": result,
+    }
+
+
+def run_regime_strategy_matrix(
+    *,
+    symbol: str,
+    selected_regime: str,
+    timeframes: str | list[str] | tuple[str, ...] | None = None,
+    lookback_months: int = 6,
+    bars: int = 0,
+    investment_amount: float = 10_000.0,
+    source: str = "mt5_demo",
+    killzone_enabled: bool = True,
+    breakout_enabled: bool = True,
+    sweep_enabled: bool = True,
+    alpha_enabled: bool = True,
+    spread_filter_enabled: bool = True,
+    force_refresh: bool = False,
+) -> dict[str, Any]:
+    if source != "mt5_demo":
+        return {"blocked": True, "reason": "Only MT5 data is supported.", "source": source}
+    selected_regime = selected_regime.upper()
+    tf_list = parse_timeframes(timeframes)
+    max_bars = _mt5_max_bars()
+    strategies = strategy_backend.get_by_regime(selected_regime, mode="research").get("candidates", [])
+    matrix: list[dict[str, Any]] = []
+    timeframe_payloads: dict[str, dict[str, Any]] = {}
+    for timeframe in tf_list:
+        requested_bars = int(bars or lookback_bars_for_months(timeframe, lookback_months, max_bars=max_bars))
+        try:
+            data_result = data_backend.fetch_mt5_bars(symbol.upper(), timeframe, bars=requested_bars)
+            rows = load_cleaned_rows(data_result.symbol.upper(), data_result.timeframe.upper())[-requested_bars:]
+            timeframe_payloads[timeframe] = {
+                "requested_bars": requested_bars,
+                "rows_loaded": len(rows),
+                "period_start": rows[0]["time"].isoformat() if rows else None,
+                "period_end": rows[-1]["time"].isoformat() if rows else None,
+                "truncated_by_gateway": bool(bars == 0 and requested_bars < lookback_bars_for_months(timeframe, lookback_months, max_bars=None)),
+            }
+        except Exception as exc:
+            timeframe_payloads[timeframe] = {"requested_bars": requested_bars, "error": str(exc), "rows_loaded": 0}
+            rows = []
+        for strategy in strategies:
+            if not rows:
+                matrix.append(
+                    {
+                        "regime_id": selected_regime,
+                        "modifier": selected_regime.split("_", 1)[1] if "_" in selected_regime else "",
+                        "strategy_id": strategy["id"],
+                        "strategy_name": strategy["name"],
+                        "slot": strategy["slot"],
+                        "timeframe": timeframe,
+                        "bars": requested_bars,
+                        "blocked": True,
+                        "reason": timeframe_payloads[timeframe].get("error") or "no MT5 rows",
+                    }
+                )
+                continue
+            run = _run_or_load_scenario(
+                symbol=symbol,
+                timeframe=timeframe,
+                selected_regime=selected_regime,
+                selected_strategy=strategy["id"],
+                investment_amount=investment_amount,
+                bars=requested_bars,
+                source=source,
+                killzone_enabled=killzone_enabled,
+                breakout_enabled=breakout_enabled,
+                sweep_enabled=sweep_enabled,
+                alpha_enabled=alpha_enabled,
+                spread_filter_enabled=spread_filter_enabled,
+                force_refresh=force_refresh,
+                rows=rows,
+            )
+            summary = run["summary"]
+            matrix.append(
+                {
+                    "regime_id": selected_regime,
+                    "quadrant": selected_regime[:2],
+                    "modifier": selected_regime.split("_", 1)[1] if "_" in selected_regime else "",
+                    "strategy_id": strategy["id"],
+                    "strategy_name": strategy["name"],
+                    "slot": strategy["slot"],
+                    "family": strategy.get("family"),
+                    "signal_fn": strategy.get("signal_fn"),
+                    "timeframe": timeframe,
+                    "bars": requested_bars,
+                    **summary,
+                }
+            )
+    ranked = sorted(
+        [item for item in matrix if not item.get("blocked")],
+        key=lambda item: (float(item.get("net_pl") or 0.0), float(item.get("profit_factor") or 0.0), int(item.get("trades") or 0)),
+        reverse=True,
+    )
+    try:
+        from systems.regime import backend as regime_backend
+
+        current_live = regime_backend.current_regime_state(symbol.upper(), tf_list[0])
+    except Exception as exc:
+        current_live = {"error": str(exc)}
+    payload = {
+        "blocked": False,
+        "label": "regime_strategy_matrix",
+        "symbol": symbol.upper(),
+        "selected_regime": selected_regime,
+        "lookback_months": lookback_months,
+        "investment_amount": investment_amount,
+        "timeframes": tf_list,
+        "timeframe_payloads": timeframe_payloads,
+        "rules": {
+            "killzone_enabled": killzone_enabled,
+            "breakout_enabled": breakout_enabled,
+            "sweep_enabled": sweep_enabled,
+            "alpha_enabled": alpha_enabled,
+            "spread_filter_enabled": spread_filter_enabled,
+            "regime_scope": selected_regime,
+            "live_orders": False,
+        },
+        "current_live_state": current_live,
+        "strategies": strategies,
+        "matrix": matrix,
+        "ranked": ranked,
+        "api_request": {
+            "method": "GET",
+            "url": "/api/backtests/regime-matrix",
+            "query": {
+                "symbol": symbol.upper(),
+                "selected_regime": selected_regime,
+                "timeframes": ",".join(tf_list),
+                "lookback_months": lookback_months,
+                "bars": bars,
+                "investment_amount": investment_amount,
+                "killzone_enabled": killzone_enabled,
+                "breakout_enabled": breakout_enabled,
+                "sweep_enabled": sweep_enabled,
+                "alpha_enabled": alpha_enabled,
+                "spread_filter_enabled": spread_filter_enabled,
+                "force_refresh": force_refresh,
+            },
+        },
+    }
+    return payload
+
+
+def run_strategy_detail_matrix(
+    *,
+    symbol: str,
+    selected_regime: str,
+    selected_strategy: str,
+    timeframes: str | list[str] | tuple[str, ...] | None = None,
+    lookback_months: int = 6,
+    bars: int = 0,
+    investment_amount: float = 10_000.0,
+    source: str = "mt5_demo",
+    killzone_enabled: bool = True,
+    breakout_enabled: bool = True,
+    sweep_enabled: bool = True,
+    alpha_enabled: bool = True,
+    spread_filter_enabled: bool = True,
+    force_refresh: bool = False,
+) -> dict[str, Any]:
+    selected_regime = selected_regime.upper()
+    strategy = _find_strategy(selected_strategy)
+    if not strategy:
+        return {"blocked": True, "reason": f"Unknown strategy {selected_strategy}"}
+    tf_list = parse_timeframes(timeframes)
+    max_bars = _mt5_max_bars()
+    results: list[dict[str, Any]] = []
+    for timeframe in tf_list:
+        requested_bars = int(bars or lookback_bars_for_months(timeframe, lookback_months, max_bars=max_bars))
+        data_result = data_backend.fetch_mt5_bars(symbol.upper(), timeframe, bars=requested_bars)
+        rows = load_cleaned_rows(data_result.symbol.upper(), data_result.timeframe.upper())[-requested_bars:]
+        run = _run_or_load_scenario(
+            symbol=symbol,
+            timeframe=timeframe,
+            selected_regime=selected_regime,
+            selected_strategy=selected_strategy,
+            investment_amount=investment_amount,
+            bars=requested_bars,
+            source=source,
+            killzone_enabled=killzone_enabled,
+            breakout_enabled=breakout_enabled,
+            sweep_enabled=sweep_enabled,
+            alpha_enabled=alpha_enabled,
+            spread_filter_enabled=spread_filter_enabled,
+            force_refresh=force_refresh,
+            rows=rows,
+        )
+        summary = run["summary"]
+        detail = run["detail"]
+        results.append(
+            {
+                **summary,
+                "strategy_id": selected_strategy,
+                "strategy_name": strategy.get("name"),
+                "regime_id": selected_regime,
+                "quadrant": selected_regime[:2],
+                "modifier": selected_regime.split("_", 1)[1] if "_" in selected_regime else "",
+                "timeframe": timeframe,
+                "rules_sent": {
+                    "killzone_enabled": killzone_enabled,
+                    "breakout_enabled": breakout_enabled,
+                    "sweep_enabled": sweep_enabled,
+                    "alpha_enabled": alpha_enabled,
+                    "spread_filter_enabled": spread_filter_enabled,
+                    "investment_amount": investment_amount,
+                    "bars": requested_bars,
+                },
+                "recent_trades": (detail.get("trades") or [])[-25:] if isinstance(detail, dict) else [],
+                "fail_reason_counts": (detail.get("fail_reason_counts") or {}) if isinstance(detail, dict) else summary.get("fail_reason_counts", {}),
+                "institutional_impact_flags": (detail.get("institutional_impact_flags") or {}) if isinstance(detail, dict) else summary.get("institutional_impact_flags", {}),
+                "json_copy": detail,
+            }
+        )
+    ranked = sorted(results, key=lambda item: (float(item.get("net_pl") or 0.0), float(item.get("profit_factor") or 0.0)), reverse=True)
+    payload = {
+        "blocked": False,
+        "label": "strategy_detail_matrix",
+        "symbol": symbol.upper(),
+        "selected_regime": selected_regime,
+        "selected_strategy": selected_strategy,
+        "strategy": strategy,
+        "lookback_months": lookback_months,
+        "investment_amount": investment_amount,
+        "results": results,
+        "best_timeframe": ranked[0] if ranked else None,
+        "api_request": {
+            "method": "GET",
+            "url": "/api/backtests/strategy-detail",
+            "query": {
+                "symbol": symbol.upper(),
+                "selected_regime": selected_regime,
+                "selected_strategy": selected_strategy,
+                "timeframes": ",".join(tf_list),
+                "lookback_months": lookback_months,
+                "bars": bars,
+                "investment_amount": investment_amount,
+                "killzone_enabled": killzone_enabled,
+                "breakout_enabled": breakout_enabled,
+                "sweep_enabled": sweep_enabled,
+                "alpha_enabled": alpha_enabled,
+                "spread_filter_enabled": spread_filter_enabled,
+                "force_refresh": force_refresh,
+            },
+        },
+    }
+    return payload

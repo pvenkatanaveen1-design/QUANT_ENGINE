@@ -174,6 +174,82 @@ def backtest_result(result_id: str) -> JSONResponse:
     return ok({"run": rows[0], "cache": analysis_db.get_analysis_cache(run_id=result_id)}, "Backtest result loaded.")
 
 
+@router.get("/api/backtests/regime-matrix")
+def regime_backtest_matrix(
+    symbol: str = "EURUSD",
+    selected_regime: str = "Q1_M01",
+    timeframes: str = "M15,H1,H4,D1",
+    lookback_months: int = 6,
+    bars: int = 0,
+    investment_amount: float = 10000.0,
+    source: str = "mt5_demo",
+    killzone_enabled: bool = True,
+    breakout_enabled: bool = True,
+    sweep_enabled: bool = True,
+    alpha_enabled: bool = True,
+    spread_filter_enabled: bool = True,
+    force_refresh: bool = False,
+) -> JSONResponse:
+    try:
+        result = service.run_regime_strategy_matrix(
+            symbol=symbol,
+            selected_regime=selected_regime,
+            timeframes=timeframes,
+            lookback_months=lookback_months,
+            bars=bars,
+            investment_amount=investment_amount,
+            source=source,
+            killzone_enabled=killzone_enabled,
+            breakout_enabled=breakout_enabled,
+            sweep_enabled=sweep_enabled,
+            alpha_enabled=alpha_enabled,
+            spread_filter_enabled=spread_filter_enabled,
+            force_refresh=force_refresh,
+        )
+        return ok(result, "Regime strategy matrix loaded.")
+    except Exception as exc:
+        return fail("Regime strategy matrix failed.", code="regime_matrix_failed", detail=str(exc), status_code=400)
+
+
+@router.get("/api/backtests/strategy-detail")
+def strategy_backtest_detail(
+    symbol: str = "EURUSD",
+    selected_regime: str = "Q1_M01",
+    selected_strategy: str = "Q1_M01_S01",
+    timeframes: str = "M15,H1,H4,D1",
+    lookback_months: int = 6,
+    bars: int = 0,
+    investment_amount: float = 10000.0,
+    source: str = "mt5_demo",
+    killzone_enabled: bool = True,
+    breakout_enabled: bool = True,
+    sweep_enabled: bool = True,
+    alpha_enabled: bool = True,
+    spread_filter_enabled: bool = True,
+    force_refresh: bool = False,
+) -> JSONResponse:
+    try:
+        result = service.run_strategy_detail_matrix(
+            symbol=symbol,
+            selected_regime=selected_regime,
+            selected_strategy=selected_strategy,
+            timeframes=timeframes,
+            lookback_months=lookback_months,
+            bars=bars,
+            investment_amount=investment_amount,
+            source=source,
+            killzone_enabled=killzone_enabled,
+            breakout_enabled=breakout_enabled,
+            sweep_enabled=sweep_enabled,
+            alpha_enabled=alpha_enabled,
+            spread_filter_enabled=spread_filter_enabled,
+            force_refresh=force_refresh,
+        )
+        return ok(result, "Strategy detail backtest loaded.")
+    except Exception as exc:
+        return fail("Strategy detail backtest failed.", code="strategy_detail_failed", detail=str(exc), status_code=400)
+
+
 @router.get("/partials/backtest-status", response_class=HTMLResponse)
 def backtest_status(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request, "systems/research/partials/backtest_status.html")
@@ -187,6 +263,84 @@ def backtest_metrics(request: Request) -> HTMLResponse:
 @router.get("/partials/regime-heatmap", response_class=HTMLResponse)
 def regime_heatmap(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request, "systems/research/partials/regime_heatmap.html")
+
+
+@router.get("/partials/regime-backtest-matrix", response_class=HTMLResponse)
+def regime_backtest_matrix_partial(
+    request: Request,
+    symbol: str = "EURUSD",
+    selected_regime: str = "Q1_M01",
+    timeframes: str = "M15,H1,H4,D1",
+    lookback_months: int = 6,
+    bars: int = 0,
+    investment_amount: float = 10000.0,
+    source: str = "mt5_demo",
+    killzone_enabled: bool = True,
+    breakout_enabled: bool = True,
+    sweep_enabled: bool = True,
+    alpha_enabled: bool = True,
+    spread_filter_enabled: bool = True,
+    force_refresh: bool = False,
+) -> HTMLResponse:
+    try:
+        result = service.run_regime_strategy_matrix(
+            symbol=symbol,
+            selected_regime=selected_regime,
+            timeframes=timeframes,
+            lookback_months=lookback_months,
+            bars=bars,
+            investment_amount=investment_amount,
+            source=source,
+            killzone_enabled=killzone_enabled,
+            breakout_enabled=breakout_enabled,
+            sweep_enabled=sweep_enabled,
+            alpha_enabled=alpha_enabled,
+            spread_filter_enabled=spread_filter_enabled,
+            force_refresh=force_refresh,
+        )
+    except Exception as exc:
+        result = {"blocked": True, "reason": str(exc), "label": "regime_strategy_matrix"}
+    return templates.TemplateResponse(request, "systems/research/partials/regime_backtest_matrix.html", {"result": result})
+
+
+@router.get("/partials/strategy-backtest-detail", response_class=HTMLResponse)
+def strategy_backtest_detail_partial(
+    request: Request,
+    symbol: str = "EURUSD",
+    selected_regime: str = "Q1_M01",
+    selected_strategy: str = "Q1_M01_S01",
+    timeframes: str = "M15,H1,H4,D1",
+    lookback_months: int = 6,
+    bars: int = 0,
+    investment_amount: float = 10000.0,
+    source: str = "mt5_demo",
+    killzone_enabled: bool = True,
+    breakout_enabled: bool = True,
+    sweep_enabled: bool = True,
+    alpha_enabled: bool = True,
+    spread_filter_enabled: bool = True,
+    force_refresh: bool = False,
+) -> HTMLResponse:
+    try:
+        result = service.run_strategy_detail_matrix(
+            symbol=symbol,
+            selected_regime=selected_regime,
+            selected_strategy=selected_strategy,
+            timeframes=timeframes,
+            lookback_months=lookback_months,
+            bars=bars,
+            investment_amount=investment_amount,
+            source=source,
+            killzone_enabled=killzone_enabled,
+            breakout_enabled=breakout_enabled,
+            sweep_enabled=sweep_enabled,
+            alpha_enabled=alpha_enabled,
+            spread_filter_enabled=spread_filter_enabled,
+            force_refresh=force_refresh,
+        )
+    except Exception as exc:
+        result = {"blocked": True, "reason": str(exc), "label": "strategy_detail_matrix"}
+    return templates.TemplateResponse(request, "systems/research/partials/strategy_backtest_detail.html", {"result": result})
 
 
 @router.post("/research/partials/run-backtest", response_class=HTMLResponse)

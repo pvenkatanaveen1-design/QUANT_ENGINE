@@ -9,35 +9,47 @@
     <link rel="stylesheet" href="/static/css/app.css">
   </head>
   <body class="bg-zinc-100 text-zinc-950">
-    <div class="min-h-screen grid grid-cols-1 md:grid-cols-[248px_1fr]">
-      <aside class="border-b border-zinc-200 bg-white md:border-b-0 md:border-r">
+    {% set path = request.url.path if request else "" %}
+    <div class="app-shell min-h-screen">
+      <aside class="app-sidebar border-b border-zinc-200 bg-white md:border-b-0 md:border-r md:min-h-0">
         <div class="px-5 py-4 border-b border-zinc-200">
-          <div class="text-lg font-semibold tracking-wide">Quanta Forex</div>
-          <p class="mt-2 text-xs leading-snug text-zinc-600">Live trading disabled — research-only build. No broker order routes.</p>
+          <a href="/" class="block text-lg font-semibold tracking-wide text-inherit no-underline hover:opacity-90">Quanta Forex</a>
+          <p class="mt-2 text-xs leading-snug text-zinc-600">Research stack · no live orders. Data → regime → playbook → risk.</p>
         </div>
-        <nav class="p-3 text-sm">
-          <a class="nav-link" href="/monitor">Monitor</a>
-          <a class="nav-link" href="/workflow">Workflow</a>
-          <a class="nav-link" href="/project-phases">Phases</a>
-          <a class="nav-link" href="/mt5">MT5 Gateway</a>
-          <a class="nav-link" href="/data">Data</a>
-          <a class="nav-link" href="/regimes">Regimes</a>
-          <a class="nav-link" href="/strategies">Strategies</a>
-          <a class="nav-link" href="/priority-setups">Priority setups</a>
-          <a class="nav-link" href="/strategy-gate">Enablement</a>
-          <a class="nav-link" href="/research">Backtester</a>
-          <a class="nav-link" href="/analysis" title="Runs list, DuckDB cache metadata">Analysis · DB &amp; runs</a>
-          <a class="nav-link" href="/analytics" title="Charts from analysis_cache">Analytics · charts</a>
-          <a class="nav-link" href="/evaluation-metrics">Metrics</a>
-          <a class="nav-link" href="/risk">Risk</a>
-          <a class="nav-link" href="/position-sizing">Sizing math</a>
-          <a class="nav-link" href="/journal">Journal</a>
-          <a class="nav-link" href="/settings">Settings</a>
-          <a class="nav-link" href="/testing-standard">Tests</a>
-          <a class="nav-link" href="/config-reference">Config</a>
+        <nav class="p-3 pb-6 text-sm" aria-label="Primary">
+          <div class="nav-section-title">Desk</div>
+          <a class="nav-link {{ 'nav-link-active' if path in ('/', '/monitor') else '' }}" href="/">Monitor</a>
+          <a class="nav-link {{ 'nav-link-active' if path == '/workflow' else '' }}" href="/workflow">Session checklist</a>
+          <a class="nav-link {{ 'nav-link-active' if path == '/data' else '' }}" href="/data">Data</a>
+          <a class="nav-link {{ 'nav-link-active' if path == '/regimes' else '' }}" href="/regimes">Regimes</a>
+          <a class="nav-link {{ 'nav-link-active' if path == '/strategies' else '' }}" href="/strategies">Strategies</a>
+          <a class="nav-link {{ 'nav-link-active' if path == '/risk' else '' }}" href="/risk">Risk</a>
+          <a class="nav-link {{ 'nav-link-active' if path in ('/journal', '/decisions') else '' }}" href="/journal">Journal</a>
+
+          <div class="nav-section-title">Research</div>
+          <a class="nav-link {{ 'nav-link-active' if path in ('/research', '/backtester') else '' }}" href="/research">Backtester</a>
+          <a class="nav-link {{ 'nav-link-active' if path == '/analytics' else '' }}" href="/analytics" title="Win rate, equity, cache-driven charts">Performance</a>
+          <a class="nav-link {{ 'nav-link-active' if path == '/analysis' else '' }}" href="/analysis" title="Backtest run index, DuckDB">Run archive</a>
+          <a class="nav-link {{ 'nav-link-active' if path == '/evaluation-metrics' else '' }}" href="/evaluation-metrics">Metric glossary</a>
+
+          <div class="nav-section-title">Playbooks &amp; governance</div>
+          <a class="nav-link {{ 'nav-link-active' if path == '/priority-setups' else '' }}" href="/priority-setups">Priority setups</a>
+          <a class="nav-link {{ 'nav-link-active' if path == '/strategy-gate' else '' }}" href="/strategy-gate">Enablement gate</a>
+
+          <div class="nav-section-title">Connectivity</div>
+          <a class="nav-link {{ 'nav-link-active' if path == '/mt5' else '' }}" href="/mt5">MT5</a>
+          <a class="nav-link {{ 'nav-link-active' if path == '/settings' else '' }}" href="/settings">Settings</a>
+
+          <details class="nav-ops">
+            <summary class="nav-section-title">Build &amp; QA</summary>
+            <a class="nav-link nav-link-sub" href="/project-phases">Implementation phases</a>
+            <a class="nav-link nav-link-sub" href="/config-reference">Config reference</a>
+            <a class="nav-link nav-link-sub" href="/testing-standard">Test standard</a>
+            <a class="nav-link nav-link-sub" href="/position-sizing">Sizing math (deep dive)</a>
+          </details>
         </nav>
       </aside>
-      <main>
+      <main class="app-main">
         <header class="border-b border-zinc-200 bg-white px-4 py-3 md:px-5">
           <div
             id="system-summary"

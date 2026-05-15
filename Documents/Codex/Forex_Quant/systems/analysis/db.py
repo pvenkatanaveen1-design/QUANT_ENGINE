@@ -420,6 +420,136 @@ def list_backtest_runs(limit: int = 50) -> list[dict[str, Any]]:
     return out
 
 
+def find_backtest_run(
+    *,
+    symbol: str,
+    timeframe: str,
+    selected_regime: str,
+    selected_strategy: str,
+    conditions: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Return the latest saved scenario run matching the exact UI backtest conditions."""
+    init_db()
+    with get_duckdb() as conn:
+        rows = conn.execute(
+            """
+            SELECT run_id, created_at, symbol, timeframe, selected_regime, selected_strategy,
+                   strategy_family, period_start, period_end, bars, conditions_json, metrics_json, request_json
+            FROM backtest_runs
+            WHERE upper(symbol) = upper(?)
+              AND upper(timeframe) = upper(?)
+              AND upper(selected_regime) = upper(?)
+              AND selected_strategy = ?
+            ORDER BY created_at DESC
+            LIMIT 50
+            """,
+            [symbol, timeframe, selected_regime, selected_strategy],
+        ).fetchall()
+    normalized_conditions = {key: conditions.get(key) for key in sorted(conditions)}
+    for row in rows:
+        stored_conditions = json.loads(row[10] or "{}")
+        request = json.loads(row[12] or "{}")
+        body = request.get("body") or {}
+        comparable = {
+            "bars": body.get("bars"),
+            "investment_amount": body.get("investment_amount"),
+            "killzone_enabled": stored_conditions.get("killzone_enabled"),
+            "breakout_enabled": stored_conditions.get("breakout_enabled"),
+            "sweep_enabled": stored_conditions.get("sweep_enabled"),
+            "alpha_enabled": stored_conditions.get("alpha_enabled"),
+            "spread_filter_enabled": stored_conditions.get("spread_filter_enabled"),
+            "regime_scope": stored_conditions.get("regime_scope"),
+        }
+        comparable = {key: comparable.get(key) for key in sorted(normalized_conditions)}
+        if comparable == normalized_conditions:
+            return {
+                "run_id": row[0],
+                "created_at": row[1],
+                "symbol": row[2],
+                "timeframe": row[3],
+                "selected_regime": row[4],
+                "selected_strategy": row[5],
+                "strategy_family": row[6],
+                "period_start": row[7],
+                "period_end": row[8],
+                "bars": row[9],
+                "conditions": stored_conditions,
+                "metrics": json.loads(row[11] or "{}"),
+                "request": request,
+            }
+    return None
+
+
+def get_backtest_run_detail(run_id: str) -> dict[str, Any] | None:
+    init_db()
+    with get_duckdb() as conn:
+        run = conn.execute(
+            """
+            SELECT run_id, created_at, symbol, timeframe, selected_regime, selected_strategy,
+                   strategy_family, period_start, period_end, bars, conditions_json, metrics_json, request_json
+            FROM backtest_runs
+            WHERE run_id = ?
+            """,
+            [run_id],
+        ).fetchone()
+        if not run:
+            return None
+        trades = conn.execute(
+            """
+            SELECT trade_number, bar_time, side, entry, stop, target, pnl, pnl_r,
+                   cumulative_pnl, trap_score, kill_zone_active, reason, metadata_json
+            FROM trades
+            WHERE run_id = ?
+            ORDER BY trade_number
+            """,
+            [run_id],
+        ).fetchall()
+        equity = conn.execute(
+            """
+            SELECT trade_number, bar_time, equity, drawdown, pnl_r_cumulative
+            FROM equity_snapshots
+            WHERE run_id = ?
+            ORDER BY trade_number
+            """,
+            [run_id],
+        ).fetchall()
+    return {
+        "run_id": run[0],
+        "created_at": run[1],
+        "symbol": run[2],
+        "timeframe": run[3],
+        "selected_regime": run[4],
+        "selected_strategy": run[5],
+        "strategy_family": run[6],
+        "period": {"start": run[7], "end": run[8], "bars": run[9]},
+        "conditions": json.loads(run[10] or "{}"),
+        "metrics": json.loads(run[11] or "{}"),
+        "request": json.loads(run[12] or "{}"),
+        "trades": [
+            {
+                "trade_number": row[0],
+                "time": row[1],
+                "side": row[2],
+                "entry": row[3],
+                "stop": row[4],
+                "target": row[5],
+                "pnl": row[6],
+                "r": row[7],
+                "cumulative_pnl": row[8],
+                "trap_score": row[9],
+                "kill_zone_active": bool(row[10]),
+                "reason": row[11],
+                "metadata": json.loads(row[12] or "{}"),
+            }
+            for row in trades
+        ],
+        "equity": [
+            {"trade_number": row[0], "time": row[1], "equity": row[2], "drawdown": row[3], "net_pl": row[4]}
+            for row in equity
+        ],
+    }
+
+
 def get_analysis_cache(run_id: str | None = None, cache_type: str | None = None) -> list[dict[str, Any]]:
     init_db()
     query = "SELECT * FROM analysis_cache"
@@ -962,4 +1092,3 @@ def list_signal_engine_runs(limit: int = 50) -> list[dict[str, Any]]:
             item["metrics"] = json.loads(item["metrics_json"])
         out.append(item)
     return out
-

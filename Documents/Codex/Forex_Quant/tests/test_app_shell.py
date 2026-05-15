@@ -18,7 +18,7 @@ def test_base_page_renders():
     response = client.get("/")
     assert response.status_code == 200
     assert "Quanta Forex" in response.text
-    assert "Live trading disabled" in response.text
+    assert "no live orders" in response.text
 
 
 def test_static_files_mount():

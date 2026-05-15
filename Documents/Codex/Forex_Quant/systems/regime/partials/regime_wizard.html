@@ -267,6 +267,14 @@
               </div>
               <div class="mt-2 text-xs text-zinc-500">{{ item.research_spec.entry_logic }}</div>
             {% endif %}
+            <button
+              class="button mt-3 w-full"
+              type="button"
+              hx-get="/partials/strategy-backtest-detail?symbol={{ snapshot.symbol }}&selected_regime={{ snapshot.selected_regime }}&selected_strategy={{ item.id }}&timeframes={{ snapshot.timeframe }},H1,H4,D1&lookback_months=6&bars=0&investment_amount=10000&source=mt5_demo&killzone_enabled=true&breakout_enabled=true&sweep_enabled=true&alpha_enabled=true&spread_filter_enabled=true"
+              hx-target="#strategy-backtest-detail"
+              hx-swap="outerHTML">
+              Backtest Strategy
+            </button>
           </section>
         {% else %}
           <div class="text-sm text-zinc-500">No strategy playbook found for {{ snapshot.selected_regime }}.</div>
@@ -321,6 +329,36 @@
           </div>
         </div>
       </div>
+    </section>
+
+    <section class="panel">
+      <div class="label">Step 4A - Six-Month Regime Backtest Matrix</div>
+      <p class="mt-2 text-sm text-zinc-500">
+        Runs or reuses saved MT5 scenario backtests for all four strategies in this regime across selected timeframes.
+        Use force refresh only when you intentionally want to rebuild the cache.
+      </p>
+      <form
+        class="mt-3 grid gap-3 lg:grid-cols-[120px_160px_130px_130px_auto]"
+        hx-get="/partials/regime-backtest-matrix"
+        hx-target="#regime-backtest-matrix"
+        hx-swap="outerHTML">
+        <input type="hidden" name="symbol" value="{{ snapshot.symbol }}">
+        <input type="hidden" name="selected_regime" value="{{ snapshot.selected_regime }}">
+        <input type="hidden" name="source" value="mt5_demo">
+        <input class="input" name="lookback_months" type="number" min="1" max="12" value="6" title="Historical lookback in months">
+        <input class="input" name="timeframes" value="{{ snapshot.timeframe }},H1,H4,D1" title="Comma-separated timeframes">
+        <input class="input" name="bars" type="number" min="0" value="0" title="0 means use six-month bars for each timeframe">
+        <input class="input" name="investment_amount" type="number" min="100" step="100" value="10000">
+        <button class="button" type="submit">Run Regime Matrix</button>
+        <label class="text-sm"><input type="checkbox" name="killzone_enabled" checked> killzone</label>
+        <label class="text-sm"><input type="checkbox" name="breakout_enabled" checked> breakout</label>
+        <label class="text-sm"><input type="checkbox" name="sweep_enabled" checked> sweep</label>
+        <label class="text-sm"><input type="checkbox" name="alpha_enabled" checked> alpha</label>
+        <label class="text-sm"><input type="checkbox" name="spread_filter_enabled" checked> spread filter</label>
+        <label class="text-sm"><input type="checkbox" name="force_refresh"> force refresh</label>
+      </form>
+      <div id="regime-backtest-matrix" class="mt-3"></div>
+      <div id="strategy-backtest-detail" class="mt-3"></div>
     </section>
 
     <section class="panel">

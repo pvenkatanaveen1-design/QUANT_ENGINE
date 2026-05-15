@@ -15,6 +15,7 @@ class StrategyCandidate:
     enabled: bool = False
     description: str = ""
     logic_status: str = "name_only"
+    research_active: bool = False
     live_allowed: bool = False
     signal_fn: str = ""
     win_rate_low: float = 0.0
@@ -44,4 +45,3 @@ class SignalScore:
     signal: Signal
     score: float
     reasons: list[str] = field(default_factory=list)
-

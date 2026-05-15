@@ -136,7 +136,7 @@ def test_invalid_timeframe_rejected():
 def test_bars_limit_enforced():
     service.set_mt5_module_for_tests(MockMT5())
     with pytest.raises(service.MT5GatewayError) as error:
-        backend.get_rates("MOCKEURUSD", "M15", 5001)
+        backend.get_rates("MOCKEURUSD", "M15", 20001)
     assert error.value.code == "bars_limit_exceeded"
 
 
@@ -163,4 +163,3 @@ def test_tick_websocket_unavailable_payload_when_mt5_missing():
     assert payload["type"] == "tick"
     assert payload["ok"] is False
     assert payload["mt5_connected"] is False
-

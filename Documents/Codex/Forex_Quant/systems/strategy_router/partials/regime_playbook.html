@@ -5,9 +5,19 @@
       <section class="rounded border border-zinc-200 bg-zinc-50 p-3">
         <div class="metric-label">{{ item.slot }}</div>
         <div class="mt-2 font-semibold">{{ item.name }}</div>
+        <div class="mt-1 text-xs text-zinc-500 font-mono">{{ item.signal_fn }}</div>
+        <div class="mt-1 text-xs text-zinc-500">
+          Prior RRR 1:{{ item.rrr }} / WR band {{ (item.win_rate_low * 100)|round(0)|int }}-{{ (item.win_rate_high * 100)|round(0)|int }}%
+        </div>
         <div class="mt-3 flex flex-wrap gap-2">
-          <span class="status-pill status-gray">{{ item.status }}</span>
-          <span class="status-pill {% if item.enabled %}status-green{% else %}status-gray{% endif %}">enabled {{ item.enabled }}</span>
+          <span class="status-pill {% if item.research_active %}status-green{% else %}status-gray{% endif %}">
+            research {{ "active" if item.research_active else "missing" }}
+          </span>
+          <span class="status-pill status-gray">{{ item.logic_status }}</span>
+          <span class="status-pill status-gray">paper {{ item.status }}</span>
+          <span class="status-pill {% if item.live_allowed %}status-red{% else %}status-gray{% endif %}">
+            live {{ "allowed" if item.live_allowed else "blocked" }}
+          </span>
         </div>
       </section>
     {% else %}

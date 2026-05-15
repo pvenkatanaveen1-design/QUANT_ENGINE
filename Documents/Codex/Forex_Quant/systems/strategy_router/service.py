@@ -7,6 +7,7 @@ from typing import Any
 
 from core.config_manager import ConfigManager
 from core.models.signal import StrategyCandidate
+from systems.strategy.signals import SIGNAL_CODE_TO_TEMPLATE
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -14,6 +15,7 @@ SLOT_ORDER = {"primary": 0, "secondary": 1, "confirmation": 2, "fallback": 3}
 PAPER_STATUSES = {"paper_approved", "live_approved"}
 LIVE_STATUSES = {"live_approved"}
 _EXPECTED_STRATEGIES = 52 * 4
+_IMPLEMENTED_SIGNAL_FNS = frozenset(SIGNAL_CODE_TO_TEMPLATE)
 
 
 class StrategyRegistryError(RuntimeError):
@@ -37,10 +39,12 @@ def _family_for_signal_fn(signal_fn: str, fallback: str) -> str:
 
 def _candidate_from_entry(entry: dict[str, Any]) -> StrategyCandidate:
     regime_id = str(entry.get("regime_id") or entry.get("regime") or "").strip()
-    signal_fn = str(entry.get("signal_fn") or "")
+    signal_fn = str(entry.get("signal_fn") or "").strip()
     family = str(entry.get("family") or _family_for_signal_fn(signal_fn, "general"))
     size_ov = entry.get("size_override")
     size_override = float(size_ov) if size_ov is not None and size_ov != "" else None
+    research_active = signal_fn in _IMPLEMENTED_SIGNAL_FNS
+    logic_status = str(entry.get("logic_status") or ("template_executable" if research_active else "name_only"))
     return StrategyCandidate(
         id=str(entry["id"]),
         name=str(entry["name"]),
@@ -50,7 +54,8 @@ def _candidate_from_entry(entry: dict[str, Any]) -> StrategyCandidate:
         status=str(entry.get("status", "not_tested")),
         enabled=bool(entry.get("enabled", False)),
         description=str(entry.get("description") or entry.get("regime_logic") or ""),
-        logic_status=str(entry.get("logic_status", "name_only")),
+        logic_status=logic_status,
+        research_active=research_active,
         live_allowed=bool(entry.get("live_allowed", False)),
         signal_fn=signal_fn,
         win_rate_low=float(entry.get("win_rate_low") or 0.0),
@@ -147,9 +152,17 @@ def registry_summary() -> dict[str, Any]:
     grouped = registry_by_regime(candidates)
     status_counts = Counter(candidate.status for candidate in candidates)
     family_counts = Counter(candidate.family for candidate in candidates)
+    research_active = sum(1 for candidate in candidates if candidate.research_active)
+    paper_enabled = sum(1 for candidate in candidates if candidate.enabled and candidate.status in PAPER_STATUSES)
+    live_enabled = sum(1 for candidate in candidates if candidate.enabled and candidate.status in LIVE_STATUSES and candidate.live_allowed)
     return {
         "total": len(candidates),
         "regimes": len(grouped),
+        "research_active": research_active,
+        "research_inactive": len(candidates) - research_active,
+        "all_research_active": research_active == len(candidates),
+        "paper_enabled": paper_enabled,
+        "live_enabled": live_enabled,
         "status_counts": dict(status_counts),
         "family_counts": dict(family_counts),
         "all_live_allowed": all(candidate.live_allowed for candidate in candidates),
@@ -184,6 +197,9 @@ def run_strategy_signals(symbol: str, timeframe: str, mode: str = "research") ->
             "evidence": cand.evidence,
             "status": cand.status,
             "enabled": cand.enabled,
+            "logic_status": cand.logic_status,
+            "research_active": cand.research_active,
+            "live_allowed": cand.live_allowed,
             "size_override": cand.size_override,
         }
         sig = eva.signal
@@ -209,4 +225,3 @@ def run_strategy_signals(symbol: str, timeframe: str, mode: str = "research") ->
         "playbook_reasons": playbook_reasons,
         "candidates": out,
     }
-

@@ -1,5 +1,5 @@
 enabled: true
-max_bars: 5000
+max_bars: 20000
 default_bars: 500
 tick_poll_seconds: 1.0
 status_poll_seconds: 5.0
