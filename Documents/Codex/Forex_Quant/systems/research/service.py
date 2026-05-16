@@ -74,11 +74,38 @@ class BacktestResult:
     prior_win_rate_low: float = 0.0
     prior_win_rate_high: float = 0.0
     prior_ev: float = 0.0
+    institutional_trap_failures: int = 0
+    sweep_failures: int = 0
+    spread_rejections: int = 0
     validated: bool = False
     validation_note: str = ""
     trades: list[BacktestTrade] = field(default_factory=list)
     equity_curve: list[float] = field(default_factory=list)
     error: str = ""
+
+
+def _sweep_failed_reclaim(context_through_current: list[dict[str, Any]]) -> bool:
+    """
+    Liquidity run beyond prior window on the current bar without reclaim — failed sweep entry.
+    Mirrors the sweep leg of `_setup_direction` / liquidity sweep logic used in scenario backtests.
+    """
+    if len(context_through_current) < 21:
+        return False
+    prior = context_through_current[-21:-1]
+    cur = context_through_current[-1]
+    try:
+        prior_high = max(float(r["high"]) for r in prior)
+        prior_low = min(float(r["low"]) for r in prior)
+        close = float(cur["close"])
+        hi = float(cur["high"])
+        lo = float(cur["low"])
+    except (TypeError, ValueError, KeyError):
+        return False
+    if hi > prior_high and close >= prior_high:
+        return True
+    if lo < prior_low and close <= prior_low:
+        return True
+    return False
 
 
 REGIME_PRIORS = {
@@ -186,10 +213,20 @@ def run_backtest(
 
         spread_pct = float(bar.get("spread_percentile", 0) or 0)
         if not check_costs(PresentRiskSnapshot(spread_percentile=spread_pct)).approved:
+            result.spread_rejections += 1
+            continue
+
+        extra = regime.features.extra or {}
+        trap_raw = extra.get("institutional_trap_score")
+        trap_score = float(trap_raw) if trap_raw is not None and trap_raw != "" else 100.0
+        if trap_score < 60.0:
+            result.institutional_trap_failures += 1
             continue
 
         signal = compute_signal(context, regime.regime_id)
         if signal.direction == "NONE" or signal.rr_ratio < 1.5:
+            if _sweep_failed_reclaim(context + [bar]):
+                result.sweep_failures += 1
             continue
 
         next_bar = rows[i + 1]

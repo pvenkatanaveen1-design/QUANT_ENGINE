@@ -10,6 +10,7 @@ data/features/*
 data/backtest_results/*
 data/journal/*
 data/live_logs/*
+data/cockpit.db
 !data/raw/.gitkeep
 !data/cleaned/.gitkeep
 !data/features/.gitkeep

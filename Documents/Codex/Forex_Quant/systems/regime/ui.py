@@ -18,6 +18,15 @@ templates = Jinja2Templates(directory=str(PROJECT_ROOT))
 router = APIRouter(tags=["regime"])
 
 
+@router.get("/dashboard", response_class=HTMLResponse)
+def dashboard_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "systems/regime/templates/dashboard.html",
+        {},
+    )
+
+
 @router.get("/regimes", response_class=HTMLResponse)
 def regimes_page(request: Request, symbol: str = "EURUSD", timeframe: str = "M15") -> HTMLResponse:
     options = backend.get_regime_options()

@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/static/css/tailwind.generated.css">
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
     <link rel="stylesheet" href="/static/css/app.css">
+    {% block extra_head %}{% endblock %}
   </head>
   <body class="bg-zinc-100 text-zinc-950">
     {% set path = request.url.path if request else "" %}
@@ -22,6 +23,8 @@
           <a class="nav-link {{ 'nav-link-active' if path == '/workflow' else '' }}" href="/workflow">Session checklist</a>
           <a class="nav-link {{ 'nav-link-active' if path == '/data' else '' }}" href="/data">Data</a>
           <a class="nav-link {{ 'nav-link-active' if path == '/regimes' else '' }}" href="/regimes">Regimes</a>
+          <a class="nav-link {{ 'nav-link-active' if path == '/cockpit' else '' }}" href="/cockpit">Cockpit</a>
+          <a class="nav-link {{ 'nav-link-active' if path == '/dashboard' else '' }}" href="/dashboard">Dashboard</a>
           <a class="nav-link {{ 'nav-link-active' if path == '/strategies' else '' }}" href="/strategies">Strategies</a>
           <a class="nav-link {{ 'nav-link-active' if path == '/risk' else '' }}" href="/risk">Risk</a>
           <a class="nav-link {{ 'nav-link-active' if path in ('/journal', '/decisions') else '' }}" href="/journal">Journal</a>

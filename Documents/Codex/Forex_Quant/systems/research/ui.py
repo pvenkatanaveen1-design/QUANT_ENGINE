@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from dataclasses import asdict
+from html import escape
 from pathlib import Path
 
 from fastapi import APIRouter, Request
@@ -55,7 +57,50 @@ def run_signal_engine_backtest(
         return fail("Signal-engine backtest failed.", code="signal_engine_failed", detail=str(exc), status_code=400)
 
 
-@router.post("/api/backtests/run")
+@router.post("/partials/signal-engine-result", response_class=HTMLResponse)
+def signal_engine_result_partial(
+    symbol: str = Form("EURUSD"),
+    timeframe: str = Form("M15"),
+    regime_id_filter: str = Form("all"),
+    min_bars_context: int = Form(100),
+    initial_balance: float = Form(10_000.0),
+) -> HTMLResponse:
+    """HTMX-friendly HTML so the walk-forward run can be triggered from the Backtester page without JSON-only tooling."""
+    note: str
+    try:
+        rows = load_cleaned_rows(symbol.upper(), timeframe.upper())
+        result = service.run_backtest(
+            rows,
+            symbol.upper(),
+            timeframe.upper(),
+            regime_id_filter=regime_id_filter,
+            min_bars_context=int(min_bars_context),
+            initial_balance=float(initial_balance),
+            persist=True,
+        )
+        payload = asdict(result)
+        text = json.dumps(payload, indent=2, default=str)
+        note = (
+            "Persisted to analysis DB when possible. Open Performance for charts."
+            if not result.error
+            else f"Completed with note: {escape(result.error)}"
+        )
+    except Exception as exc:
+        text = str(exc)
+        note = "Failed — load cleaned bars first (Data page / MT5)."
+
+    # JSON may contain brackets; escape for HTML embedding.
+    safe_pre = escape(text)
+    html = f"""<div id="signal-engine-result" class="panel mt-3">
+  <div class="label">Walk-forward signal-engine result</div>
+  <p class="mt-2 text-xs text-zinc-500">{note}</p>
+  <pre class="mt-2 max-h-[32rem] overflow-auto rounded border border-zinc-700 bg-zinc-950 p-3 text-xs whitespace-pre-wrap">{safe_pre}</pre>
+  <p class="mt-2 text-xs text-zinc-500">
+    <a class="text-sky-400 underline" href="/analytics">Performance</a>
+    · <a class="text-sky-400 underline" href="/analysis">Run archive</a>
+  </p>
+</div>"""
+    return HTMLResponse(html)
 def run_backtest(
     symbol: str = Form("EURUSD"),
     timeframe: str = Form("M15"),

@@ -629,6 +629,15 @@ def regime_to_dict(result: RegimeResult) -> dict[str, Any]:
     return asdict(result)
 
 
+def get_current_regime(symbol: str = "EURUSD", timeframe: str = "M15") -> RegimeResult:
+    """Latest regime classification from cleaned bars (no extra MT5 fetch)."""
+    from systems.data.service import load_cleaned_rows
+
+    sym, tf = symbol.upper(), timeframe.upper()
+    rows = load_cleaned_rows(sym, tf)
+    return detect_regime_for_rows(rows, symbol=sym, timeframe=tf)
+
+
 def _row_time(row: dict[str, Any]) -> Any:
     return to_utc(row["time"])
 

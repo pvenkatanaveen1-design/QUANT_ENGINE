@@ -147,6 +147,12 @@ def get_candidates_for_regime(regime_id: str, mode: str = "research") -> tuple[l
     raise ValueError("mode must be research, paper, or live")
 
 
+def get_strategies_by_regime(regime_id: str, mode: str = "research") -> list[StrategyCandidate]:
+    """All four playbook strategies for a regime (research mode by default)."""
+    candidates, _ = get_candidates_for_regime(regime_id, mode=mode)
+    return candidates
+
+
 def registry_summary() -> dict[str, Any]:
     candidates = load_registry()
     grouped = registry_by_regime(candidates)

@@ -1,0 +1,58 @@
+<section id="cockpit-rankings" class="panel">
+  <div class="flex items-center justify-between gap-3">
+    <div>
+      <p class="label">Stored cockpit rankings</p>
+      <h2 class="mt-1 text-lg font-semibold">Actual calculated results only</h2>
+    </div>
+    <a class="status-pill status-blue" href="/api/cockpit/rankings">JSON</a>
+  </div>
+  {% if rankings %}
+    <div class="mt-4 overflow-x-auto">
+      <table class="table-compact">
+        <thead>
+          <tr>
+            <th>Regime</th>
+            <th>Strategy</th>
+            <th>Symbol/TF</th>
+            <th>Trades</th>
+            <th>Win rate</th>
+            <th>PF</th>
+            <th>Avg R</th>
+            <th>Net P/L</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rankings %}
+            <tr>
+              <td>{{ row.regime_id }}</td>
+              <td>{{ row.strategy_id }}</td>
+              <td>{{ row.symbol }} {{ row.timeframe }}</td>
+              <td>{{ row.total_trades or 0 }}</td>
+              <td>{{ "%.2f"|format((row.avg_win_rate or 0) * 100) }}%</td>
+              <td>{{ "%.2f"|format(row.avg_profit_factor or 0) }}</td>
+              <td>{{ "%.3f"|format(row.avg_expectancy_r or 0) }}</td>
+              <td>${{ "%.2f"|format(row.total_net_profit_usd or 0) }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="mt-3 text-sm text-zinc-500">No cockpit backtests stored yet. Run a selected strategy to populate this table.</p>
+  {% endif %}
+
+  {% if recent_runs %}
+    <div class="mt-5">
+      <p class="label">Recent runs</p>
+      <div class="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+        {% for run in recent_runs[:6] %}
+          <a class="viz-chip" href="/api/cockpit/runs/{{ run.run_id }}">
+            <span>{{ run.regime_id }} / {{ run.strategy_id }}</span>
+            <strong>{{ run.symbol }} {{ run.timeframe }}</strong>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+</section>
+

@@ -1,0 +1,27 @@
+<aside id="cockpit-overview" class="panel">
+  {% set current = state.current.current_regime if state.current and state.current.current_regime else {} %}
+  {% set previous = state.current.previous_regime if state.current and state.current.previous_regime else {} %}
+  <div class="flex items-start justify-between gap-3">
+    <div>
+      <p class="label">Live MT5 regime</p>
+      <h2 class="mt-1 text-xl font-semibold">{{ current.regime_id or "Unavailable" }}</h2>
+    </div>
+    <span class="status-pill {{ 'status-green' if current.tradable else 'status-red' }}">{{ "Tradable research" if current.tradable else "Blocked/no-trade" }}</span>
+  </div>
+  {% if state.current.error %}
+    <p class="mt-3 text-sm text-red-300">{{ state.current.error }}</p>
+  {% endif %}
+  <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+    <div class="viz-chip"><span>Symbol</span><strong>{{ state.symbol }}</strong></div>
+    <div class="viz-chip"><span>Timeframe</span><strong>{{ state.timeframe }}</strong></div>
+    <div class="viz-chip"><span>Previous</span><strong>{{ previous.regime_id or "n/a" }}</strong></div>
+    <div class="viz-chip"><span>Active min</span><strong>{{ state.current.active_duration_minutes or 0 }}</strong></div>
+    <div class="viz-chip"><span>Confidence</span><strong>{{ current.confidence or 0 }}</strong></div>
+    <div class="viz-chip"><span>Risk</span><strong>{{ current.risk_posture or "n/a" }}</strong></div>
+  </div>
+  <div class="mt-4">
+    <p class="label">Copyable live playbook JSON</p>
+    <pre id="live-playbook-json" class="mt-2 max-h-72 overflow-auto rounded border border-zinc-700 p-3 text-xs whitespace-pre-wrap">{{ state.current | tojson(indent=2) }}</pre>
+  </div>
+</aside>
+

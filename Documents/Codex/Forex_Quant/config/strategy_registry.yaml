@@ -1,5 +1,6 @@
-# config/strategy_registry.yaml
-# All strategies start disabled. Enable ONLY after backtest validates.
+﻿# config/strategy_registry.yaml
+# enabled: true — research & scenario backtests eligible; paper/live still require status + app flags.
+# live_allowed stays false until manual promotion after validated paper track.
 # Evidence codes: A=Academic P=Practitioner Q=Quant firm I=ICT
 # Q2: default size_override 0.5x; Q4: universal defensive — missing a trade costs zero.
 
@@ -17,7 +18,7 @@ strategies:
   ev: 0.73
   evidence: '[A Menkhoff2012][P]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend, low vol, clean spread
 - id: Q1_M01_S02
@@ -31,7 +32,7 @@ strategies:
   ev: 0.77
   evidence: '[P][Q AQR]'
   family: breakout
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend, low vol, clean spread
 - id: Q1_M01_S03
@@ -45,7 +46,7 @@ strategies:
   ev: 0.5
   evidence: '[P universal]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend, low vol, clean spread
 - id: Q1_M01_S04
@@ -59,7 +60,7 @@ strategies:
   ev: 0.8
   evidence: '[A Jegadeesh1993][A Menkhoff2012]'
   family: breakout
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend, low vol, clean spread
 - id: Q2_M01_S01
@@ -73,7 +74,7 @@ strategies:
   ev: 0.5
   evidence: '[A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Trend, high vol, clean spread
@@ -88,7 +89,7 @@ strategies:
   ev: 0.708
   evidence: '[P][Q AQR] [A][P] 0.5x size'
   family: breakout
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Trend, high vol, clean spread
@@ -103,7 +104,7 @@ strategies:
   ev: 0.46
   evidence: '[P universal] [A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Trend, high vol, clean spread
@@ -118,7 +119,7 @@ strategies:
   ev: 0.736
   evidence: '[A Jegadeesh1993][A Menkhoff2012] [A][P] 0.5x size'
   family: breakout
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Trend, high vol, clean spread
@@ -133,7 +134,7 @@ strategies:
   ev: 0.82
   evidence: '[A Poterba1988][P BB 2SD]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Range, low vol, clean spread
 - id: Q3_M01_S02
@@ -147,7 +148,7 @@ strategies:
   ev: 0.74
   evidence: '[P]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Range, low vol, clean spread
 - id: Q3_M01_S03
@@ -161,7 +162,7 @@ strategies:
   ev: 0.67
   evidence: '[P]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Range, low vol, clean spread
 - id: Q3_M01_S04
@@ -175,7 +176,7 @@ strategies:
   ev: 0.55
   evidence: '[P]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Range, low vol, clean spread
 - id: Q4_M01_S01
@@ -189,7 +190,7 @@ strategies:
   ev: -0.1
   evidence: '[Q AQR][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: ADX 15-25 transition. Regime uncertainty = reduce/skip.
   regime_logic: Clean but unclear structure
@@ -204,7 +205,7 @@ strategies:
   ev: -0.1
   evidence: '[Q AQR][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Observe structure only; no new risk.
   regime_logic: Clean but unclear structure
@@ -219,7 +220,7 @@ strategies:
   ev: -0.1
   evidence: '[Q AQR][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Wait for Q1–Q3 clarity before sizing.
   regime_logic: Clean but unclear structure
@@ -234,7 +235,7 @@ strategies:
   ev: -0.1
   evidence: '[Q AQR][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Wrong trade in Q4 costs real money — flat is valid.
   regime_logic: Clean but unclear structure
@@ -249,7 +250,7 @@ strategies:
   ev: 1.07
   evidence: '[P][A GARCH vol clustering]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend pauses with compressed volatility
 - id: Q1_M02_S02
@@ -263,7 +264,7 @@ strategies:
   ev: 0.8
   evidence: '[P]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend pauses with compressed volatility
 - id: Q1_M02_S03
@@ -277,7 +278,7 @@ strategies:
   ev: 0.68
   evidence: '[P]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend pauses with compressed volatility
 - id: Q1_M02_S04
@@ -291,7 +292,7 @@ strategies:
   ev: 0.77
   evidence: '[P][Q]'
   family: breakout
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend pauses with compressed volatility
 - id: Q2_M02_S01
@@ -305,7 +306,7 @@ strategies:
   ev: 0.984
   evidence: '[P][A GARCH vol clustering] [A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Compression then expansion in trend
@@ -320,7 +321,7 @@ strategies:
   ev: 0.736
   evidence: '[P] [A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Compression then expansion in trend
@@ -335,7 +336,7 @@ strategies:
   ev: 0.626
   evidence: '[P] [A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Compression then expansion in trend
@@ -350,7 +351,7 @@ strategies:
   ev: 0.708
   evidence: '[P][Q] [A][P] 0.5x size'
   family: breakout
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Compression then expansion in trend
@@ -365,7 +366,7 @@ strategies:
   ev: 0.76
   evidence: '[P][A vol clustering]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Tight range and low volatility
 - id: Q3_M02_S02
@@ -379,7 +380,7 @@ strategies:
   ev: 0.7
   evidence: '[P]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Tight range and low volatility
 - id: Q3_M02_S03
@@ -393,7 +394,7 @@ strategies:
   ev: 0.62
   evidence: '[P]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Tight range and low volatility
 - id: Q3_M02_S04
@@ -407,7 +408,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Tight range and low volatility
 - id: Q4_M02_S01
@@ -421,7 +422,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Compressed tape without clean expansion — skip new entries.
   regime_logic: Compression with unstable signals
@@ -436,7 +437,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Avoid breakout lottery ahead of vol event.
   regime_logic: Compression with unstable signals
@@ -451,7 +452,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Stand down until range boundaries confirm.
   regime_logic: Compression with unstable signals
@@ -466,7 +467,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Missing a trade costs zero.
   regime_logic: Compression with unstable signals
@@ -481,7 +482,7 @@ strategies:
   ev: 0.46
   evidence: '[A Burnside2011][P]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Slow trend during Asia
@@ -496,7 +497,7 @@ strategies:
   ev: 0.46
   evidence: '[P]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Slow trend during Asia
@@ -511,7 +512,7 @@ strategies:
   ev: 0.4
   evidence: '[P]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Slow trend during Asia
@@ -526,7 +527,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Slow trend during Asia
 - id: Q2_M03_S01
@@ -540,7 +541,7 @@ strategies:
   ev: 0.423
   evidence: '[A Burnside2011][P] [A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: High vol during Asia
@@ -555,7 +556,7 @@ strategies:
   ev: 0.423
   evidence: '[P] [A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: High vol during Asia
@@ -570,7 +571,7 @@ strategies:
   ev: 0.368
   evidence: '[P] [A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: High vol during Asia
@@ -585,7 +586,7 @@ strategies:
   ev: -0.1
   evidence: '[P] [A][P] 0.5x size'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: High vol during Asia
 - id: Q3_M03_S01
@@ -599,7 +600,7 @@ strategies:
   ev: 0.68
   evidence: '[P]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Classic Asia range
@@ -614,7 +615,7 @@ strategies:
   ev: 0.58
   evidence: '[P]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Classic Asia range
@@ -629,7 +630,7 @@ strategies:
   ev: 0.52
   evidence: '[P]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Classic Asia range
@@ -644,7 +645,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Classic Asia range
 - id: Q4_M03_S01
@@ -658,7 +659,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Illiquid drift; fade edge poor after costs.
   regime_logic: Thin liquidity or random movement
@@ -673,7 +674,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: No chase through wide spreads.
   regime_logic: Thin liquidity or random movement
@@ -688,7 +689,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Protect capital over session transition.
   regime_logic: Thin liquidity or random movement
@@ -703,7 +704,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Wait for London/NY liquidity.
   regime_logic: Thin liquidity or random movement
@@ -718,7 +719,7 @@ strategies:
   ev: 0.85
   evidence: '[P][I kill_zone]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend into London open
 - id: Q1_M04_S02
@@ -732,7 +733,7 @@ strategies:
   ev: 0.73
   evidence: '[P]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend into London open
 - id: Q1_M04_S03
@@ -746,7 +747,7 @@ strategies:
   ev: 0.8
   evidence: '[P]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend into London open
 - id: Q1_M04_S04
@@ -760,7 +761,7 @@ strategies:
   ev: 1.15
   evidence: '[P][I]'
   family: liquidity
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend into London open
 - id: Q2_M04_S01
@@ -774,7 +775,7 @@ strategies:
   ev: 0.8
   evidence: '[P][I] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: High-vol London expansion
@@ -789,7 +790,7 @@ strategies:
   ev: 0.672
   evidence: '[P] [A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: High-vol London expansion
@@ -804,7 +805,7 @@ strategies:
   ev: 0.736
   evidence: '[P] [A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: High-vol London expansion
@@ -819,7 +820,7 @@ strategies:
   ev: 1.058
   evidence: '[P][I] [A][P] 0.5x size'
   family: liquidity
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: High-vol London expansion
@@ -834,7 +835,7 @@ strategies:
   ev: 1.6
   evidence: '[P Zaye Capital][I ICT Asian Range]'
   family: liquidity
-  enabled: false
+  enabled: true
   status: not_tested
   notes: 3-4/5 trading days. Kill zone timing MANDATORY. MSS confirmation (body_ratio<0.5).
   regime_logic: London tests Asia range but no trend
@@ -849,7 +850,7 @@ strategies:
   ev: 1.0
   evidence: '[P]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: London tests Asia range but no trend
 - id: Q3_M04_S03
@@ -863,7 +864,7 @@ strategies:
   ev: 0.84
   evidence: '[P]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: London tests Asia range but no trend
 - id: Q3_M04_S04
@@ -877,7 +878,7 @@ strategies:
   ev: 1.6
   evidence: '[I MSS required]'
   family: liquidity
-  enabled: false
+  enabled: true
   status: not_tested
   notes: If unclear — wait for MSS. MSS = most recent HH broken (bull) or LL broken
     (bear).
@@ -893,7 +894,7 @@ strategies:
   ev: -0.1
   evidence: '[P][I]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: First 5–15 min noisy or spread unstable.
   regime_logic: First 5-15 min noisy or spread unstable
@@ -908,7 +909,7 @@ strategies:
   ev: -0.1
   evidence: '[P][I]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Do not hunt liquidity scans without MSS.
   regime_logic: First 5-15 min noisy or spread unstable
@@ -923,7 +924,7 @@ strategies:
   ev: -0.1
   evidence: '[P][I]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Observe sweeps from distance; no chase without structural confirmation.
   regime_logic: First 5-15 min noisy or spread unstable
@@ -938,7 +939,7 @@ strategies:
   ev: -0.1
   evidence: '[P][I]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Kill zone without MSS = stand down — no machine-gun entries.
   regime_logic: First 5-15 min noisy or spread unstable
@@ -953,7 +954,7 @@ strategies:
   ev: 0.8
   evidence: '[P NY continuation]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend with strong liquidity
 - id: Q1_M05_S02
@@ -967,7 +968,7 @@ strategies:
   ev: 0.84
   evidence: '[P]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend with strong liquidity
 - id: Q1_M05_S03
@@ -981,7 +982,7 @@ strategies:
   ev: 0.78
   evidence: '[P]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend with strong liquidity
 - id: Q1_M05_S04
@@ -995,7 +996,7 @@ strategies:
   ev: 0.95
   evidence: '[Q AQR pyramiding]'
   family: breakout
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend with strong liquidity
 - id: Q2_M05_S01
@@ -1009,7 +1010,7 @@ strategies:
   ev: 0.736
   evidence: '[P NY continuation] [A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Large directional volatility
@@ -1024,7 +1025,7 @@ strategies:
   ev: 0.773
   evidence: '[P] [A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Large directional volatility
@@ -1039,7 +1040,7 @@ strategies:
   ev: 0.718
   evidence: '[P] [A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Large directional volatility
@@ -1054,7 +1055,7 @@ strategies:
   ev: 0.874
   evidence: '[Q AQR pyramiding] [A][P] 0.5x size'
   family: breakout
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Large directional volatility
@@ -1069,7 +1070,7 @@ strategies:
   ev: 0.74
   evidence: '[P]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Range starts breaking or rejecting
 - id: Q3_M05_S02
@@ -1083,7 +1084,7 @@ strategies:
   ev: 0.72
   evidence: '[P]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Range starts breaking or rejecting
 - id: Q3_M05_S03
@@ -1097,7 +1098,7 @@ strategies:
   ev: 0.65
   evidence: '[P]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Range starts breaking or rejecting
 - id: Q3_M05_S04
@@ -1111,7 +1112,7 @@ strategies:
   ev: 0.78
   evidence: '[P][I]'
   family: liquidity
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Range starts breaking or rejecting
 - id: Q4_M05_S01
@@ -1125,7 +1126,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Peak volume two-way; false breaks common.
   regime_logic: News/event overlap confusion
@@ -1140,7 +1141,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Flat is a position in overlap chop.
   regime_logic: News/event overlap confusion
@@ -1155,7 +1156,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Wait for directional commitment.
   regime_logic: News/event overlap confusion
@@ -1170,7 +1171,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Preserve mental and financial capital.
   regime_logic: News/event overlap confusion
@@ -1185,7 +1186,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Existing trend late session
 - id: Q1_M06_S02
@@ -1199,7 +1200,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Existing trend late session
 - id: Q1_M06_S03
@@ -1213,7 +1214,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Existing trend late session
 - id: Q1_M06_S04
@@ -1227,7 +1228,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Existing trend late session
 - id: Q2_M06_S01
@@ -1241,7 +1242,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R] [A][P] 0.5x size'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: High vol late session
 - id: Q2_M06_S02
@@ -1255,7 +1256,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R] [A][P] 0.5x size'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: High vol late session
 - id: Q2_M06_S03
@@ -1269,7 +1270,7 @@ strategies:
   ev: -0.1
   evidence: '[P] [A][P] 0.5x size'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: High vol late session
 - id: Q2_M06_S04
@@ -1283,7 +1284,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R] [A][P] 0.5x size'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: High vol late session
 - id: Q3_M06_S01
@@ -1297,7 +1298,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Low-vol late range
 - id: Q3_M06_S02
@@ -1311,7 +1312,7 @@ strategies:
   ev: 0.48
   evidence: '[P]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Low-vol late range
@@ -1326,7 +1327,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Low-vol late range
 - id: Q3_M06_S04
@@ -1340,7 +1341,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Low-vol late range
 - id: Q4_M06_S01
@@ -1354,7 +1355,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Trail only; no new speculative risk.
   regime_logic: Rollover spread/liquidity stress
@@ -1369,7 +1370,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Swap and slippage dominate edge.
   regime_logic: Rollover spread/liquidity stress
@@ -1384,7 +1385,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Book flat ahead of rollover window awareness.
   regime_logic: Rollover spread/liquidity stress
@@ -1399,7 +1400,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Wrong trade here prints permanently.
   regime_logic: Rollover spread/liquidity stress
@@ -1414,7 +1415,7 @@ strategies:
   ev: -0.1
   evidence: '[A Lucca2015][P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend before major news
 - id: Q1_M07_S02
@@ -1428,7 +1429,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend before major news
 - id: Q1_M07_S03
@@ -1442,7 +1443,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend before major news
 - id: Q1_M07_S04
@@ -1456,7 +1457,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend before major news
 - id: Q2_M07_S01
@@ -1470,7 +1471,7 @@ strategies:
   ev: -0.1
   evidence: '[A Lucca2015][P] [A][P] 0.5x size'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Volatile trend before news
 - id: Q2_M07_S02
@@ -1484,7 +1485,7 @@ strategies:
   ev: -0.1
   evidence: '[P] [A][P] 0.5x size'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Volatile trend before news
 - id: Q2_M07_S03
@@ -1498,7 +1499,7 @@ strategies:
   ev: -0.1
   evidence: '[P] [A][P] 0.5x size'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Volatile trend before news
 - id: Q2_M07_S04
@@ -1512,7 +1513,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R] [A][P] 0.5x size'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Volatile trend before news
 - id: Q3_M07_S01
@@ -1526,7 +1527,7 @@ strategies:
   ev: -0.1
   evidence: '[A Lucca2015][P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Range before news
 - id: Q3_M07_S02
@@ -1540,7 +1541,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Range before news
 - id: Q3_M07_S03
@@ -1554,7 +1555,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Range before news
 - id: Q3_M07_S04
@@ -1568,7 +1569,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Range before news
 - id: Q4_M07_S01
@@ -1582,7 +1583,7 @@ strategies:
   ev: -0.1
   evidence: '[A Lucca2015][P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: News convexity dominates; calendar risk off.
   regime_logic: Event risk dominant
@@ -1597,7 +1598,7 @@ strategies:
   ev: -0.1
   evidence: '[A Lucca2015][P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: No lottery fades into binary events.
   regime_logic: Event risk dominant
@@ -1612,7 +1613,7 @@ strategies:
   ev: -0.1
   evidence: '[A Lucca2015][P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Protect open risk; reduce if mandated.
   regime_logic: Event risk dominant
@@ -1627,7 +1628,7 @@ strategies:
   ev: -0.1
   evidence: '[A Lucca2015][P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Wait for post-print structure.
   regime_logic: Event risk dominant
@@ -1642,7 +1643,7 @@ strategies:
   ev: 0.88
   evidence: '[P post-news]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: News confirms trend after spread normalizes
 - id: Q1_M08_S02
@@ -1656,7 +1657,7 @@ strategies:
   ev: 0.84
   evidence: '[P]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: News confirms trend after spread normalizes
 - id: Q1_M08_S03
@@ -1670,7 +1671,7 @@ strategies:
   ev: 0.96
   evidence: '[P]'
   family: breakout
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: News confirms trend after spread normalizes
 - id: Q1_M08_S04
@@ -1684,7 +1685,7 @@ strategies:
   ev: 0.8
   evidence: '[P]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.75
   regime_logic: News confirms trend after spread normalizes
@@ -1699,7 +1700,7 @@ strategies:
   ev: 0.81
   evidence: '[P post-news] [A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Strong news impulse
@@ -1714,7 +1715,7 @@ strategies:
   ev: 0.773
   evidence: '[P] [A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Strong news impulse
@@ -1729,7 +1730,7 @@ strategies:
   ev: 0.883
   evidence: '[P] [A][P] 0.5x size'
   family: breakout
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Strong news impulse
@@ -1744,7 +1745,7 @@ strategies:
   ev: 0.736
   evidence: '[P] [A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Strong news impulse
@@ -1759,7 +1760,7 @@ strategies:
   ev: 0.72
   evidence: '[P]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: News spike returns to range
 - id: Q3_M08_S02
@@ -1773,7 +1774,7 @@ strategies:
   ev: 0.7
   evidence: '[P]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: News spike returns to range
 - id: Q3_M08_S03
@@ -1787,7 +1788,7 @@ strategies:
   ev: 0.62
   evidence: '[P]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.75
   regime_logic: News spike returns to range
@@ -1802,7 +1803,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: News spike returns to range
 - id: Q4_M08_S01
@@ -1816,7 +1817,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Volatility without structural follow-through.
   regime_logic: Spread/jump still unstable
@@ -1831,7 +1832,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Fade only after validated range returns.
   regime_logic: Spread/jump still unstable
@@ -1846,7 +1847,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Avoid revenge entries after spike.
   regime_logic: Spread/jump still unstable
@@ -1861,7 +1862,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Clarity before size.
   regime_logic: Spread/jump still unstable
@@ -1876,7 +1877,7 @@ strategies:
   ev: 1.56
   evidence: '[P][I ICT sweep]'
   family: liquidity
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Sweep against trend then continuation
 - id: Q1_M09_S02
@@ -1890,7 +1891,7 @@ strategies:
   ev: 1.02
   evidence: '[P]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Sweep against trend then continuation
 - id: Q1_M09_S03
@@ -1904,7 +1905,7 @@ strategies:
   ev: 1.03
   evidence: '[P]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Sweep against trend then continuation
 - id: Q1_M09_S04
@@ -1918,7 +1919,7 @@ strategies:
   ev: 1.18
   evidence: '[P][I]'
   family: liquidity
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Sweep against trend then continuation
 - id: Q2_M09_S01
@@ -1932,7 +1933,7 @@ strategies:
   ev: 0.6
   evidence: '[P][I] 0.35x size fast exit'
   family: liquidity
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.35
   regime_logic: Sweep then high-vol impulse
@@ -1947,7 +1948,7 @@ strategies:
   ev: 0.938
   evidence: '[P] [A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Sweep then high-vol impulse
@@ -1962,7 +1963,7 @@ strategies:
   ev: 0.948
   evidence: '[P] [A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Sweep then high-vol impulse
@@ -1977,7 +1978,7 @@ strategies:
   ev: 1.086
   evidence: '[P][I] [A][P] 0.5x size'
   family: liquidity
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Sweep then high-vol impulse
@@ -1992,7 +1993,7 @@ strategies:
   ev: 1.6
   evidence: '[P][I]'
   family: liquidity
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Sweep at range edge
 - id: Q3_M09_S02
@@ -2006,7 +2007,7 @@ strategies:
   ev: 1.0
   evidence: '[P]'
   family: liquidity
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Sweep at range edge
 - id: Q3_M09_S03
@@ -2020,7 +2021,7 @@ strategies:
   ev: 1.04
   evidence: '[P]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Sweep at range edge
 - id: Q3_M09_S04
@@ -2034,7 +2035,7 @@ strategies:
   ev: 1.03
   evidence: '[P][I]'
   family: liquidity
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Sweep at range edge
 - id: Q4_M09_S01
@@ -2048,7 +2049,7 @@ strategies:
   ev: -0.1
   evidence: '[P][I]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Sweeps without reclaim/MSS = noise.
   regime_logic: Sweep without confirmation or bad spread
@@ -2063,7 +2064,7 @@ strategies:
   ev: -0.1
   evidence: '[P][I]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Do not marry sweep bias blindly.
   regime_logic: Sweep without confirmation or bad spread
@@ -2078,7 +2079,7 @@ strategies:
   ev: -0.1
   evidence: '[P][I]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Let order flow prove direction.
   regime_logic: Sweep without confirmation or bad spread
@@ -2093,7 +2094,7 @@ strategies:
   ev: -0.1
   evidence: '[P][I]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Stand down until sweep resolves.
   regime_logic: Sweep without confirmation or bad spread
@@ -2108,7 +2109,7 @@ strategies:
   ev: -0.1
   evidence: '[A][P spread kills edge]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend but execution cost high
 - id: Q1_M10_S02
@@ -2122,7 +2123,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend but execution cost high
 - id: Q1_M10_S03
@@ -2136,7 +2137,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend but execution cost high
 - id: Q1_M10_S04
@@ -2150,7 +2151,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend but execution cost high
 - id: Q2_M10_S01
@@ -2164,7 +2165,7 @@ strategies:
   ev: -0.1
   evidence: '[A][P spread kills edge] [A][P] 0.5x size'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: High volatility and high spread
 - id: Q2_M10_S02
@@ -2178,7 +2179,7 @@ strategies:
   ev: -0.1
   evidence: '[P] [A][P] 0.5x size'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: High volatility and high spread
 - id: Q2_M10_S03
@@ -2192,7 +2193,7 @@ strategies:
   ev: -0.1
   evidence: '[P] [A][P] 0.5x size'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: High volatility and high spread
 - id: Q2_M10_S04
@@ -2206,7 +2207,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R] [A][P] 0.5x size'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: High volatility and high spread
 - id: Q3_M10_S01
@@ -2220,7 +2221,7 @@ strategies:
   ev: -0.1
   evidence: '[A][P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Range but spread ruins edge
 - id: Q3_M10_S02
@@ -2234,7 +2235,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Range but spread ruins edge
 - id: Q3_M10_S03
@@ -2248,7 +2249,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Range but spread ruins edge
 - id: Q3_M10_S04
@@ -2262,7 +2263,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Range but spread ruins edge
 - id: Q4_M10_S01
@@ -2276,7 +2277,7 @@ strategies:
   ev: -0.1
   evidence: '[A][P spread kills edge]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Edge negative after transaction costs.
   regime_logic: Cost/liquidity stress dominant
@@ -2291,7 +2292,7 @@ strategies:
   ev: -0.1
   evidence: '[A][P spread kills edge]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Wait for spread normalization.
   regime_logic: Cost/liquidity stress dominant
@@ -2306,7 +2307,7 @@ strategies:
   ev: -0.1
   evidence: '[A][P spread kills edge]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Trail runners only if already on.
   regime_logic: Cost/liquidity stress dominant
@@ -2321,7 +2322,7 @@ strategies:
   ev: -0.1
   evidence: '[A][P spread kills edge]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Capital preservation mode.
   regime_logic: Cost/liquidity stress dominant
@@ -2336,7 +2337,7 @@ strategies:
   ev: 0.5
   evidence: '[P]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.75
   regime_logic: Trend mature but controlled
@@ -2351,7 +2352,7 @@ strategies:
   ev: 0.5
   evidence: '[P]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend mature but controlled
 - id: Q1_M11_S03
@@ -2365,7 +2366,7 @@ strategies:
   ev: 0.5
   evidence: '[P]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend mature but controlled
 - id: Q1_M11_S04
@@ -2379,7 +2380,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend mature but controlled
 - id: Q2_M11_S01
@@ -2393,7 +2394,7 @@ strategies:
   ev: 0.46
   evidence: '[P] [A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Volatile exhaustion
@@ -2408,7 +2409,7 @@ strategies:
   ev: 0.46
   evidence: '[P] [A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Volatile exhaustion
@@ -2423,7 +2424,7 @@ strategies:
   ev: 0.46
   evidence: '[P] [A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Volatile exhaustion
@@ -2438,7 +2439,7 @@ strategies:
   ev: -0.1
   evidence: '[P] [A][P] 0.5x size'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Volatile exhaustion
 - id: Q3_M11_S01
@@ -2452,7 +2453,7 @@ strategies:
   ev: 0.64
   evidence: '[P]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.75
   regime_logic: Exhaustion into range
@@ -2467,7 +2468,7 @@ strategies:
   ev: 0.6
   evidence: '[P]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Exhaustion into range
 - id: Q3_M11_S03
@@ -2481,7 +2482,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Exhaustion into range
 - id: Q3_M11_S04
@@ -2495,7 +2496,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Exhaustion into range
 - id: Q4_M11_S01
@@ -2509,7 +2510,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Late-cycle chop; breakout chase toxic.
   regime_logic: Exhaustion plus instability
@@ -2524,7 +2525,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Fade only with tested playbook elsewhere.
   regime_logic: Exhaustion plus instability
@@ -2539,7 +2540,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Reduce temptation trades.
   regime_logic: Exhaustion plus instability
@@ -2554,7 +2555,7 @@ strategies:
   ev: -0.1
   evidence: '[P]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Wrong breakout costs more than missed fade.
   regime_logic: Exhaustion plus instability
@@ -2569,7 +2570,7 @@ strategies:
   ev: 1.56
   evidence: '[P][Q AQR multi-signal]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Higher and lower timeframe trend agree
 - id: Q1_M12_S02
@@ -2583,7 +2584,7 @@ strategies:
   ev: 1.13
   evidence: '[P]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Higher and lower timeframe trend agree
 - id: Q1_M12_S03
@@ -2597,7 +2598,7 @@ strategies:
   ev: 1.02
   evidence: '[P]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Higher and lower timeframe trend agree
 - id: Q1_M12_S04
@@ -2611,7 +2612,7 @@ strategies:
   ev: 1.2
   evidence: '[A Menkhoff2012]'
   family: breakout
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Higher and lower timeframe trend agree
 - id: Q2_M12_S01
@@ -2625,7 +2626,7 @@ strategies:
   ev: 1.435
   evidence: '[P][Q AQR multi-signal] [A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Multi-timeframe trend plus high vol
@@ -2640,7 +2641,7 @@ strategies:
   ev: 1.04
   evidence: '[P] [A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Multi-timeframe trend plus high vol
@@ -2655,7 +2656,7 @@ strategies:
   ev: 0.938
   evidence: '[P] [A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Multi-timeframe trend plus high vol
@@ -2670,7 +2671,7 @@ strategies:
   ev: 1.104
   evidence: '[A Menkhoff2012] [A][P] 0.5x size'
   family: breakout
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Multi-timeframe trend plus high vol
@@ -2685,7 +2686,7 @@ strategies:
   ev: 0.78
   evidence: '[P][Q]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Multiple timeframes range-bound
 - id: Q3_M12_S02
@@ -2699,7 +2700,7 @@ strategies:
   ev: 0.74
   evidence: '[P]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Multiple timeframes range-bound
 - id: Q3_M12_S03
@@ -2713,7 +2714,7 @@ strategies:
   ev: 0.76
   evidence: '[P][I]'
   family: liquidity
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Multiple timeframes range-bound
 - id: Q3_M12_S04
@@ -2727,7 +2728,7 @@ strategies:
   ev: 0.68
   evidence: '[P]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Multiple timeframes range-bound
 - id: Q4_M12_S01
@@ -2741,7 +2742,7 @@ strategies:
   ev: -0.1
   evidence: '[P][Q]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Higher TF disagrees with micro — no conviction.
   regime_logic: Timeframes conflict
@@ -2756,7 +2757,7 @@ strategies:
   ev: -0.1
   evidence: '[P][Q]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Wait for timeframe alignment.
   regime_logic: Timeframes conflict
@@ -2771,7 +2772,7 @@ strategies:
   ev: -0.1
   evidence: '[P][Q]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Do not average conflicting signals.
   regime_logic: Timeframes conflict
@@ -2786,7 +2787,7 @@ strategies:
   ev: -0.1
   evidence: '[P][Q]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Patience is the position.
   regime_logic: Timeframes conflict
@@ -2801,7 +2802,7 @@ strategies:
   ev: 1.68
   evidence: '[A Serban2010][P]'
   family: breakout
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend aligns with USD/macro flow
 - id: Q1_M13_S02
@@ -2815,7 +2816,7 @@ strategies:
   ev: 1.2
   evidence: '[P]'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend aligns with USD/macro flow
 - id: Q1_M13_S03
@@ -2829,7 +2830,7 @@ strategies:
   ev: 1.32
   evidence: '[P]'
   family: breakout
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Trend aligns with USD/macro flow
 - id: Q1_M13_S04
@@ -2843,7 +2844,7 @@ strategies:
   ev: -0.1
   evidence: '[P][A correlation risk]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Cap correlated exposure at 3% total. EUR+GBP+AUD all long USD = 1 trade x3.
   regime_logic: Trend aligns with USD/macro flow
@@ -2858,7 +2859,7 @@ strategies:
   ev: 1.546
   evidence: '[A Serban2010][P] [A][P] 0.5x size'
   family: breakout
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Strong USD shock or risk-off trend
@@ -2873,7 +2874,7 @@ strategies:
   ev: 1.104
   evidence: '[P] [A][P] 0.5x size'
   family: trend_momentum
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Strong USD shock or risk-off trend
@@ -2888,7 +2889,7 @@ strategies:
   ev: 1.214
   evidence: '[P] [A][P] 0.5x size'
   family: breakout
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.5
   regime_logic: Strong USD shock or risk-off trend
@@ -2903,7 +2904,7 @@ strategies:
   ev: -0.1
   evidence: '[P][A correlation risk] [A][P] 0.5x size'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Cap correlated exposure at 3% total. EUR+GBP+AUD all long USD = 1 trade x3.
   regime_logic: Strong USD shock or risk-off trend
@@ -2918,7 +2919,7 @@ strategies:
   ev: -0.1
   evidence: '[P][A correlation risk]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Range but cross-pair correlation abnormal
 - id: Q3_M13_S02
@@ -2932,7 +2933,7 @@ strategies:
   ev: 0.56
   evidence: '[P]'
   family: mean_reversion
-  enabled: false
+  enabled: true
   status: not_tested
   size_override: 0.35
   regime_logic: Range but cross-pair correlation abnormal
@@ -2947,7 +2948,7 @@ strategies:
   ev: -0.1
   evidence: '[P][R]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   regime_logic: Range but cross-pair correlation abnormal
 - id: Q3_M13_S04
@@ -2961,7 +2962,7 @@ strategies:
   ev: -0.1
   evidence: '[P][A correlation risk]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Cap correlated exposure at 3% total. Missing a trade costs zero.
   regime_logic: Range but cross-pair correlation abnormal
@@ -2976,7 +2977,7 @@ strategies:
   ev: -0.1
   evidence: '[P][A correlation risk]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: USD and cross-asset shocks — reduce exposure.
   regime_logic: Correlation shock unstable
@@ -2991,7 +2992,7 @@ strategies:
   ev: -0.1
   evidence: '[P][A correlation risk]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: No correlated doubling across pairs.
   regime_logic: Correlation shock unstable
@@ -3006,7 +3007,7 @@ strategies:
   ev: -0.1
   evidence: '[P][A correlation risk]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: Basket risk cap enforced.
   regime_logic: Correlation shock unstable
@@ -3021,7 +3022,7 @@ strategies:
   ev: -0.1
   evidence: '[P][A correlation risk]'
   family: defensive
-  enabled: false
+  enabled: true
   status: not_tested
   notes: 'Universal: missing a trade costs zero; wrong trade costs real money.'
   regime_logic: Correlation shock unstable
