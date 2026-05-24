@@ -1,0 +1,9 @@
+max_daily_loss_percent: 3.0
+max_total_drawdown_percent: 8.0
+no_trade_near_daily_limit: true
+daily_lock_buffer_percent: 60
+news_trading_allowed: false
+weekend_holding_allowed: false
+max_lot_size: null
+consistency_rule: placeholder
+

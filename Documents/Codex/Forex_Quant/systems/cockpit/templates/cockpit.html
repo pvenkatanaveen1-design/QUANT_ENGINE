@@ -1,0 +1,122 @@
+{% extends "app/templates/base.html" %}
+{% block title %}Quant Cockpit | Quanta Forex{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+{% block content %}
+<div class="space-y-5" id="cockpit-root">
+  <section class="panel">
+    <div class="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+      <div>
+        <p class="label">Quant cockpit</p>
+        <h1 class="mt-1 text-2xl font-semibold">52-Regime Performance Control Center</h1>
+        <p class="mt-2 max-w-5xl text-sm text-zinc-500">
+          Live MT5 regime state, four-slot strategy playbooks, stored backtest rankings, trade detail, and copyable JSON. Real orders remain disabled.
+        </p>
+      </div>
+      <div class="flex flex-wrap gap-2 text-xs">
+        <a class="status-pill status-blue" href="/cockpit/api/ranking">Ranking JSON</a>
+        <a class="status-pill status-amber" href="/cockpit/api/playbook-json">Playbook JSON</a>
+        <span class="status-pill status-gray">Execution disabled</span>
+      </div>
+    </div>
+
+    <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-8">
+      <label class="block">
+        <span class="label">Symbol</span>
+        <select id="ctrlSymbol" class="input mt-1 w-full">
+          {% for symbol in symbols %}
+            <option value="{{ symbol }}" {{ "selected" if symbol == state.symbol else "" }}>{{ symbol }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="block">
+        <span class="label">Timeframe</span>
+        <select id="ctrlTF" class="input mt-1 w-full">
+          {% for tf in timeframes %}
+            <option value="{{ tf }}" {{ "selected" if tf == state.timeframe else "" }}>{{ tf }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="block">
+        <span class="label">Capital</span>
+        <input id="ctrlCapital" type="number" value="10000" min="100" step="100" class="input mt-1 w-full">
+      </label>
+      <label class="block">
+        <span class="label">Risk %</span>
+        <input id="ctrlRisk" type="number" value="1.0" min="0.1" max="3.0" step="0.1" class="input mt-1 w-full">
+      </label>
+      <button type="button" onclick="cockpit.refreshAll()" class="button xl:col-span-1">Refresh live</button>
+      <button type="button" onclick="cockpit.runAllMissing()" class="button xl:col-span-1">Run missing</button>
+      <button type="button" onclick="cockpit.copyPlaybook()" class="button xl:col-span-1">Copy JSON</button>
+      <div id="statusBar" class="flex items-center text-xs text-zinc-500 xl:col-span-1">Ready</div>
+    </div>
+  </section>
+
+  <section id="liveBanner" class="panel">
+    <p class="label">Live regime</p>
+    <p class="mt-2 text-sm text-zinc-500">Loading live regime values from MT5...</p>
+  </section>
+
+  <details class="panel">
+    <summary class="cursor-pointer text-sm font-semibold text-zinc-200">Classification Thresholds And Formulas</summary>
+    <div id="referencePanel" class="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-4">
+      <p class="text-zinc-500">Loading threshold reference...</p>
+    </div>
+  </details>
+
+  <section class="panel">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <p class="label">52-regime performance ranking</p>
+        <h2 class="mt-1 text-xl font-semibold">Actual backtests first, research priors only when untested</h2>
+      </div>
+      <div class="flex flex-wrap gap-2 text-xs">
+        <span class="status-pill status-green">Q1 Trend</span>
+        <span class="status-pill status-amber">Q2 Trend + Vol</span>
+        <span class="status-pill status-blue">Q3 Range</span>
+        <span class="status-pill status-red">Q4 Defensive</span>
+      </div>
+    </div>
+
+    <div class="mt-4 overflow-x-auto">
+      <table class="table-compact" id="rankingTable">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Regime</th>
+            <th>Description</th>
+            <th class="text-right">Net Profit</th>
+            <th class="text-right">Win Rate</th>
+            <th class="text-right">PF</th>
+            <th class="text-right">Trades</th>
+            <th class="text-right">Sharpe</th>
+            <th class="text-right">Max DD</th>
+            <th class="text-right">KZ Win</th>
+            <th class="text-right">Trap Fail</th>
+            <th class="text-right">Sweep Fail</th>
+            <th class="text-right">Spread Rej</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="rankingBody">
+          <tr><td colspan="15" class="py-8 text-center text-zinc-500">Loading rankings...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<div id="tradeModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-70 p-4">
+  <div class="panel w-full max-w-6xl max-h-[92vh] overflow-auto">
+    <div class="flex items-center justify-between gap-3 border-b border-zinc-700 pb-3">
+      <h3 id="modalTitle" class="text-lg font-semibold">Trade detail</h3>
+      <button type="button" onclick="cockpit.closeModal()" class="status-pill status-gray">Close</button>
+    </div>
+    <div id="modalContent" class="mt-4"></div>
+  </div>
+</div>
+
+<script src="/static/js/cockpit.js"></script>
+{% endblock %}

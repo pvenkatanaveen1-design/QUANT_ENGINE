@@ -1,0 +1,60 @@
+{% extends "app/templates/base.html" %}
+{% block title %}Implementation phases | Quanta Forex{% endblock %}
+{% block content %}
+<div class="space-y-6 max-w-3xl">
+  <div>
+    <h1 class="text-2xl font-semibold">Build phases (reference)</h1>
+    <p class="mt-1 text-sm text-zinc-500">Roadmap vs this repo. Run <code class="text-xs">python -m pytest tests/ -q</code> before promoting changes. Section 25 battery: <a class="text-sky-700 underline" href="/testing-standard">/testing-standard</a>.</p>
+  </div>
+
+  <section class="panel">
+    <div class="label">Phase A — Fix broken math</div>
+    <ul class="mt-2 space-y-1.5 text-sm text-zinc-800">
+      <li><span class="font-medium text-emerald-700">A1</span> Wilder ADX — <code class="text-xs">systems/regime/service.py</code> (<code class="text-xs">_wilder_adx</code>). Tests: <code class="text-xs">tests/test_phase_a.py</code></li>
+      <li><span class="font-medium text-emerald-700">A2</span> Kaufman ER — same file (<code class="text-xs">_kaufman_er</code>).</li>
+      <li><span class="font-medium text-emerald-700">A3</span> SMA-seeded EMA — <code class="text-xs">systems/regime/service.py</code> + <code class="text-xs">systems/strategy/signals.py</code> (<code class="text-xs">_ema</code>).</li>
+      <li><span class="font-medium text-emerald-700">A4</span> Q2 routing — trend gate before high-vol Q2: <code class="text-xs">_choose_base</code> uses <code class="text-xs">trend and (high_vol or extreme_vol)</code>.</li>
+      <li><span class="font-medium text-emerald-700">A5</span> Sessions — <code class="text-xs">config/sessions.yaml</code> (11 bands, GMT); <code class="text-xs">core/time_utils.classify_session</code>. Coverage test in <code class="text-xs">test_phase_a</code>.</li>
+      <li><span class="font-medium text-emerald-700">A6</span> Slope score — removed from Python stack (docs only in blueprint).</li>
+      <li><span class="font-medium text-emerald-700">A7</span> FX <code class="text-xs">_jump_z</code> — log returns in <code class="text-xs">systems/regime/service.py</code>.</li>
+      <li><span class="font-medium text-emerald-700">A8</span> Spread MT5 → pips — <code class="text-xs">systems/data/service._normalize_spread</code>.</li>
+      <li><span class="font-medium text-emerald-700">A9</span> <code class="text-xs">pip_value_per_lot</code> — <code class="text-xs">config/symbols.yaml</code> + <code class="text-xs">systems/risk/position_sizer.py</code>.</li>
+      <li><span class="font-medium text-emerald-700">A10</span> 208 assertion — behind <code class="text-xs">strict_blueprint</code> in <code class="text-xs">config/strategy_router.yaml</code> / <code class="text-xs">validate_registry</code>.</li>
+      <li><span class="font-medium text-emerald-700">A11</span> Session stamps — <code class="text-xs">_stamp_session_rows</code> on cleaned data paths in <code class="text-xs">systems/data/service.py</code>.</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <div class="label">Phase B — Signal engine</div>
+    <ul class="mt-2 space-y-1.5 text-sm">
+      <li><span class="font-medium text-emerald-700">B1</span> <code class="text-xs">systems/strategy/signals.py</code> — templates + <code class="text-xs">evaluate_strategy_signal</code>, Section 5 <code class="text-xs">compute_signal</code>.</li>
+      <li><span class="font-medium text-emerald-700">B2</span> <code class="text-xs">orchestrator/decision_engine.py</code> → <code class="text-xs">compute_signal</code> after regime + cost guard; <code class="text-xs">research_only</code> / paper/live action from mode. Tests: <code class="text-xs">tests/test_phase_b.py</code>.</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <div class="label">Phase C — Real data</div>
+    <p class="mt-2 text-sm text-zinc-700">Manual: export EURUSD M15 from MT5 (6+ months). Verify <code class="text-xs">session_label</code> on loaded rows via <a class="text-sky-700 underline" href="/data">/data</a>.</p>
+  </section>
+
+  <section class="panel">
+    <div class="label">Phase D — Walk-forward</div>
+    <p class="mt-2 text-sm text-zinc-700"><span class="font-medium text-emerald-700">Implemented:</span> <code class="text-xs">systems/research/service.py</code> (<code class="text-xs">run_backtest</code>, scenario/walk-forward), <code class="text-xs">POST /api/backtests/signal-engine</code>, <a class="text-sky-700 underline" href="/research">/research</a>. First validation target: <span class="font-medium">Q3_M04</span> vs 62–68% prior.</p>
+  </section>
+
+  <section class="panel">
+    <div class="label">Phase E — Journal</div>
+    <p class="mt-2 text-sm text-zinc-700"><span class="font-medium text-emerald-700">Implemented:</span> <code class="text-xs">systems/journal/service.py</code> (<code class="text-xs">log_decision</code> → SQLite <code class="text-xs">decision_journal</code> plus append-only JSONL under <code class="text-xs">data/analysis/</code>). UI: <a class="text-sky-700 underline" href="/journal">/journal</a></p>
+  </section>
+
+  <section class="panel">
+    <div class="label">Phase F — Analysis database</div>
+    <p class="mt-2 text-sm text-zinc-700"><span class="font-medium text-amber-800">Partial:</span> DuckDB in <code class="text-xs">systems/analysis/db.py</code>, cache + signal-engine runs, <a class="text-sky-700 underline" href="/analytics">/analytics</a> KPIs/charts. Extend cache “types” and monthly workflow as needed.</p>
+  </section>
+
+  <section class="panel border-l-4 border-zinc-400">
+    <div class="label">Phase G — Future</div>
+    <p class="mt-2 text-sm text-zinc-600">HMM regime layer, multi-symbol live pip feed, paper execution (after validation), MT5 read-only / live execution gates per your playbook.</p>
+  </section>
+</div>
+{% endblock %}

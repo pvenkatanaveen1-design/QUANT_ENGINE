@@ -1,0 +1,23 @@
+<section class="panel">
+  <div class="grid gap-4 md:grid-cols-4">
+    <div>
+      <div class="label">Regime</div>
+      <div class="metric-value mt-2">{{ latest.regime_id }}</div>
+    </div>
+    <div>
+      <div class="label">Confidence</div>
+      <div class="metric-value mt-2">{{ latest.confidence }}</div>
+    </div>
+    <div>
+      <div class="label">Tradable</div>
+      <div class="mt-2"><span class="status-pill {% if latest.tradable %}status-green{% else %}status-red{% endif %}">{{ latest.tradable }}</span></div>
+    </div>
+    <div>
+      <div class="label">Posture</div>
+      <div class="mt-2 text-lg font-semibold">{{ latest.risk_posture }}</div>
+    </div>
+  </div>
+  {% if latest.base_regime == "Q4" %}
+    <div class="mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">Q4 no-trade: strategy evaluation should stay blocked.</div>
+  {% endif %}
+</section>

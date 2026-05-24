@@ -1,0 +1,100 @@
+{% extends "app/templates/base.html" %}
+{% block title %}Data | Quanta Forex{% endblock %}
+{% block content %}
+{% set mt5 = options.mt5_status %}
+{% set symbol_list = options.symbols.symbols if options.symbols.available else [] %}
+{% set selected_symbol = symbol_list[0].symbol if symbol_list else "" %}
+<div class="space-y-5">
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-semibold">Data Workbench</h1>
+      <p class="mt-1 text-sm text-zinc-500">MT5 data only. Symbols, ticks, and bars come from the connected terminal.</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <span class="status-pill {% if mt5.connected %}status-green{% else %}status-amber{% endif %}">
+        MT5 {% if mt5.connected %}connected{% else %}unavailable{% endif %}
+      </span>
+      <span class="status-pill status-red">Execution disabled</span>
+    </div>
+  </div>
+
+  <section class="panel">
+    <div class="grid gap-3 md:grid-cols-5">
+      <div>
+        <div class="metric-label">Currency</div>
+        <div class="metric-value">{{ mt5.currency or "unknown" }}</div>
+      </div>
+      <div>
+        <div class="metric-label">Balance</div>
+        <div class="metric-value">{{ mt5.balance if mt5.balance is not none else "-" }}</div>
+      </div>
+      <div>
+        <div class="metric-label">Equity</div>
+        <div class="metric-value">{{ mt5.equity if mt5.equity is not none else "-" }}</div>
+      </div>
+      <div>
+        <div class="metric-label">Bid</div>
+        <div class="metric-value" data-live-field="bid">-</div>
+      </div>
+      <div>
+        <div class="metric-label">Ask / Spread</div>
+        <div class="metric-value"><span data-live-field="ask">-</span> <span class="text-sm text-zinc-500" data-live-field="spread">-</span></div>
+      </div>
+    </div>
+    {% if not mt5.connected %}
+      <div class="mt-3 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">{{ mt5.reason or "MT5 is not connected." }}</div>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    {% if not mt5.connected or not selected_symbol %}
+      <div class="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        MT5 data is required for this tab. Connect MT5 and refresh; no offline fallback will be used.
+      </div>
+    {% else %}
+    <form
+      class="grid gap-3 lg:grid-cols-[1fr_140px_120px_auto]"
+      hx-post="/partials/data-load-result"
+      hx-target="#data-load-result"
+      hx-swap="outerHTML"
+      hx-on::after-request="htmx.trigger(document.body, 'data-refresh')">
+      <input type="hidden" name="source" value="mt5_demo">
+      <div class="grid gap-2">
+        <input class="input" data-symbol-filter="#data-symbol-select" placeholder="Search MT5 symbols">
+        <select id="data-symbol-select" class="input" name="symbol" data-live-symbol>
+          {% for item in symbol_list %}
+            <option value="{{ item.symbol }}" data-filter-text="{{ item.symbol }} {{ item.description or '' }} {{ item.popular_alias or '' }}">{{ item.symbol }}{% if item.popular_alias %} / {{ item.popular_alias }}{% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <select class="input" name="timeframe">
+        {% for timeframe in options.timeframes %}
+          <option value="{{ timeframe.key }}" {% if timeframe.key == "M15" %}selected{% endif %}>{{ timeframe.label }}</option>
+        {% endfor %}
+      </select>
+      <input class="input" name="bars" type="number" min="1" max="5000" value="{{ options.default_bars }}">
+      <button class="button" type="submit">Fetch Bars</button>
+    </form>
+    {% endif %}
+    <div class="mt-3 flex flex-wrap gap-2 text-xs text-zinc-500">
+      <span>Source: MT5 terminal</span>
+      <span>Cleaned cache: {{ config.cleaned_path }}</span>
+      <span data-live-status class="status-pill status-gray">live socket idle</span>
+    </div>
+    <div id="data-load-result"></div>
+  </section>
+
+  <section class="panel">
+    {% include "systems/data/partials/data_files.html" %}
+  </section>
+
+  {% if selected_symbol %}
+    <section class="panel" hx-get="/partials/data-quality?symbol={{ selected_symbol }}&timeframe=M15" hx-trigger="load, data-refresh from:body" hx-swap="innerHTML">
+      <div class="text-sm text-zinc-400">Loading MT5 quality report...</div>
+    </section>
+  {% endif %}
+</div>
+<script>
+  window.QuantaLiveData = { symbol: "{{ selected_symbol }}" };
+</script>
+{% endblock %}

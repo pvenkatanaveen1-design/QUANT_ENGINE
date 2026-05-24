@@ -1,0 +1,8 @@
+broker_type: mt5
+mt5_terminal_path: C:\Path\To\terminal64.exe
+account_mode: demo
+allow_live_trading: false
+allow_real_orders: false
+max_lot_size: 0.01
+max_slippage_pips: 1.0
+

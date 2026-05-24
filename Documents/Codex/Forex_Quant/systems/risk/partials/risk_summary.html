@@ -1,0 +1,18 @@
+<div class="grid gap-4 md:grid-cols-4">
+  <section class="panel">
+    <div class="label">Base Risk</div>
+    <div class="metric-value mt-2">{{ summary.base_risk_per_trade_percent }}%</div>
+  </section>
+  <section class="panel">
+    <div class="label">Daily Loss</div>
+    <div class="metric-value mt-2">{{ summary.max_daily_loss_percent }}%</div>
+  </section>
+  <section class="panel">
+    <div class="label">Drawdown</div>
+    <div class="metric-value mt-2">{{ summary.max_total_drawdown_percent }}%</div>
+  </section>
+  <section class="panel">
+    <div class="label">Kill Switch</div>
+    <div class="mt-2"><span class="status-pill {% if summary.manual_kill_switch %}status-red{% else %}status-green{% endif %}">{{ summary.manual_kill_switch }}</span></div>
+  </section>
+</div>

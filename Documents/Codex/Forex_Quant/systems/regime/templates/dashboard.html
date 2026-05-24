@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}Quant Cockpit – Dashboard{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+{% endblock %}
+{% block content %}
+<div id="dashboard-root" class="container mx-auto max-w-[1600px] p-2 md:p-4">
+  <div class="mb-2">
+    <h1 class="text-xl font-semibold text-zinc-900">Quant Cockpit — Dashboard</h1>
+    <p class="mt-1 text-sm text-zinc-500">Live regime, 52-regime backtest ranking (SQLite), and playbook export.</p>
+  </div>
+
+  <div id="dashboard-error" class="hidden mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert"></div>
+  <div id="dashboard-info" class="hidden mb-4 rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900" role="status"></div>
+
+  <!-- Reference: thresholds, tree, section 5 (collapsible) -->
+  <details class="mb-4 rounded-lg border border-amber-200/80 bg-amber-50/40 shadow-sm">
+    <summary class="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-amber-950 hover:bg-amber-100/60 rounded-lg">
+      Reference: Key Thresholds &amp; Formulas
+    </summary>
+    <div class="space-y-5 border-t border-amber-200/60 px-4 py-4 text-sm text-zinc-800">
+      <p class="text-xs text-zinc-600">What drives regime labels (from <code class="rounded bg-white/80 px-1">systems/regime/service.py</code> + <code class="rounded bg-white/80 px-1">config/regimes.yaml</code>) and signal templates (<code class="rounded bg-white/80 px-1">signal_library_section5.py</code>). Feature math: <strong class="font-medium">Wilder (1978)</strong> ADX, <strong class="font-medium">Kaufman (1995)</strong> efficiency ratio. Strategy evidence tags often cite <strong class="font-medium">Menkhoff et al. (2012)</strong> for FX momentum / trend persistence.</p>
+
+      <div id="referenceThresholdsDynamic" class="rounded border border-zinc-200 bg-white p-3 text-xs text-zinc-600 hidden" aria-live="polite"></div>
+
+      <section>
+        <h3 class="text-xs font-bold uppercase tracking-wide text-zinc-700">Regime decision tree (base quadrant)</h3>
+        <pre class="mt-2 max-h-64 overflow-auto rounded border border-zinc-200 bg-zinc-950 p-3 font-mono text-[11px] leading-relaxed text-zinc-100 whitespace-pre-wrap">Evaluate in order (first match sets base). Thresholds default from config unless noted.
+
+1. Data quality bad → Q4 (block)
+2. Spread percentile ≥ critical (default 95) → Q4 — cost / liquidity stress
+3. Jump z &gt; shock (default 3.0) → Q4 — gap / shock proxy
+4. Trend if ER ≥ efficiency_ratio_min (default 0.35) AND ADX ≥ adx_trend_min (default 22) — ER: Kaufman (1995)
+   • If (high vol: vol pct &gt; 70 OR ATR% ≥ 0.0015) OR extreme vol (pct ≥ 90 OR ATR% ≥ 0.004) → Q2
+   • Else → Q1 (trend, normal vol)
+5. Else if Range: ER ≤ efficiency_ratio_range_max (default 0.25) AND ADX ≤ adx_range_max (default 18) AND not high-vol bucket → Q3
+6. Else if extreme vol and not trending → Q4
+7. Else → Q4 transition / mixed</pre>
+      </section>
+
+      <section>
+        <h3 class="text-xs font-bold uppercase tracking-wide text-zinc-700">Modifier priority chain (first hit wins)</h3>
+        <ol class="mt-2 list-decimal space-y-1 pl-5 text-xs text-zinc-700">
+          <li><strong>M10</strong> — Spread stress: spread percentile ≥ spread_stress_percentile (default 90)</li>
+          <li><strong>M07</strong> — Pre-news lock (context flag)</li>
+          <li><strong>M08</strong> — Post-news (context flag)</li>
+          <li><strong>M13</strong> — Correlation / USD shock (context flag)</li>
+          <li><strong>M12</strong> — Multi-timeframe agreement (context flag)</li>
+          <li><strong>M09</strong> — Liquidity sweep flags (sweep high / low on latest bar)</li>
+          <li><strong>M11</strong> — Trend exhaustion: |close−EMA50|/ATR ≥ exhaustion_atr_distance (2.5), ADX ≥ 22, rejection candle — ADX: Wilder (1978)</li>
+          <li><strong>M02</strong> — Compression: compression_percentile ≤ threshold (default 25)</li>
+          <li><strong>M03–M06</strong> — Session bucket from session classifier → mapped modifier</li>
+          <li><strong>M01</strong> — Clean liquid default</li>
+        </ol>
+      </section>
+
+      <section>
+        <h3 class="text-xs font-bold uppercase tracking-wide text-zinc-700">Strategy entry parameters (Section 5 — <code>signal_library_section5.py</code>)</h3>
+        <div class="mt-2 overflow-x-auto rounded border border-zinc-200 bg-white text-xs">
+          <table class="min-w-full border-collapse text-left">
+            <thead class="bg-zinc-100 text-[10px] font-semibold uppercase text-zinc-600">
+              <tr><th class="border-b border-zinc-200 px-2 py-1.5">ID</th><th class="border-b border-zinc-200 px-2 py-1.5">Key parameters</th><th class="border-b border-zinc-200 px-2 py-1.5">Provenance / note</th></tr>
+            </thead>
+            <tbody class="text-zinc-700">
+              <tr class="border-b border-zinc-100"><td class="px-2 py-1.5 font-mono">S01</td><td class="px-2 py-1.5">EMA20/50 pullback; ≥55 bars; RR 2.5; stop = ATR×0.5 (Q2: 0.75); touch bands 1.0008 / 0.9992</td><td class="px-2 py-1.5">Trend pullback; registry cites momentum literature (e.g. Menkhoff 2012)</td></tr>
+              <tr class="border-b border-zinc-100"><td class="px-2 py-1.5 font-mono">S02</td><td class="px-2 py-1.5">Donchian 20-bar break (prior bars); EMA50 trend filter; RR 3.0; stop ATR×0.3 (Q2: 0.4)</td><td class="px-2 py-1.5">Time-series momentum; Jegadeesh/Titman &amp; Menkhoff-style evidence in registry</td></tr>
+              <tr class="border-b border-zinc-100"><td class="px-2 py-1.5 font-mono">S03</td><td class="px-2 py-1.5">Bollinger 20, 2σ; <strong>ADX ≤ 20</strong> gate; RR 1.8 (1.5 in Q3_M02); stop ATR×0.3; fade to mid</td><td class="px-2 py-1.5">ADX gate uses Wilder (1978) ADX from regime features</td></tr>
+              <tr class="border-b border-zinc-100"><td class="px-2 py-1.5 font-mono">S04</td><td class="px-2 py-1.5">Asian session box; sweep &amp; reclaim; body ratio &lt; 0.5; RR ≥ 2.0; stop ATR×0.2</td><td class="px-2 py-1.5">Liquidity / session sweep logic</td></tr>
+              <tr class="border-b border-zinc-100"><td class="px-2 py-1.5 font-mono">S05</td><td class="px-2 py-1.5">Prior 20-bar high/low sweep; opposing wick &gt; 45%; RR 3.0; stop_mult 0.25 (Q2: 0.35)</td><td class="px-2 py-1.5">Sweep + reclaim</td></tr>
+              <tr class="border-b border-zinc-100"><td class="px-2 py-1.5 font-mono">S06</td><td class="px-2 py-1.5">Failed breakout vs 20-bar range; target BB mid; stop ATR×0.3</td><td class="px-2 py-1.5">Mean reversion</td></tr>
+              <tr class="border-b border-zinc-100"><td class="px-2 py-1.5 font-mono">S07</td><td class="px-2 py-1.5">EMA20 vs EMA50 drift; spread ≤ 1.5× recent avg; RR 2.0; size 0.5×</td><td class="px-2 py-1.5">Asia carry</td></tr>
+              <tr><td class="px-2 py-1.5 font-mono">S08</td><td class="px-2 py-1.5">Defensive / no-trade by regime table</td><td class="px-2 py-1.5">Playbook block</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h3 class="text-xs font-bold uppercase tracking-wide text-zinc-700">Risk &amp; metrics (formulas)</h3>
+        <ul class="mt-2 list-disc space-y-2 pl-5 font-mono text-[11px] text-zinc-700">
+          <li><span class="font-sans text-zinc-600">Position size (lots-style):</span> (Account × Risk% / StopDistanceInPips) × PipValue</li>
+          <li><span class="font-sans text-zinc-600">R-multiple (long):</span> (ExitPrice − EntryPrice) / StopDistance — <span class="font-sans">short: mirror with stop direction</span></li>
+          <li><span class="font-sans text-zinc-600">Sharpe (on R list in engine):</span> (mean(R) / std(R)) × √252 — <span class="font-sans">annualization assumption</span></li>
+          <li><span class="font-sans text-zinc-600">Profit factor:</span> GrossWins / GrossLosses (losses as positive sum)</li>
+          <li><span class="font-sans text-zinc-600">Expectancy ($ or R):</span> (WinRate × AvgWin) − (LossRate × AvgLoss)</li>
+        </ul>
+      </section>
+    </div>
+  </details>
+
+  <!-- Controls -->
+  <div class="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+    <label class="block text-xs font-medium text-zinc-600">
+      Symbol
+      <select id="symbolSelect" class="mt-1 block min-w-[8rem] rounded border border-zinc-300 bg-white px-2 py-1.5 text-sm"></select>
+    </label>
+    <label class="block text-xs font-medium text-zinc-600">
+      Timeframe
+      <select id="tfSelect" class="mt-1 block min-w-[6rem] rounded border border-zinc-300 bg-white px-2 py-1.5 text-sm"></select>
+    </label>
+    <label class="block text-xs font-medium text-zinc-600">
+      Investment ($)
+      <input type="number" id="investmentInput" value="10000" step="1000" min="1000" class="mt-1 block w-28 rounded border border-zinc-300 px-2 py-1.5 text-sm" />
+    </label>
+    <label class="block text-xs font-medium text-zinc-600">
+      History (days)
+      <input type="number" id="historyDaysInput" value="180" step="30" min="7" max="365" class="mt-1 block w-24 rounded border border-zinc-300 px-2 py-1.5 text-sm" title="Lookback for regime distribution chart" />
+    </label>
+    <button type="button" id="btnRefresh" class="rounded bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800">Refresh All</button>
+    <button type="button" id="btnRunMissing" class="rounded border border-amber-600 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100">Run All Missing Backtests</button>
+  </div>
+
+  <!-- Live Regime Banner -->
+  <div id="liveRegimeBanner" class="mb-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+    <p class="text-sm text-zinc-500">Loading regime…</p>
+  </div>
+
+  <div class="mb-2 flex items-center justify-between">
+    <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-600">Regime bar share (scan window)</h2>
+    <span class="text-xs text-zinc-400" id="historyChartCaption"></span>
+  </div>
+  <div class="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+    <canvas id="regimeHistoryChart" height="220" aria-label="Regime distribution chart"></canvas>
+  </div>
+
+  <!-- 52-Regime Ranking Table -->
+  <div class="mt-8">
+    <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-600">52-regime backtest ranking</h2>
+    <div class="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
+      <table id="rankingTable" class="w-full min-w-[1100px] border-collapse text-left text-sm">
+        <thead class="sticky top-0 z-10 border-b border-zinc-200 bg-zinc-50 text-xs font-semibold uppercase text-zinc-600">
+          <tr>
+            <th class="whitespace-nowrap px-3 py-2">Regime</th>
+            <th class="whitespace-nowrap px-3 py-2">Net P&amp;L</th>
+            <th class="whitespace-nowrap px-3 py-2">PF</th>
+            <th class="whitespace-nowrap px-3 py-2">WR</th>
+            <th class="whitespace-nowrap px-3 py-2">Trades</th>
+            <th class="whitespace-nowrap px-3 py-2">Sharpe</th>
+            <th class="whitespace-nowrap px-3 py-2">Max DD</th>
+            <th class="whitespace-nowrap px-3 py-2">KZ WR</th>
+            <th class="whitespace-nowrap px-3 py-2">Inst.</th>
+            <th class="whitespace-nowrap px-3 py-2">Sweep</th>
+            <th class="whitespace-nowrap px-3 py-2">Sprd</th>
+            <th class="whitespace-nowrap px-3 py-2">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="rankingTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Trade list modal -->
+<div id="tradeModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4" aria-modal="true" role="dialog">
+  <div class="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-lg bg-white shadow-xl">
+    <div class="flex items-center justify-between border-b border-zinc-200 px-4 py-3">
+      <h3 id="tradeModalTitle" class="text-sm font-semibold text-zinc-900">Trades</h3>
+      <button type="button" id="tradeModalClose" class="rounded px-2 py-1 text-sm text-zinc-600 hover:bg-zinc-100">Close</button>
+    </div>
+    <div class="max-h-[70vh] overflow-auto p-4">
+      <p class="mb-2 text-xs text-zinc-500">Rows highlighted when trap score &lt; 60, sweep/liquidity context, or elevated spread percentile on the bar.</p>
+      <table class="w-full border-collapse text-xs">
+        <thead class="sticky top-0 bg-zinc-100 text-zinc-700">
+          <tr>
+            <th class="border border-zinc-200 px-2 py-1 text-left">#</th>
+            <th class="border border-zinc-200 px-2 py-1 text-left">Time</th>
+            <th class="border border-zinc-200 px-2 py-1 text-left">Side</th>
+            <th class="border border-zinc-200 px-2 py-1 text-right">R</th>
+            <th class="border border-zinc-200 px-2 py-1 text-right">P&amp;L</th>
+            <th class="border border-zinc-200 px-2 py-1 text-left">Trap</th>
+            <th class="border border-zinc-200 px-2 py-1 text-left">Notes</th>
+          </tr>
+        </thead>
+        <tbody id="tradeModalBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/dashboard.js" defer></script>
+{% endblock %}

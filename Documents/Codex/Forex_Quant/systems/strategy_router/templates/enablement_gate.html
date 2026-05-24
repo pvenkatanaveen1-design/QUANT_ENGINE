@@ -1,0 +1,53 @@
+{% extends "app/templates/base.html" %}
+{% block title %}Strategy enablement | Quanta Forex{% endblock %}
+{% block content %}
+<div class="space-y-6 max-w-3xl">
+  <div>
+    <h1 class="text-2xl font-semibold">Strategy enablement gate</h1>
+    <p class="mt-1 text-sm text-zinc-500">Section 19 — no strategy advances without evidence. Defaults: <span class="font-medium">enabled: false</span>, <span class="font-medium">status: not_tested</span> until you promote manually in the registry.</p>
+  </div>
+
+  <section class="panel border-l-4 border-amber-500">
+    <p class="text-sm font-medium text-amber-950">Do not skip steps. Each gate exists because edge cases would have cost real money.</p>
+  </section>
+
+  <section class="panel">
+    <div class="label">Move to <code class="text-xs">backtested</code></div>
+    <ul class="mt-3 space-y-2 pl-1 text-sm leading-relaxed">
+      <li class="flex gap-2"><span class="text-zinc-400">□</span> Backtest on real data: <span class="font-medium">≥ 30</span> closed trades for this regime (strategy + regime pair).</li>
+      <li class="flex gap-2"><span class="text-zinc-400">□</span> Measured WR within <span class="font-medium">±10%</span> of documented prior range.</li>
+      <li class="flex gap-2"><span class="text-zinc-400">□</span> Profit factor <span class="font-medium">&gt; 1.2</span>.</li>
+      <li class="flex gap-2"><span class="text-zinc-400">□</span> Expectancy_r <span class="font-medium">&gt; 0</span>.</li>
+      <li class="flex gap-2"><span class="text-zinc-400">□</span> Max drawdown <span class="font-medium">&lt; 50%</span> of prop account daily limit.</li>
+      <li class="flex gap-2"><span class="text-zinc-400">□</span> Manually set in <span class="font-mono text-xs">config/strategy_registry.yaml</span>: <code class="text-xs">status: backtested</code>.</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <div class="label">Move to <code class="text-xs">paper_approved</code></div>
+    <ul class="mt-3 space-y-2 pl-1 text-sm leading-relaxed">
+      <li class="flex gap-2"><span class="text-zinc-400">□</span> Status must already be <code class="text-xs">backtested</code>.</li>
+      <li class="flex gap-2"><span class="text-zinc-400">□</span> <code class="text-xs">paper_mode: true</code> in <span class="font-mono text-xs">config/app.yaml</span>.</li>
+      <li class="flex gap-2"><span class="text-zinc-400">□</span> Manually set: <code class="text-xs">status: paper_approved</code>.</li>
+      <li class="flex gap-2"><span class="text-zinc-400">□</span> Manually set: <code class="text-xs">enabled: true</code> (only after the above).</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <div class="label">Move to <code class="text-xs">live_approved</code></div>
+    <ul class="mt-3 space-y-2 pl-1 text-sm leading-relaxed">
+      <li class="flex gap-2"><span class="text-zinc-400">□</span> <span class="font-medium">100</span> paper trades completed for this strategy.</li>
+      <li class="flex gap-2"><span class="text-zinc-400">□</span> Paper WR within <span class="font-medium">±5%</span> of backtest WR.</li>
+      <li class="flex gap-2"><span class="text-zinc-400">□</span> Manually set: <code class="text-xs">status: live_approved</code>.</li>
+      <li class="flex gap-2"><span class="text-zinc-400">□</span> <code class="text-xs">live_allowed: true</code> in registry for that row (manual only).</li>
+      <li class="flex gap-2"><span class="text-zinc-400">□</span> Operator sign-off recorded (your process / document).</li>
+    </ul>
+  </section>
+
+  <p class="text-xs text-zinc-500">
+    Related: <a class="text-sky-700 underline" href="/strategies">/strategies</a> (registry),
+    <a class="text-sky-700 underline" href="/research">/research</a> (evidence),
+    approval audit via <span class="font-mono">POST /api/strategies/{id}/approval-preview</span>.
+  </p>
+</div>
+{% endblock %}

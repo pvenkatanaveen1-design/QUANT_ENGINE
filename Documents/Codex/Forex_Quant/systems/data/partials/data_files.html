@@ -1,0 +1,16 @@
+<div id="data-files" hx-get="/partials/data-files" hx-trigger="data-refresh from:body" hx-swap="outerHTML">
+  <div class="label">Cleaned Datasets</div>
+  <div class="mt-3 overflow-x-auto">
+    <table class="table-compact">
+      <thead><tr><th>Symbol</th><th>Timeframe</th><th>Rows</th><th>Latest</th><th>Path</th></tr></thead>
+      <tbody>
+        {% for dataset in status.datasets %}
+          <tr><td>{{ dataset.symbol }}</td><td>{{ dataset.timeframe }}</td><td>{{ dataset.rows }}</td><td>{{ dataset.latest_time or "" }}</td><td>{{ dataset.path }}</td></tr>
+        {% else %}
+          <tr><td colspan="5" class="text-zinc-500">No cleaned data found. Put a CSV in data/raw or enter a file path above.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+

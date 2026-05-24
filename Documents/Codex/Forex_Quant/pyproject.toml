@@ -1,0 +1,4 @@
+[tool.pytest.ini_options]
+testpaths = ["tests", "systems/mt5_gateway"]
+python_files = ["test_*.py", "*_test.py", "tests.py"]
+pythonpath = ["."]

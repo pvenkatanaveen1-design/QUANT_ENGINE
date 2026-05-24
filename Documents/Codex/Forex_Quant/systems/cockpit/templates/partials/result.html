@@ -1,0 +1,106 @@
+<div class="space-y-4">
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <p class="label">{{ result.label or "cockpit result" }}</p>
+      <h2 class="mt-1 text-lg font-semibold">
+        {{ result.symbol or "" }}
+        {{ result.selected_regime or result.selected_strategy or "" }}
+      </h2>
+      {% if result.reason %}
+        <p class="mt-2 text-sm text-amber-300">{{ result.reason }}</p>
+      {% endif %}
+    </div>
+    <span class="status-pill {{ 'status-red' if result.blocked else 'status-green' }}">{{ "Blocked" if result.blocked else "Completed" }}</span>
+  </div>
+
+  {% if result.matrix %}
+    <div class="overflow-x-auto">
+      <table class="table-compact">
+        <thead>
+          <tr>
+            <th>Regime</th>
+            <th>Strategy</th>
+            <th>TF</th>
+            <th>Status</th>
+            <th>Trades</th>
+            <th>Win</th>
+            <th>PF</th>
+            <th>Net P/L</th>
+            <th>Fail</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in result.matrix %}
+            <tr>
+              <td>{{ row.regime_id }}</td>
+              <td>{{ row.strategy_id }}<br><span class="text-xs text-zinc-500">{{ row.strategy_name }}</span></td>
+              <td>{{ row.timeframe }}</td>
+              <td>{{ "blocked" if row.blocked else "tested" }}</td>
+              <td>{{ row.trades or 0 }}</td>
+              <td>{{ "%.2f"|format(row.win_rate or 0) }}%</td>
+              <td>{{ "%.2f"|format(row.profit_factor or 0) }}</td>
+              <td>${{ "%.2f"|format(row.net_pl or 0) }}</td>
+              <td>{{ row.reason or "" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+
+  {% if result.results %}
+    <div class="overflow-x-auto">
+      <table class="table-compact">
+        <thead>
+          <tr>
+            <th>Regime</th>
+            <th>Strategy</th>
+            <th>TF</th>
+            <th>Trades</th>
+            <th>Win</th>
+            <th>PF</th>
+            <th>Net P/L</th>
+            <th>Return</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in result.results %}
+            <tr>
+              <td>{{ row.regime_id }}</td>
+              <td>{{ row.strategy_id }}<br><span class="text-xs text-zinc-500">{{ row.strategy_name }}</span></td>
+              <td>{{ row.timeframe }}</td>
+              <td>{{ row.trades or 0 }}</td>
+              <td>{{ "%.2f"|format(row.win_rate or 0) }}%</td>
+              <td>{{ "%.2f"|format(row.profit_factor or 0) }}</td>
+              <td>${{ "%.2f"|format(row.net_pl or 0) }}</td>
+              <td>{{ "%.3f"|format(row.return_percent or 0) }}%</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+
+  {% if result.ranked %}
+    <div class="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+      {% for row in result.ranked[:8] %}
+        <div class="viz-chip">
+          <span>{{ row.strategy_id }} {{ row.timeframe }}</span>
+          <strong>${{ "%.2f"|format(row.net_pl or 0) }}</strong>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="grid gap-4 xl:grid-cols-2">
+    <div>
+      <p class="label">Request JSON</p>
+      <pre class="mt-2 max-h-96 overflow-auto rounded border border-zinc-700 p-3 text-xs whitespace-pre-wrap">{{ (result.api_request or {}) | tojson(indent=2) }}</pre>
+    </div>
+    <div>
+      <p class="label">Response JSON</p>
+      <pre class="mt-2 max-h-96 overflow-auto rounded border border-zinc-700 p-3 text-xs whitespace-pre-wrap">{{ result | tojson(indent=2) }}</pre>
+    </div>
+  </div>
+</div>
+

@@ -1,0 +1,65 @@
+{% extends "app/templates/base.html" %}
+{% block title %}Analysis | Quanta Forex{% endblock %}
+{% block content %}
+<div class="space-y-5">
+  <div>
+    <h1 class="text-2xl font-semibold">Analysis Cache</h1>
+    <p class="mt-1 text-sm text-zinc-500">Saved backtests, strategy statistics, failure reasons, and institutional flags. UI reads cached results instead of refetching MT5.</p>
+  </div>
+  <section class="grid gap-3 md:grid-cols-4">
+    <div class="panel"><div class="metric-label">Saved Runs</div><div class="metric-value">{{ runs|length }}</div></div>
+    <div class="panel"><div class="metric-label">Cache Rows</div><div class="metric-value">{{ cache|length }}</div></div>
+    <div class="panel"><div class="metric-label">Live Orders</div><div class="metric-value">0</div><div class="mt-2 text-sm text-zinc-500">blocked</div></div>
+    <div class="panel"><div class="metric-label">DB Mode</div><div class="metric-value">DuckDB</div><div class="mt-2 text-sm text-zinc-500">SQLite journal</div></div>
+  </section>
+  <section class="panel">
+    <div class="label">Backtest History</div>
+    <div class="mt-3 overflow-x-auto">
+      <table class="table-compact">
+        <thead><tr><th>Created</th><th>Run</th><th>Symbol</th><th>TF</th><th>Regime</th><th>Strategy</th><th>Trades</th><th>WR</th><th>Net P/L</th><th>PF</th></tr></thead>
+        <tbody>
+          {% for run in runs %}
+            <tr>
+              <td>{{ run.created_at }}</td>
+              <td>{{ run.run_id }}</td>
+              <td>{{ run.symbol }}</td>
+              <td>{{ run.timeframe }}</td>
+              <td>{{ run.selected_regime }}</td>
+              <td>{{ run.selected_strategy }}</td>
+              <td>{{ run.metrics.executed_simulated_trades or 0 }}</td>
+              <td>{{ run.metrics.win_rate or 0 }}%</td>
+              <td>{{ run.metrics.net_pl or 0 }}</td>
+              <td>{{ run.metrics.profit_factor or 0 }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="10" class="text-zinc-500">No saved backtest runs yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <section class="panel">
+    <div class="label">Latest Cache Rows</div>
+    <div class="mt-3 overflow-x-auto">
+      <table class="table-compact">
+        <thead><tr><th>Type</th><th>Run</th><th>Group</th><th>Trades</th><th>WR</th><th>Expectancy</th><th>Payload</th></tr></thead>
+        <tbody>
+          {% for row in cache[:50] %}
+            <tr>
+              <td>{{ row.cache_type }}</td>
+              <td>{{ row.run_id }}</td>
+              <td>{{ row.group_key }}</td>
+              <td>{{ row.trades_count }}</td>
+              <td>{{ row.win_rate }}</td>
+              <td>{{ row.expectancy_r }}</td>
+              <td><pre class="max-h-20 overflow-auto text-xs">{{ row.payload | tojson }}</pre></td>
+            </tr>
+          {% else %}
+            <tr><td colspan="7" class="text-zinc-500">No cache rows.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,15 @@
+base_risk_per_trade_percent: 0.25
+max_risk_per_trade_percent: 0.5
+max_daily_loss_percent: 3.0
+daily_lock_buffer_percent: 60
+max_total_drawdown_percent: 8.0
+max_open_trades: 2
+max_symbol_trades: 1
+max_correlated_trades: 2
+min_backtest_profit_factor: 1.15
+min_sample_trades: 100
+min_expectancy_r: 0.05
+max_allowed_spread_percentile: 80
+reduce_risk_when_confidence_below: 0.70
+manual_kill_switch: false
+

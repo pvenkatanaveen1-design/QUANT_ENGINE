@@ -1,0 +1,76 @@
+# Section 4 — signal routing per regime_id (primary slot). Evidence labels in research docs.
+# SIZE_MULTIPLIERS apply to base quadrant; SIZE_OVERRIDES adjust specific regime_ids.
+version: "section_4"
+
+size_multipliers:
+  Q1: 1.0
+  Q2: 0.5
+  Q3: 0.75
+  Q4: 0.0
+
+size_overrides:
+  Q1_M03: 0.5
+  Q1_M07: 0.0
+  Q1_M11: 0.75
+  Q2_M08: 0.35
+  Q2_M09: 0.35
+  Q3_M02: 0.5
+
+# regime_id -> canonical signal code (S01…S08)
+signal_routing:
+  Q1_M01: S01_ema_pullback
+  Q1_M02: S01_ema_pullback
+  Q1_M03: S07_carry_drift
+  Q1_M04: S01_ema_pullback
+  Q1_M05: S01_ema_pullback
+  Q1_M06: S08_no_trade
+  Q1_M07: S08_no_trade
+  Q1_M08: S01_ema_pullback
+  Q1_M09: S05_sweep_reclaim
+  Q1_M10: S08_no_trade
+  Q1_M11: S01_ema_pullback
+  Q1_M12: S01_ema_pullback
+  Q1_M13: S02_donchian
+  Q2_M01: S01_ema_pullback
+  Q2_M02: S01_ema_pullback
+  Q2_M03: S08_no_trade
+  Q2_M04: S01_ema_pullback
+  Q2_M05: S01_ema_pullback
+  Q2_M06: S08_no_trade
+  Q2_M07: S08_no_trade
+  Q2_M08: S01_ema_pullback
+  Q2_M09: S05_sweep_reclaim
+  Q2_M10: S08_no_trade
+  Q2_M11: S08_no_trade
+  Q2_M12: S01_ema_pullback
+  Q2_M13: S02_donchian
+  Q3_M01: S03_bb_fade
+  Q3_M02: S03_bb_fade
+  Q3_M03: S03_bb_fade
+  Q3_M04: S04_asian_sweep
+  Q3_M05: S03_bb_fade
+  Q3_M06: S08_no_trade
+  Q3_M07: S08_no_trade
+  Q3_M08: S06_failed_bo_fade
+  Q3_M09: S05_sweep_reclaim
+  Q3_M10: S08_no_trade
+  Q3_M11: S06_failed_bo_fade
+  Q3_M12: S03_bb_fade
+  Q3_M13: S03_bb_fade
+  Q4_M01: S08_no_trade
+  Q4_M02: S08_no_trade
+  Q4_M03: S08_no_trade
+  Q4_M04: S08_no_trade
+  Q4_M05: S08_no_trade
+  Q4_M06: S08_no_trade
+  Q4_M07: S08_no_trade
+  Q4_M08: S08_no_trade
+  Q4_M09: S08_no_trade
+  Q4_M10: S08_no_trade
+  Q4_M11: S08_no_trade
+  Q4_M12: S08_no_trade
+  Q4_M13: S08_no_trade
+
+settings:
+  bollinger_max_adx: 20
+  q2_stop_atr_mult: 1.5

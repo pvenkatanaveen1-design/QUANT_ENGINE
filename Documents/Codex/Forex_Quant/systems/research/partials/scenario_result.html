@@ -1,0 +1,112 @@
+<div id="scenario-result" class="mt-3">
+  {% if result.blocked %}
+    <div class="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+      Scenario blocked: {{ result.reason }}. No P/L is calculated when executable logic or data is unavailable.
+    </div>
+  {% else %}
+    <div class="rounded border border-blue-300 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+      {{ result.label }} for {{ result.symbol }} {{ result.timeframe }} / {{ result.strategy.name }}.
+    </div>
+    <div class="mt-3 grid gap-3 md:grid-cols-4">
+      <div class="panel"><div class="metric-label">Trades</div><div class="metric-value">{{ result.executed_simulated_trades }}</div></div>
+      <div class="panel"><div class="metric-label">Win Rate</div><div class="metric-value">{{ result.win_rate }}%</div></div>
+      <div class="panel"><div class="metric-label">Net P/L</div><div class="metric-value">{{ result.net_pl }}</div><div class="mt-2 text-sm text-zinc-500">{{ result.return_percent }}%</div></div>
+      <div class="panel"><div class="metric-label">Max DD</div><div class="metric-value">{{ result.max_drawdown }}</div></div>
+    </div>
+    <div class="mt-3 grid gap-3 md:grid-cols-4">
+      <div class="panel"><div class="metric-label">Research WR</div><div class="metric-value">{{ result.strategy_research.expected_win_rate_mid }}%</div></div>
+      <div class="panel"><div class="metric-label">Target R</div><div class="metric-value">1:{{ result.target_r_multiple }}</div></div>
+      <div class="panel"><div class="metric-label">Risk / Trade</div><div class="metric-value">{{ result.risk_amount_per_trade }}</div><div class="mt-2 text-sm text-zinc-500">mult {{ result.risk_multiplier }}</div></div>
+      <div class="panel"><div class="metric-label">Research EV</div><div class="metric-value">{{ result.strategy_research.expected_ev_r }}R</div></div>
+    </div>
+    <div class="mt-3 overflow-x-auto">
+      <table class="table-compact">
+        <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Wins / Losses</td><td>{{ result.wins }} / {{ result.losses }}</td></tr>
+          <tr><td>Win / Loss Rate</td><td>{{ result.win_rate }}% / {{ result.loss_rate }}%</td></tr>
+          <tr><td>Gross Profit / Loss</td><td>{{ result.gross_profit }} / {{ result.gross_loss }}</td></tr>
+          <tr><td>Spread Cost / Slippage</td><td>{{ result.spread_cost }} / {{ result.slippage_estimate }}</td></tr>
+          <tr><td>Profit Factor</td><td>{{ result.profit_factor }}</td></tr>
+          <tr><td>Expectancy</td><td>{{ result.expectancy }}</td></tr>
+          <tr><td>Average Win / Loss</td><td>{{ result.average_win }} / {{ result.average_loss }}</td></tr>
+          <tr><td>Avg Win/Loss Ratio</td><td>{{ result.ratio_avg_win_loss }}</td></tr>
+          <tr><td>Average R</td><td>{{ result.average_r }}</td></tr>
+          <tr><td>Target R Multiple</td><td>{{ result.target_r_multiple }}</td></tr>
+          <tr><td>Prior Expected WR / EV</td><td>{{ result.strategy_research.expected_win_rate_mid }}% / {{ result.strategy_research.expected_ev_r }}R</td></tr>
+          <tr><td>Trade Frequency / 100 Bars</td><td>{{ result.trade_frequency_per_100_bars }}</td></tr>
+          <tr><td>Period</td><td>{{ result.period.start }} -> {{ result.period.end }}</td></tr>
+          <tr><td>Max Consecutive Losses</td><td>{{ result.max_consecutive_losses }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="mt-3 grid gap-3 lg:grid-cols-2">
+      <div class="rounded border border-zinc-700 bg-zinc-900 p-3">
+        <div class="label">Fail Reasons</div>
+        <div class="mt-2 flex flex-wrap gap-2">
+          {% for key, value in result.fail_reason_counts.items() %}
+            <span class="status-pill status-gray">{{ key }} {{ value }}</span>
+          {% else %}
+            <span class="text-sm text-zinc-500">No failures counted.</span>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="rounded border border-zinc-700 bg-zinc-900 p-3">
+        <div class="label">Institutional / Alpha Flags</div>
+        <div class="mt-2 flex flex-wrap gap-2">
+          {% for key, value in result.institutional_impact_flags.items() %}
+            <span class="status-pill status-gray">{{ key }} {{ value }}</span>
+          {% endfor %}
+          {% for note in result.alpha_notes %}
+            <span class="status-pill status-blue">{{ note }}</span>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    <div class="mt-3 grid gap-3 lg:grid-cols-2">
+      <div class="rounded border border-zinc-700 bg-zinc-900 p-3">
+        <div class="label">Where It Went Wrong</div>
+        <div class="mt-2 max-h-72 overflow-auto">
+          <table class="table-compact">
+            <thead><tr><th>Time</th><th>Regime</th><th>Reason</th><th>Trap</th></tr></thead>
+            <tbody>
+              {% for item in result.failure_events %}
+                <tr><td>{{ item.time }}</td><td>{{ item.regime_id }}</td><td>{{ item.reason }}</td><td>{{ item.trap_score or 0 }}</td></tr>
+              {% else %}
+                <tr><td colspan="4">No failure windows recorded.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="rounded border border-zinc-700 bg-zinc-900 p-3">
+        <div class="label">Recent Trades</div>
+        <div class="mt-2 max-h-72 overflow-auto">
+          <table class="table-compact">
+            <thead><tr><th>#</th><th>Time</th><th>Side</th><th>R</th><th>P/L</th><th>Trap</th><th>Cum.</th></tr></thead>
+            <tbody>
+              {% for trade in result.trades %}
+                <tr><td>{{ trade.trade_number }}</td><td>{{ trade.time }}</td><td>{{ trade.side }}</td><td>{{ trade.r }}</td><td>{{ trade.pnl }}</td><td>{{ trade.trap_score or 0 }}</td><td>{{ trade.cumulative_pnl }}</td></tr>
+              {% else %}
+                <tr><td colspan="7">No simulated trades.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <details class="mt-3">
+      <summary class="cursor-pointer text-sm text-zinc-300">Show scenario request / response JSON</summary>
+      <div class="mt-3 grid gap-3 lg:grid-cols-2">
+        <div>
+          <div class="metric-label">Request</div>
+          <pre class="mt-2 max-h-96 overflow-auto rounded border border-zinc-700 p-3 text-xs">{{ result.api_request | tojson(indent=2) }}</pre>
+        </div>
+        <div>
+          <div class="metric-label">Response</div>
+          <pre class="mt-2 max-h-96 overflow-auto rounded border border-zinc-700 p-3 text-xs">{{ result | tojson(indent=2) }}</pre>
+        </div>
+      </div>
+    </details>
+  {% endif %}
+</div>

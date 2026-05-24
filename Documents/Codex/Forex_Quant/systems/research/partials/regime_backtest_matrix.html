@@ -1,0 +1,60 @@
+<div id="regime-backtest-matrix" class="mt-3">
+  {% if result.blocked %}
+    <div class="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+      Matrix blocked: {{ result.reason }}
+    </div>
+  {% else %}
+    <div class="rounded border border-sky-700 bg-sky-950/30 px-3 py-2 text-sm text-sky-200">
+      Six-month regime matrix for {{ result.symbol }} / {{ result.selected_regime }} / {{ result.investment_amount }} USD.
+      Saved runs are reused unless force refresh is enabled.
+    </div>
+    <div class="mt-3 grid gap-3 md:grid-cols-4">
+      <div class="panel"><div class="metric-label">Strategies</div><div class="metric-value">{{ result.strategies|length }}</div></div>
+      <div class="panel"><div class="metric-label">Timeframes</div><div class="metric-value">{{ result.timeframes|length }}</div></div>
+      <div class="panel"><div class="metric-label">Best Net P/L</div><div class="metric-value">{{ result.ranked[0].net_pl if result.ranked else 0 }}</div></div>
+      <div class="panel"><div class="metric-label">Best WR</div><div class="metric-value">{{ result.ranked[0].win_rate if result.ranked else 0 }}%</div></div>
+    </div>
+    <div class="mt-3 overflow-x-auto">
+      <table class="table-compact">
+        <thead>
+          <tr>
+            <th>Strategy</th><th>Slot</th><th>TF</th><th>Bars</th><th>Trades</th><th>WR</th><th>P/L</th>
+            <th>Return</th><th>PF</th><th>Expectancy</th><th>DD</th><th>Source</th><th>Open</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in result.matrix %}
+            <tr>
+              <td class="font-mono">{{ row.strategy_id }}</td>
+              <td>{{ row.slot }}</td>
+              <td>{{ row.timeframe }}</td>
+              <td>{{ row.bars }}</td>
+              <td>{{ row.trades or 0 }}</td>
+              <td>{{ row.win_rate or 0 }}%</td>
+              <td>{{ row.net_pl or 0 }}</td>
+              <td>{{ row.return_percent or 0 }}%</td>
+              <td>{{ row.profit_factor or 0 }}</td>
+              <td>{{ row.expectancy or 0 }}</td>
+              <td>{{ row.max_drawdown or 0 }}</td>
+              <td>{% if row.from_cache %}cache{% else %}mt5 run{% endif %}</td>
+              <td>
+                <button
+                  class="button button-sm"
+                  hx-get="/partials/strategy-backtest-detail?symbol={{ result.symbol }}&selected_regime={{ result.selected_regime }}&selected_strategy={{ row.strategy_id }}&timeframes={{ row.timeframe }}&lookback_months={{ result.lookback_months }}&bars={{ row.bars }}&investment_amount={{ result.investment_amount }}&killzone_enabled={{ result.rules.killzone_enabled }}&breakout_enabled={{ result.rules.breakout_enabled }}&sweep_enabled={{ result.rules.sweep_enabled }}&alpha_enabled={{ result.rules.alpha_enabled }}&spread_filter_enabled={{ result.rules.spread_filter_enabled }}"
+                  hx-target="#strategy-backtest-detail"
+                  hx-swap="outerHTML"
+                  type="button">Detail</button>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="13">No matrix rows.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <details class="mt-3">
+      <summary class="cursor-pointer text-sm text-zinc-300">Copy matrix JSON</summary>
+      <pre class="mt-2 max-h-[34rem] overflow-auto rounded border border-zinc-700 p-3 text-xs">{{ result | tojson(indent=2) }}</pre>
+    </details>
+  {% endif %}
+</div>

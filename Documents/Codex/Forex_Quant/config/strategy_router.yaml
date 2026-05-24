@@ -1,0 +1,3 @@
+# Strategy registry validation (QUANTA master: avoid brittle 208-only crashes in dev)
+registry:
+  strict_blueprint: true

@@ -1,0 +1,2 @@
+"""Safe settings inspection system."""
+

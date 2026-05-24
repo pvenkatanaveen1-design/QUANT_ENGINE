@@ -1,0 +1,13 @@
+<div
+  id="system-summary"
+  hx-get="/partials/system-summary"
+  hx-trigger="every 5s"
+  hx-swap="outerHTML"
+  class="flex flex-wrap items-center gap-2 text-xs">
+  <span class="status-pill status-gray">{{ status.environment }}</span>
+  <span class="status-pill status-blue">{{ status.default_symbol }} {{ status.default_timeframe }}</span>
+  <span class="status-pill {% if status.latest_regime.tradable %}status-green{% else %}status-amber{% endif %}">{{ status.latest_regime.regime_id }}</span>
+  <span class="status-pill {% if status.data.count %}status-green{% else %}status-amber{% endif %}">Data {{ status.data.count }}</span>
+  <span class="status-pill {% if status.kill_switch_status == 'clear' %}status-green{% else %}status-red{% endif %}">Kill {{ status.kill_switch_status }}</span>
+  <span class="status-pill status-gray">Execution {{ status.execution_mode }}</span>
+</div>

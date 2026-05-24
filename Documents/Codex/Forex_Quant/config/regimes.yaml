@@ -1,0 +1,51 @@
+version: 0.1
+thresholds:
+  atr_period: 14
+  efficiency_ratio_period: 30
+  volatility_percentile_lookback: 252
+  low_vol_percentile: 40
+  high_vol_percentile: 70
+  high_vol_atr_percent: 0.0015
+  extreme_vol_percentile: 90
+  extreme_vol_atr_percent: 0.0040
+  efficiency_ratio_min: 0.35
+  efficiency_ratio_range_max: 0.25
+  adx_trend_min: 22
+  adx_range_max: 18
+  spread_stress_percentile: 90
+  spread_critical_percentile: 95
+  compression_percentile: 25
+  exhaustion_atr_distance: 2.5
+  jump_warning_z: 2.0
+  jump_shock_z: 3.0
+base_regimes:
+  Q1:
+    name: Trend + Low/Normal Volatility
+    tradable: true
+    risk_posture: normal
+  Q2:
+    name: Trend + High Volatility
+    tradable: true
+    risk_posture: reduced_size
+  Q3:
+    name: Range + Low/Normal Volatility
+    tradable: true
+    risk_posture: range_only
+  Q4:
+    name: Chaos / Transition / No Trade
+    tradable: false
+    risk_posture: block_new_orders
+modifiers:
+  M01: {name: Clean Liquid Market, tradable: true, risk_posture: normal}
+  M02: {name: Compression, tradable: true, risk_posture: wait_for_expansion}
+  M03: {name: Asia Session, tradable: true, risk_posture: small_size}
+  M04: {name: London Open, tradable: true, risk_posture: confirmation_required}
+  M05: {name: London-NY Overlap, tradable: true, risk_posture: normal}
+  M06: {name: NY Late / Rollover, tradable: false, risk_posture: block_or_trail}
+  M07: {name: Pre-News, tradable: false, risk_posture: news_lock}
+  M08: {name: Post-News, tradable: true, risk_posture: reduced_size}
+  M09: {name: Liquidity Sweep, tradable: true, risk_posture: confirmation_required}
+  M10: {name: Spread Stress, tradable: false, risk_posture: cost_block}
+  M11: {name: Trend Exhaustion, tradable: true, risk_posture: reduce_risk}
+  M12: {name: Multi-Timeframe Agreement, tradable: true, risk_posture: normal}
+  M13: {name: USD / Correlation Shock, tradable: false, risk_posture: correlation_block}

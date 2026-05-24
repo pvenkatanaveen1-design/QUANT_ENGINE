@@ -1,0 +1,19 @@
+{% extends "app/templates/base.html" %}
+{% block title %}Monitor | Quanta Forex{% endblock %}
+{% block content %}
+<div class="space-y-5">
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-semibold">System Monitor</h1>
+      <p class="mt-1 text-sm text-zinc-500">{{ status.default_symbol }} {{ status.default_timeframe }}</p>
+    </div>
+  </div>
+  <div
+    id="system-grid"
+    hx-get="/partials/system-grid"
+    hx-trigger="load, every 10s"
+    hx-swap="outerHTML">
+    {% include "systems/monitoring/partials/system_grid.html" %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,25 @@
+raw_path: data/raw
+cleaned_path: data/cleaned
+report_path: data/cleaned
+default_source: mt5_demo
+source_options:
+  - key: mt5_demo
+    label: MT5 live/demo
+default_bars: 672
+minimum_regime_rows: 120
+ui_symbol_limit: 160
+required_columns:
+  - time
+  - open
+  - high
+  - low
+  - close
+  - tick_volume
+  - spread
+max_spread_percentile_warning: 90
+gap_detection_lookback: 20
+stale_data_minutes: 60
+session_columns:
+  - session_label
+  - session_modifier
+  - kill_zone_active

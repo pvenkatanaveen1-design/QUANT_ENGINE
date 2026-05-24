@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Regime Engine — Dashboard</title>
+    <link rel="stylesheet" href="assets/dashboard.css" />
+    <!-- Chart.js from CDN — no npm. For air-gapped use, download chart.umd.min.js into assets/ and swap src. -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js" defer></script>
+    <script src="assets/app.js" defer></script>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+        <div class="sidebar__brand">
+          <span class="sidebar__logo">◆</span>
+          <span class="sidebar__title">Regime Engine</span>
+          <button type="button" class="icon-btn sidebar__close" id="sidebarClose" aria-label="Close menu">✕</button>
+        </div>
+        <nav class="sidebar__nav">
+          <button type="button" class="nav-item nav-item--active" data-route="engine">
+            <span class="nav-item__i">⬡</span> Regime Engine
+          </button>
+          <button type="button" class="nav-item nav-item--disabled" disabled title="Placeholder">
+            <span class="nav-item__i">▦</span> Dashboard
+          </button>
+          <button type="button" class="nav-item nav-item--disabled" disabled title="Placeholder">
+            <span class="nav-item__i">📊</span> Backtesting
+          </button>
+          <button type="button" class="nav-item nav-item--disabled" disabled title="Placeholder">
+            <span class="nav-item__i">📈</span> Analytics
+          </button>
+          <button type="button" class="nav-item nav-item--disabled" disabled title="Placeholder">
+            <span class="nav-item__i">⚙</span> Settings
+          </button>
+        </nav>
+        <p class="sidebar__hint">
+          Static UI — IDs mirror <code>taxonomy.py</code>. Wire API in <code>assets/app.js</code> → <code>fetchRegimeData(quadrant, regimeId)</code>.
+        </p>
+      </aside>
+
+      <div class="shell">
+        <header class="topbar">
+          <button type="button" class="icon-btn" id="menuToggle" aria-label="Open menu">☰</button>
+          <h1 class="topbar__title" id="pageTitle">Regime Engine</h1>
+          <div class="topbar__meta">
+            <span class="pill pill--live" id="livePill">Demo data</span>
+          </div>
+        </header>
+
+        <main class="main" id="viewEngine">
+          <section class="panel panel--intro">
+            <h2 class="panel__h">Flow</h2>
+            <ol class="steps">
+              <li class="steps__item steps__item--active" data-step="1">Quadrant</li>
+              <li class="steps__item" data-step="2">Regime (1–52)</li>
+              <li class="steps__item" data-step="3">Analytics</li>
+              <li class="steps__item" data-step="4">Charts</li>
+              <li class="steps__item" data-step="5">Strategy</li>
+              <li class="steps__item" data-step="6">Backtest</li>
+              <li class="steps__item" data-step="7">Performance</li>
+            </ol>
+          </section>
+
+          <!-- Step 1 -->
+          <section class="panel fade-in" id="stepQuadrant">
+            <h2 class="panel__h">Step 1 — Quadrant</h2>
+            <p class="panel__sub">Choose a quadrant (Q1–Q4), then one of the 52 regime labels in that quadrant (matches <code>taxonomy.py</code> IDs).</p>
+            <div class="grid grid--quad" id="quadrantGrid">
+              <button type="button" class="quad-card" data-quadrant="Q1">
+                <span class="quad-card__tag">Trend · lower vol</span>
+                <strong class="quad-card__title">Q1 Regime</strong>
+                <span class="quad-card__desc">Trend-biased playbook set</span>
+              </button>
+              <button type="button" class="quad-card" data-quadrant="Q2">
+                <span class="quad-card__tag">Trend · higher vol</span>
+                <strong class="quad-card__title">Q2 Regime</strong>
+                <span class="quad-card__desc">Stress & expansion templates</span>
+              </button>
+              <button type="button" class="quad-card" data-quadrant="Q3">
+                <span class="quad-card__tag">Range · lower vol</span>
+                <strong class="quad-card__title">Q3 Regime</strong>
+                <span class="quad-card__desc">Mean reversion & balance</span>
+              </button>
+              <button type="button" class="quad-card" data-quadrant="Q4">
+                <span class="quad-card__tag">Transition / stress</span>
+                <strong class="quad-card__title">Q4 Regime</strong>
+                <span class="quad-card__desc">Liquidity & caution set</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="panel fade-in" id="stepRegimePick" hidden>
+            <h2 class="panel__h">Step 2 — Regime in this quadrant</h2>
+            <p class="panel__sub" id="regimePickSubtitle">Select a quadrant first.</p>
+            <div class="grid grid--regimes" id="regimeGrid"></div>
+          </section>
+
+          <!-- Step 3 Analytics -->
+          <section class="panel fade-in" id="stepAnalytics" hidden>
+            <h2 class="panel__h">Step 3 — Regime analytics</h2>
+            <p class="panel__sub" id="analyticsSubtitle">Pick a quadrant, then a regime id.</p>
+            <div class="grid grid--metrics" id="metricCards"></div>
+          </section>
+
+          <!-- Step 4 Charts -->
+          <section class="panel fade-in" id="stepCharts" hidden>
+            <h2 class="panel__h">Step 4 — Visual analytics</h2>
+            <div class="grid grid--charts">
+              <div class="chart-card">
+                <h3 class="chart-card__h">Bull / bear / sideways</h3>
+                <div class="chart-card__canvas"><canvas id="chartPie"></canvas></div>
+              </div>
+              <div class="chart-card">
+                <h3 class="chart-card__h">Historical regime mix (mock)</h3>
+                <div class="chart-card__canvas"><canvas id="chartLine"></canvas></div>
+              </div>
+              <div class="chart-card">
+                <h3 class="chart-card__h">Monthly bar (mock)</h3>
+                <div class="chart-card__canvas"><canvas id="chartBar"></canvas></div>
+              </div>
+              <div class="chart-card">
+                <h3 class="chart-card__h">Intensity heatmap (mock)</h3>
+                <div class="heatmap" id="heatmap"></div>
+              </div>
+              <div class="chart-card chart-card--wide">
+                <h3 class="chart-card__h">Candlestick</h3>
+                <div class="placeholder-chart" id="candlePlaceholder">
+                  <p>Placeholder — drop in Lightweight Charts, TradingView, or your feed when you connect the engine.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Step 5 Strategy -->
+          <section class="panel fade-in" id="stepStrategy" hidden>
+            <h2 class="panel__h">Step 5 — Strategy selection</h2>
+            <p class="panel__sub" id="strategyContext"></p>
+            <div class="tabs" role="tablist" id="strategyTabs"></div>
+            <div class="strategy-panels" id="strategyPanels"></div>
+          </section>
+
+          <!-- Step 6 Backtest -->
+          <section class="panel fade-in" id="stepBacktest" hidden>
+            <h2 class="panel__h">Step 6 — Backtesting panel</h2>
+            <p class="panel__sub" id="backtestSubtitle">Select a strategy to view mock backtest output.</p>
+            <div class="grid grid--bt" id="backtestMetrics"></div>
+          </section>
+
+          <!-- Step 7 Performance -->
+          <section class="panel fade-in" id="stepPerformance" hidden>
+            <h2 class="panel__h">Step 7 — Performance visualization</h2>
+            <div class="grid grid--perf">
+              <div class="chart-card chart-card--wide">
+                <h3 class="chart-card__h">Equity curve (mock)</h3>
+                <div class="chart-card__canvas chart-card__canvas--tall"><canvas id="chartEquity"></canvas></div>
+              </div>
+              <div class="chart-card">
+                <h3 class="chart-card__h">Trade outcome distribution</h3>
+                <div class="chart-card__canvas"><canvas id="chartTrades"></canvas></div>
+              </div>
+              <div class="chart-card">
+                <h3 class="chart-card__h">R-multiple histogram (mock)</h3>
+                <div class="chart-card__canvas"><canvas id="chartHist"></canvas></div>
+              </div>
+              <div class="chart-card chart-card--wide">
+                <h3 class="chart-card__h">Monthly returns (mock)</h3>
+                <div class="table-wrap">
+                  <table class="data-table" id="monthlyTable"></table>
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+    <div class="overlay" id="overlay" hidden></div>
+  </body>
+</html>

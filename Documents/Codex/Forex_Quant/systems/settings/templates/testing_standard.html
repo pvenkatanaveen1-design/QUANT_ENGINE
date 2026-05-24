@@ -1,0 +1,38 @@
+{% extends "app/templates/base.html" %}
+{% block title %}Testing standard | Quanta Forex{% endblock %}
+{% block content %}
+<div class="space-y-5 max-w-3xl">
+  <div>
+    <h1 class="text-2xl font-semibold">Section 25 — testing standard</h1>
+    <p class="mt-1 text-sm text-zinc-500">Minimum bar for regime, signal, risk, and session checks. Implemented in <code class="text-xs">tests/test_section25_standard.py</code> (not pseudocode names).</p>
+  </div>
+  <section class="panel">
+    <div class="label">Run</div>
+    <pre class="mt-2 overflow-x-auto rounded border border-zinc-200 bg-zinc-50 p-3 text-xs">python -m pytest tests/test_section25_standard.py -v</pre>
+  </section>
+  <section class="panel">
+    <div class="label">QUANTA V3 master prompt — alignment (implemented vs deferred)</div>
+    <p class="mt-2 text-sm text-zinc-600">
+      This app follows <code class="text-xs">QUANTA_V3_COMPLETE_MASTER_PROMPT.md</code> build order for Phases A–G where coded. Deferred by design: Phase H (paper broker / <code class="text-xs">paper_execute</code> wiring), Phase I (<code class="text-xs">order_send</code>), full HMM (Phase G note). <code class="text-xs">forex_regime/regimes52</code> remains a parallel tree — do not merge into the control-center path.
+    </p>
+    <ul class="mt-3 list-disc space-y-1 pl-5 text-sm text-zinc-700">
+      <li><strong>A–B:</strong> Wilder ADX, SMA-seeded EMA, Q2 before forced Q4 on trend+high-vol, session gaps covered in <code class="text-xs">config/sessions.yaml</code>, eight signal functions + <code class="text-xs">compute_signal</code>, decision engine uses signals (research mode → <code class="text-xs">research_only</code>).</li>
+      <li><strong>C–D:</strong> Data layer + walk-forward / signal-engine backtest → DuckDB cache + equity snapshots.</li>
+      <li><strong>E–F:</strong> Journal JSONL + SQLite decisions; analysis schema + 12 cache types (incl. <code class="text-xs">WF_RUN_SUMMARY</code>).</li>
+      <li><strong>G:</strong> <code class="text-xs">/analytics</code> — ten visualization groups from cache + KPIs (Section 12).</li>
+      <li><strong>Section 17:</strong> eight core pages + aliases (<code class="text-xs">/monitor</code>, <code class="text-xs">/research</code>); extra nav (MT5, settings, testing standard, etc.) does not replace them.</li>
+      <li><strong>Observability:</strong> <code class="text-xs">slope_score</code> (OLS slope / ATR) is on <code class="text-xs">RegimeFeatureSet</code> for UI/diagnostics; quadrant logic still uses ER + ADX + vol thresholds only.</li>
+    </ul>
+  </section>
+  <section class="panel">
+    <div class="label">Mappings from the master prompt</div>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-zinc-700">
+      <li><code class="text-xs">result.adx_from_features()</code> → <code class="text-xs">result.features.adx</code></li>
+      <li><code class="text-xs">calculate_lot_size(..., cfg)</code> → <code class="text-xs">calculate_lot_size(..., "EURUSD", ConfigManager)</code> optional; tests use default project root.</li>
+      <li><code class="text-xs">risk_pct = 0.01</code> for ~0.05 lots → use <code class="text-xs">0.001</code> (0.1% risk); <code class="text-xs">0.01</code> = 1% → ~0.5 lots at same stop/pip value.</li>
+      <li>Choppy OHLC alone often spikes <code class="text-xs">volatility_percentile</code> → Q4; the Q3 test calls <code class="text-xs">_choose_base</code> with a hand-crafted <code class="text-xs">RegimeFeatureSet</code> to validate the range bucket.</li>
+    </ul>
+  </section>
+  <p class="text-xs text-zinc-500">Related: <a class="text-sky-700 underline" href="/project-phases">/project-phases</a>, <a class="text-sky-700 underline" href="/evaluation-metrics">/evaluation-metrics</a></p>
+</div>
+{% endblock %}

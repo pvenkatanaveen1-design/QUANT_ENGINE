@@ -1,0 +1,5 @@
+sources:
+  mt5_demo:
+    source_name: mt5_demo
+    cleaned_path: data/cleaned
+    notes: MT5 terminal is the only runtime market data source. CSV readers remain only for isolated parser tests.

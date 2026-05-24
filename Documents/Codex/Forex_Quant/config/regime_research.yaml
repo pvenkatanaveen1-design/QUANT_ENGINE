@@ -1,0 +1,157 @@
+version: 0.1
+notes:
+  - Runtime market values must come from MT5 bars/ticks only.
+  - This file stores prior research expectations, not live results or guarantees.
+  - News and sentiment require external feeds and remain unavailable until real connectors exist.
+sources:
+  currency_momentum:
+    label: Menkhoff, Sarno, Schmeling, Schrimpf currency momentum
+    evidence: A
+    url: https://www.bis.org/publ/work366.pdf
+    note: Currency momentum is documented separately from carry.
+  carry_momentum:
+    label: Burnside, Eichenbaum, Rebelo carry and momentum
+    evidence: A
+    url: https://www.nber.org/papers/w16942
+    note: Currency carry and momentum payoffs are documented with high Sharpe historically.
+  regime_switching:
+    label: Hamilton Markov regime switching
+    evidence: A
+    url: https://www.econometricsociety.org/publications/econometrica/1989/03/01/new-approach-economic-analysis-nonstationary-time-series-and
+    note: Regime changes can be modeled as a discrete-state process.
+  arch:
+    label: Engle ARCH volatility clustering
+    evidence: A
+    url: https://www.econometricsociety.org/publications/econometrica/1982/07/01/autoregressive-conditional-heteroscedasticity-estimates
+    note: Recent past informs conditional variance.
+  garch:
+    label: Bollerslev GARCH
+    evidence: A
+    url: https://public.econ.duke.edu/~boller/Published_Papers/joe_86.pdf
+    note: GARCH generalizes ARCH with lagged conditional variance.
+  strategy_tester:
+    label: TradingView strategy tester metrics
+    evidence: P
+    url: https://www.tradingview.com/support/solutions/43000764138/
+    note: Net profit, drawdown, profit factor, percent profitable, and trade run-up/drawdown are baseline trader metrics.
+base_models:
+  Q1:
+    name: Trend low/normal volatility
+    expected_win_rate: [0.55, 0.62]
+    expected_rrr: 2.5
+    risk_multiplier: 1.0
+    evidence: [A, P]
+    sources: [currency_momentum]
+    thesis: Momentum continuation is allowed when trend and cost conditions are clean.
+  Q2:
+    name: Trend high volatility
+    expected_win_rate: [0.52, 0.58]
+    expected_rrr: 2.0
+    risk_multiplier: 0.5
+    evidence: [A, P, Q]
+    sources: [arch, garch]
+    thesis: Trend can continue, but volatility targeting cuts size.
+  Q3:
+    name: Range / mean reversion
+    expected_win_rate: [0.60, 0.68]
+    expected_rrr: 1.8
+    risk_multiplier: 0.75
+    evidence: [A, P]
+    sources: [arch]
+    thesis: Mean reversion is allowed only while trend evidence is weak.
+  Q4:
+    name: Defensive / transition / no-trade
+    expected_win_rate: [0.0, 0.0]
+    expected_rrr: 0.0
+    risk_multiplier: 0.0
+    evidence: [P, Q]
+    sources: [regime_switching]
+    thesis: Best trade is no trade while regime evidence is unstable.
+modifier_adjustments:
+  M01: {name: Clean liquid market, win_rate_shift: 0.00, rrr_shift: 0.0, risk_multiplier: 1.0, trap_focus: clean}
+  M02: {name: Compression, win_rate_shift: 0.02, rrr_shift: 0.3, risk_multiplier: 0.75, trap_focus: squeeze_breakout}
+  M03: {name: Asia session, win_rate_shift: -0.04, rrr_shift: -0.3, risk_multiplier: 0.5, trap_focus: range_build}
+  M04: {name: London open, win_rate_shift: 0.06, rrr_shift: 0.4, risk_multiplier: 1.0, trap_focus: asian_range_sweep}
+  M05: {name: London-New York overlap, win_rate_shift: 0.03, rrr_shift: 0.2, risk_multiplier: 1.0, trap_focus: high_volume_continuation}
+  M06: {name: Late session / rollover, win_rate_shift: -0.10, rrr_shift: -0.5, risk_multiplier: 0.0, trap_focus: rollover_spread}
+  M07: {name: Pre-news, win_rate_shift: -0.20, rrr_shift: -1.0, risk_multiplier: 0.0, trap_focus: event_risk}
+  M08: {name: Post-news, win_rate_shift: 0.02, rrr_shift: 0.1, risk_multiplier: 0.5, trap_focus: post_news_normalization}
+  M09: {name: Liquidity sweep, win_rate_shift: 0.07, rrr_shift: 0.6, risk_multiplier: 1.0, trap_focus: stop_sweep_reclaim}
+  M10: {name: Spread stress, win_rate_shift: -0.20, rrr_shift: -1.0, risk_multiplier: 0.0, trap_focus: transaction_cost_block}
+  M11: {name: Trend exhaustion, win_rate_shift: -0.04, rrr_shift: -0.4, risk_multiplier: 0.5, trap_focus: exhaustion_reversal}
+  M12: {name: Multi-timeframe agreement, win_rate_shift: 0.08, rrr_shift: 0.5, risk_multiplier: 1.0, trap_focus: alignment}
+  M13: {name: Macro / correlation shock, win_rate_shift: 0.08, rrr_shift: 0.5, risk_multiplier: 0.75, trap_focus: macro_alignment_required}
+regime_overrides:
+  Q1_M04: {priority: core, expected_win_rate: [0.60, 0.65], expected_rrr: 2.5, focus: London trend continuation / sweep continuation}
+  Q1_M09: {priority: core, expected_win_rate: [0.62, 0.68], expected_rrr: 3.0, focus: Trend sweep reclaim}
+  Q1_M12: {priority: core, expected_win_rate: [0.62, 0.68], expected_rrr: 3.0, focus: Multi-timeframe trend}
+  Q1_M13: {priority: core, expected_win_rate: [0.64, 0.70], expected_rrr: 3.0, focus: Macro/carry/momentum alignment}
+  Q2_M04: {priority: secondary, expected_win_rate: [0.55, 0.62], expected_rrr: 2.5, focus: High-vol London breakout}
+  Q3_M01: {priority: secondary, expected_win_rate: [0.63, 0.70], expected_rrr: 1.8, focus: Clean range reversion}
+  Q3_M03: {priority: secondary, expected_win_rate: [0.60, 0.70], expected_rrr: 1.5, focus: Asian range fade}
+  Q3_M04: {priority: core, expected_win_rate: [0.62, 0.68], expected_rrr: 3.0, focus: Asian high/low sweep reversal}
+  Q3_M09: {priority: core, expected_win_rate: [0.62, 0.68], expected_rrr: 3.0, focus: Range-edge sweep reversal}
+  Q3_M12: {priority: secondary, expected_win_rate: [0.62, 0.68], expected_rrr: 2.0, focus: Multi-timeframe range}
+strategy_family_specs:
+  trend_momentum:
+    executable: true
+    expected_win_rate: [0.55, 0.62]
+    expected_rrr: 2.5
+    entry_logic: EMA pullback / momentum continuation in trend direction.
+    invalid_when: ADX below trend threshold, high spread, Q4, or exhaustion breakout chase.
+    evidence: [A, P]
+    sources: [currency_momentum]
+  breakout:
+    executable: true
+    expected_win_rate: [0.52, 0.60]
+    expected_rrr: 2.5
+    entry_logic: Breakout after compression or retest; first breakout without confirmation is penalized.
+    invalid_when: First breakout into high spread or no retest/volume confirmation.
+    evidence: [P, Q]
+    sources: [garch]
+  mean_reversion:
+    executable: true
+    expected_win_rate: [0.60, 0.68]
+    expected_rrr: 1.8
+    entry_logic: Fade range extremes only when trend evidence is weak.
+    invalid_when: ADX/trend efficiency confirms trend.
+    evidence: [A, P]
+    sources: [arch]
+  sweep_reversal:
+    executable: true
+    expected_win_rate: [0.62, 0.70]
+    expected_rrr: 3.0
+    entry_logic: Sweep prior/Asian/session extreme, close back inside, then trade reclaim/MSS direction.
+    invalid_when: Sweep without reclaim, no kill zone, or spread stress.
+    evidence: [P, I]
+    sources: []
+  defensive:
+    executable: true
+    expected_win_rate: [0.0, 0.0]
+    expected_rrr: 0.0
+    entry_logic: No trade, reduce exposure, observe, or protect open risk.
+    invalid_when: Never used for new entry.
+    evidence: [P, Q]
+    sources: [regime_switching]
+  general:
+    executable: false
+    expected_win_rate: [0.0, 0.0]
+    expected_rrr: 0.0
+    entry_logic: Blueprint only until formula is implemented.
+    invalid_when: Always blocked for scenario P/L.
+    evidence: [U]
+    sources: []
+priority_regimes:
+  - Q1_M04
+  - Q1_M09
+  - Q1_M12
+  - Q1_M13
+  - Q3_M04
+  - Q3_M09
+news_and_sentiment:
+  status: unavailable_without_feed
+  required_connectors:
+    - economic_calendar
+    - central_bank_calendar
+    - market_sentiment_feed
+  runtime_rule: Do not infer news/sentiment from MT5 alone; only mark spread/jump/volume shocks as proxies.

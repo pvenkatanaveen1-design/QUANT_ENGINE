@@ -1,0 +1,2 @@
+"""Quanta cockpit dashboard system."""
+
