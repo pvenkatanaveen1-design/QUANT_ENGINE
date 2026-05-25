@@ -1,0 +1,1471 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>quant_forex_V10 Research</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/static/styles.css?v=regime-lab-1" />
+  </head>
+  <body class="min-h-screen bg-slate-50 text-slate-900">
+    <header class="border-b border-slate-200 bg-white">
+      <div class="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-4 px-5 py-4">
+        <div>
+          <h1 class="text-xl font-semibold tracking-normal">quant_forex_V10</h1>
+          <p class="text-sm text-slate-500">Regime Research / Reference / Backtest</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 text-sm">
+          <span id="apiStatus" class="status-pill bg-slate-100 text-slate-700">API checking</span>
+          <span id="mt5Status" class="status-pill bg-slate-100 text-slate-700">MT5 not checked</span>
+          <a class="rounded border border-slate-300 px-3 py-2 text-slate-700 hover:bg-slate-100" href="/docs" target="_blank">Swagger</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-[1600px] px-5 py-5">
+      <section class="mb-5 border border-slate-200 bg-white p-4">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-semibold">Research Controls</h2>
+            <p class="text-sm text-slate-500">Fetch MT5 data, calculate features, detect regimes, and run the current 50-regime research backtest.</p>
+          </div>
+          <div id="lastAction" class="text-sm text-slate-500">Ready.</div>
+        </div>
+
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+          <label class="field-label">Mode Preset
+            <select id="modePreset" class="field-input"></select>
+          </label>
+          <label class="field-label">Symbol
+            <select id="symbol" class="field-input"></select>
+          </label>
+          <label class="field-label">Timeframe
+            <select id="timeframe" class="field-input"></select>
+          </label>
+          <label class="field-label">Start Date
+            <input id="startDate" class="field-input" type="date" />
+          </label>
+          <label class="field-label">End Date
+            <input id="endDate" class="field-input" type="date" />
+          </label>
+          <label class="field-label">Regime
+            <select id="regimeFilter" class="field-input"></select>
+          </label>
+          <label class="field-label">Strategy (filtered by regime)
+            <select id="strategyFilter" class="field-input"></select>
+          </label>
+          <label class="field-label">Risk %
+            <select id="riskPercent" class="field-input"></select>
+          </label>
+          <label class="field-label">RR
+            <select id="rr" class="field-input"></select>
+          </label>
+          <label class="field-label">Sentiment
+            <select id="sentiment" class="field-input"></select>
+          </label>
+          <label class="field-label">USD Bias
+            <select id="usdBias" class="field-input"></select>
+          </label>
+          <label class="field-label">Risk Tone
+            <select id="riskSentiment" class="field-input"></select>
+          </label>
+          <label class="field-label">CB Divergence
+            <select id="cbDivergence" class="field-input"></select>
+          </label>
+          <label class="field-label">Investment $
+            <input id="initialEquity" class="field-input" type="number" min="1" step="1000" />
+          </label>
+        </div>
+        <div id="modePresetSummary" class="mt-3 rounded border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600"></div>
+
+        <div class="mt-4 border border-indigo-200 bg-indigo-50 p-3 text-sm">
+          <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 class="text-sm font-semibold uppercase text-indigo-900">Macro Evidence Layer</h3>
+              <p class="text-xs text-indigo-800">Optional evidence inputs for R25-R29. Manual selections above remain the fallback when mode is manual.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button id="previewMacroEvidence" class="action-btn">Preview Macro Evidence</button>
+              <button id="reviewMacroPipeline" class="action-btn">Review Macro Pipeline</button>
+            </div>
+          </div>
+          <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+            <label class="field-label">Macro Mode
+              <select id="macroMode" class="field-input">
+                <option value="manual">manual</option>
+                <option value="evidence">evidence</option>
+                <option value="database">database</option>
+              </select>
+            </label>
+            <label class="field-label">DXY % Change
+              <input id="dxyChangePercent" class="field-input" type="number" step="0.01" value="0" />
+            </label>
+            <label class="field-label">USD Basket % Change
+              <input id="usdBasketChangePercent" class="field-input" type="number" step="0.01" value="0" />
+            </label>
+            <label class="field-label">Fed Exp BP
+              <input id="fedRateExpectationChangeBp" class="field-input" type="number" step="1" value="0" />
+            </label>
+            <label class="field-label">US Yield BP
+              <input id="usYieldChangeBp" class="field-input" type="number" step="1" value="0" />
+            </label>
+            <label class="field-label">SPX % Change
+              <input id="spxChangePercent" class="field-input" type="number" step="0.01" value="0" />
+            </label>
+            <label class="field-label">VIX % Change
+              <input id="vixChangePercent" class="field-input" type="number" step="0.01" value="0" />
+            </label>
+            <label class="field-label">JPY Strength
+              <input id="jpyStrengthScore" class="field-input" type="number" step="1" value="0" />
+            </label>
+            <label class="field-label">CHF Strength
+              <input id="chfStrengthScore" class="field-input" type="number" step="1" value="0" />
+            </label>
+            <label class="field-label">Base Rate Exp BP
+              <input id="baseRateExpectationChangeBp" class="field-input" type="number" step="1" value="0" />
+            </label>
+            <label class="field-label">Quote Rate Exp BP
+              <input id="quoteRateExpectationChangeBp" class="field-input" type="number" step="1" value="0" />
+            </label>
+            <label class="field-label">Minutes To News
+              <input id="minutesToNews" class="field-input" type="number" step="1" value="9999" />
+            </label>
+            <label class="field-label">Minutes Since News
+              <input id="minutesSinceNews" class="field-input" type="number" step="1" value="9999" />
+            </label>
+            <label class="flex items-center gap-2 font-semibold text-slate-700">
+              <input id="highImpactNews" type="checkbox" class="h-4 w-4" />
+              High impact news
+            </label>
+          </div>
+          <div id="macroEvidencePanel" class="mt-3 metric-grid text-sm"></div>
+          <div id="macroDiagnosticsPanel" class="mt-3"></div>
+          <details class="mt-3 rounded border border-indigo-200 bg-white p-3">
+            <summary class="cursor-pointer text-sm font-semibold text-indigo-900">Import Macro / News / Cross-Pair Feeds</summary>
+            <p class="mt-2 text-xs text-slate-500">Rows are normalized into SQLite macro evidence and can be used with Macro Mode = database. Use CSV/JSON macro feeds, economic calendar news feeds, or saved MT5 candle returns for cross-pair confirmation.</p>
+            <div class="mt-3 grid gap-2 sm:grid-cols-4">
+              <label class="field-label">Feed Type
+                <select id="macroFeedType" class="field-input">
+                  <option value="macro">macro</option>
+                  <option value="news">news</option>
+                  <option value="cross_pair">cross_pair</option>
+                </select>
+              </label>
+              <label class="field-label">Feed Format
+                <select id="macroFeedFormat" class="field-input">
+                  <option value="csv">csv</option>
+                  <option value="json">json</option>
+                </select>
+              </label>
+              <label class="field-label sm:col-span-2">Source Name
+                <input id="macroCsvSource" class="field-input" value="macro_research_feed" />
+              </label>
+            </div>
+            <textarea id="macroCsvText" class="mt-3 h-28 w-full border border-slate-300 p-2 font-mono text-xs" placeholder="CSV or JSON. Examples: timestamp,symbol,dxy_change_percent,usd_basket_change_percent,... OR [{&quot;timestamp&quot;:&quot;2026-01-02T13:30:00Z&quot;,&quot;currency&quot;:&quot;USD&quot;,&quot;event&quot;:&quot;NFP&quot;,&quot;impact&quot;:&quot;High&quot;}]"></textarea>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <button id="importMacroCsv" class="action-btn">Import Macro CSV</button>
+              <button id="importMacroFeedText" class="action-btn">Import Feed Text</button>
+            </div>
+            <div class="mt-3 grid gap-2 sm:grid-cols-[1fr_180px_120px_120px_auto]">
+              <input id="macroCsvUrl" class="field-input" placeholder="https://.../macro_evidence.csv" />
+              <input id="macroUrlSource" class="field-input" value="macro_feed_url" />
+              <select id="macroUrlFeedType" class="field-input">
+                <option value="macro">macro</option>
+                <option value="news">news</option>
+                <option value="cross_pair">cross_pair</option>
+              </select>
+              <select id="macroUrlFeedFormat" class="field-input">
+                <option value="auto">auto</option>
+                <option value="csv">csv</option>
+                <option value="json">json</option>
+              </select>
+              <button id="importMacroUrl" class="action-btn">Import URL Feed</button>
+            </div>
+            <div class="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
+              <input id="macroCrossPairSymbols" class="field-input" value="EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,NZDUSD,USDCAD,EURJPY,GBPJPY" />
+              <button id="importCrossPairEvidence" class="action-btn">Build Cross-Pair Evidence</button>
+            </div>
+            <div class="mt-3 grid gap-2 sm:grid-cols-[1fr_130px_130px_180px_auto]">
+              <input id="cotSymbols" class="field-input" value="EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD,EURJPY,GBPJPY,AUDJPY" />
+              <input id="cotAsOf" class="field-input" type="date" />
+              <select id="cotReportType" class="field-input">
+                <option value="Combined">Combined</option>
+                <option value="FutOnly">FutOnly</option>
+              </select>
+              <input id="cotSource" class="field-input" value="cftc_tff_cot" />
+              <button id="importCotEvidence" class="action-btn">Import COT</button>
+            </div>
+            <div id="macroImportResult" class="mt-3 text-sm text-slate-600"></div>
+          </details>
+        </div>
+
+        <div class="mt-4 grid gap-2 border border-slate-200 bg-slate-50 p-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="useKillzone" type="checkbox" class="h-4 w-4" />
+            Kill zone logic
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="useSpreadFilter" type="checkbox" class="h-4 w-4" />
+            Spread filter
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="useSweeps" type="checkbox" class="h-4 w-4" />
+            Sweeps
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="useAlpha" type="checkbox" class="h-4 w-4" />
+            Alpha score
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="useFeatureCache" type="checkbox" class="h-4 w-4" />
+            Feature cache
+          </label>
+          <label class="field-label">Kill zone mode
+            <select id="killzoneMode" class="field-input"></select>
+          </label>
+          <label class="field-label">Spread mode
+            <select id="spreadFilterMode" class="field-input"></select>
+          </label>
+          <label class="field-label">Alpha mode
+            <select id="alphaMode" class="field-input"></select>
+          </label>
+          <label class="field-label">Min alpha score
+            <input id="minAlphaScore" class="field-input" type="number" min="0" max="20" step="1" />
+          </label>
+          <label class="field-label">Max spread %
+            <input id="maxSpreadPercentile" class="field-input" type="number" min="0" max="100" step="1" />
+          </label>
+          <label class="field-label">Strict max fails
+            <input id="strictRegimeMaxFailed" class="field-input" type="number" min="0" max="5" step="1" />
+          </label>
+          <label class="field-label">Strict min confidence
+            <input id="strictRegimeMinConfidence" class="field-input" type="number" min="0" max="1" step="0.01" />
+          </label>
+          <label class="field-label">Clean trend ER min
+            <input id="minCleanTrendEr" class="field-input" type="number" min="0" max="1" step="0.01" />
+          </label>
+          <label class="field-label">Clean ADX min
+            <input id="cleanTrendAdxMin" class="field-input" type="number" min="0" max="100" step="0.5" />
+          </label>
+          <label class="field-label">Clean ADX max
+            <input id="cleanTrendAdxMax" class="field-input" type="number" min="0" max="100" step="0.5" />
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="strictCleanTrend" type="checkbox" class="h-4 w-4" />
+            Strict R01/R02 blocking
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="strictRegimeValidation" type="checkbox" class="h-4 w-4" />
+            Strict regime validation
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="rejectTrendWeakening" type="checkbox" class="h-4 w-4" />
+            Reject trend weakening
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="rejectLowErCleanTrend" type="checkbox" class="h-4 w-4" />
+            Reject low ER clean trend
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="rejectAdxOutsideCleanTrend" type="checkbox" class="h-4 w-4" />
+            Reject ADX outside band
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="rejectMtfConflictScore" type="checkbox" class="h-4 w-4" />
+            Reject MTF conflict &gt; 0
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="useRegimeHysteresis" type="checkbox" class="h-4 w-4" />
+            Regime hysteresis
+          </label>
+          <label class="field-label">Confirm bars
+            <input id="hysteresisConfirmBars" class="field-input" type="number" min="1" max="20" step="1" />
+          </label>
+          <label class="field-label">Confidence margin
+            <input id="hysteresisConfidenceMargin" class="field-input" type="number" min="0" max="1" step="0.01" />
+          </label>
+        </div>
+
+        <div class="mt-4 border border-cyan-200 bg-cyan-50 p-3 text-sm">
+          <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 class="text-sm font-semibold uppercase text-cyan-950">Transaction-Cost Model</h3>
+              <p class="text-xs text-cyan-900">Costs are stored per trade and deducted from R/profit. Use fixed R for simple research, spread-derived for candle research, stress-adjusted for news/volatility stress, and MT5 imported when tester reports provide cost evidence.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button id="calibrateBrokerCost" class="action-btn">Calibrate From MT5 Reports</button>
+              <button id="applyBrokerCostCalibration" class="action-btn muted-btn">Apply Calibration</button>
+            </div>
+          </div>
+          <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
+            <label class="field-label">Cost mode
+              <select id="costMode" class="field-input"></select>
+            </label>
+            <label class="field-label">Fixed cost R
+              <input id="fixedCostR" class="field-input" type="number" min="0" max="5" step="0.01" />
+            </label>
+            <label class="field-label">Commission R
+              <input id="commissionR" class="field-input" type="number" min="0" max="5" step="0.01" />
+            </label>
+            <label class="field-label">Slippage points
+              <input id="slippagePoints" class="field-input" type="number" min="0" max="1000" step="0.1" />
+            </label>
+            <label class="field-label">Spread round-trip
+              <input id="spreadRoundTripFactor" class="field-input" type="number" min="0" max="5" step="0.1" />
+            </label>
+            <label class="field-label">News multiplier
+              <input id="newsCostMultiplier" class="field-input" type="number" min="1" max="10" step="0.1" />
+            </label>
+            <label class="field-label">MT5 imported cost R
+              <input id="mt5ImportedCostR" class="field-input" type="number" min="0" max="5" step="0.01" />
+            </label>
+            <label class="flex items-center gap-2 font-semibold text-slate-700">
+              <input id="rolloverCostBlock" type="checkbox" class="h-4 w-4" />
+              Rollover cost block
+            </label>
+          </div>
+          <div id="brokerCostCalibrationPanel" class="mt-3"></div>
+        </div>
+
+        <div class="mt-4 grid gap-2 border border-slate-200 bg-white p-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="usePatterns" type="checkbox" class="h-4 w-4" />
+            Pattern engine
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="useIct" type="checkbox" class="h-4 w-4" />
+            ICT
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="useFvg" type="checkbox" class="h-4 w-4" />
+            FVG
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="useOrderBlocks" type="checkbox" class="h-4 w-4" />
+            Order blocks
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="useBos" type="checkbox" class="h-4 w-4" />
+            BOS
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="useMss" type="checkbox" class="h-4 w-4" />
+            MSS
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="useLiquidityPools" type="checkbox" class="h-4 w-4" />
+            Liquidity pools
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="useRoundNumbers" type="checkbox" class="h-4 w-4" />
+            Round numbers
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="useVwap" type="checkbox" class="h-4 w-4" />
+            VWAP
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="useMvwap" type="checkbox" class="h-4 w-4" />
+            MVWAP
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="useSessionVwap" type="checkbox" class="h-4 w-4" />
+            Session VWAP
+          </label>
+          <label class="field-label">Pattern score mode
+            <select id="patternScoreMode" class="field-input"></select>
+          </label>
+          <label class="field-label">Min pattern score
+            <input id="minPatternScore" class="field-input" type="number" min="-10" max="20" step="1" />
+          </label>
+          <label class="field-label">FVG min ATR
+            <input id="fvgMinSizeAtr" class="field-input" type="number" min="0" max="5" step="0.05" />
+          </label>
+          <label class="field-label">FVG max age
+            <input id="fvgMaxAgeBars" class="field-input" type="number" min="1" max="200" step="1" />
+          </label>
+        </div>
+
+        <div class="mt-4 grid gap-2 border border-emerald-200 bg-emerald-50/60 p-3 text-sm sm:grid-cols-2 lg:grid-cols-6">
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="useStatisticalRegime" type="checkbox" class="h-4 w-4" />
+            Statistical regime layer
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="useHurst" type="checkbox" class="h-4 w-4" />
+            Hurst
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="useFractalDimension" type="checkbox" class="h-4 w-4" />
+            Fractal dimension
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="useKalman" type="checkbox" class="h-4 w-4" />
+            Kalman
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="useGarch" type="checkbox" class="h-4 w-4" />
+            GARCH vol
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="useStructuralBreak" type="checkbox" class="h-4 w-4" />
+            Structural break
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="useHmm" type="checkbox" class="h-4 w-4" />
+            HMM state
+          </label>
+          <label class="field-label">Stat mode
+            <select id="statisticalRegimeMode" class="field-input">
+              <option value="diagnostic">diagnostic</option>
+              <option value="score_only">score_only</option>
+              <option value="hard_filter">hard_filter</option>
+            </select>
+          </label>
+          <label class="field-label">Min stat confidence
+            <input id="statMinConfidence" class="field-input" type="number" min="0" max="1" step="0.05" />
+          </label>
+          <label class="field-label">Max break score
+            <input id="statMaxStructuralBreakScore" class="field-input" type="number" min="0" max="10" step="0.1" />
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="statBlockStructuralBreak" type="checkbox" class="h-4 w-4" />
+            Block structural break
+          </label>
+        </div>
+
+        <div class="mt-4 flex flex-wrap gap-2">
+          <button id="connectMt5" class="action-btn">Connect MT5</button>
+          <button id="fetchCandles" class="action-btn">Fetch Candles</button>
+          <button id="calcFeatures" class="action-btn">Calculate Features</button>
+          <button id="detectLatest" class="action-btn">Detect Latest</button>
+          <button id="runBacktest" class="action-btn primary-btn">Run Backtest</button>
+          <button id="clearResults" class="action-btn muted-btn">Clear Results</button>
+        </div>
+      </section>
+
+      <section class="mb-5 border border-violet-200 bg-violet-50/60 p-4">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-semibold">Regime Research Lab</h2>
+            <p class="text-sm text-slate-600">Select one regime, inspect its conditions and strategies, edit research ranges, then run controlled permutations to rank the best strategy/pattern/filter candidates.</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button id="loadRegimeLabDefaults" class="action-btn">Load Regime Defaults</button>
+            <button id="applyRegimeLabToControls" class="action-btn">Apply To Controls</button>
+            <button id="runRegimeLab" class="action-btn primary-btn">Run Regime Lab</button>
+          </div>
+        </div>
+        <div class="grid gap-3 lg:grid-cols-[260px_260px_minmax(0,1fr)]">
+          <label class="field-label">Lab Regime
+            <select id="labRegimeSelect" class="field-input"></select>
+          </label>
+          <label class="field-label">Focus Strategy (filtered)
+            <select id="labStrategySelect" class="field-input"></select>
+          </label>
+          <div id="labRegimeOverview" class="lab-summary"></div>
+        </div>
+        <div class="mt-4 grid gap-4 xl:grid-cols-2">
+          <div class="lab-panel">
+            <h3 class="table-title">Regime Values / Rules</h3>
+            <div id="labRegimeRules" class="text-sm text-slate-700"></div>
+            <label class="field-label mt-3">Editable Research Values JSON
+              <textarea id="labResearchValuesJson" class="json-editor lab-json-editor"></textarea>
+            </label>
+            <p class="mt-2 text-xs text-slate-500">These values feed the optimizer grid. They do not rewrite the reference library; they test threshold ranges for this research run.</p>
+          </div>
+          <div class="lab-panel">
+            <h3 class="table-title">Strategy Values</h3>
+            <div id="labStrategyRules" class="text-sm text-slate-700"></div>
+            <label class="field-label mt-3">Strategies To Test
+              <input id="labStrategiesCsv" class="field-input" placeholder="auto from selected regime" />
+            </label>
+            <div class="mt-3 grid gap-3 sm:grid-cols-2">
+              <label class="field-label">Max Combos
+                <input id="labMaxCombos" class="field-input" type="number" min="1" max="500" value="48" />
+              </label>
+              <label class="field-label">Min Trades
+                <input id="labMinTrades" class="field-input" type="number" min="1" value="20" />
+              </label>
+              <label class="field-label">Min PF
+                <input id="labMinPf" class="field-input" type="number" min="0.1" step="0.05" value="1.15" />
+              </label>
+              <label class="field-label">Max DD R
+                <input id="labMaxDd" class="field-input" type="number" min="0.1" step="0.5" value="12" />
+              </label>
+              <label class="flex items-center gap-2 font-semibold text-slate-700 sm:col-span-2">
+                <input id="labRunBestCandidateBacktest" type="checkbox" class="h-4 w-4" checked />
+                Backtest best candidate after optimizer
+              </label>
+              <label class="flex items-center gap-2 font-semibold text-slate-700">
+                <input id="labRunOos" type="checkbox" class="h-4 w-4" />
+                Run OOS
+              </label>
+              <label class="flex items-center gap-2 font-semibold text-slate-700">
+                <input id="labRunWalkForward" type="checkbox" class="h-4 w-4" />
+                Run walk-forward
+              </label>
+              <label class="flex items-center gap-2 font-semibold text-slate-700 sm:col-span-2">
+                <input id="labRunMonteCarlo" type="checkbox" class="h-4 w-4" />
+                Run Monte Carlo probability test
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="mt-4 grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
+          <div id="labRunSummary" class="metric-grid text-sm"></div>
+          <div id="labCandidateTable" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section class="mb-5 border border-sky-200 bg-sky-50/70 p-4">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-semibold">Experiment Builder / A-B Testing</h2>
+            <p class="text-sm text-slate-600">Compare the current baseline against named variants, apply anti-overfit decision gates, and save the research result.</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button id="loadAbFromLab" class="action-btn">Load From Lab</button>
+            <button id="runAbExperiment" class="action-btn primary-btn">Run A/B Experiment</button>
+            <button id="loadSavedExperiments" class="action-btn">Saved Experiments</button>
+          </div>
+        </div>
+        <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div class="lab-panel">
+            <div class="grid gap-3 md:grid-cols-2">
+              <label class="field-label">Experiment Name
+                <input id="abName" class="field-input" value="Regime variant test" />
+              </label>
+              <label class="field-label">Baseline Label
+                <input id="abBaselineLabel" class="field-input" value="Current controls" />
+              </label>
+            </div>
+            <label class="field-label mt-3">Hypothesis
+              <textarea id="abHypothesis" class="json-editor" rows="3">Stricter execution filters should improve expectancy without reducing sample size too much.</textarea>
+            </label>
+            <label class="field-label mt-3">Variant JSON
+              <textarea id="abVariantsJson" class="json-editor lab-json-editor"></textarea>
+            </label>
+            <p class="mt-2 text-xs text-slate-500">Each variant changes only the fields shown. The baseline uses the main research controls and cached features.</p>
+          </div>
+          <div class="lab-panel">
+            <h3 class="table-title">Decision Gates</h3>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <label class="field-label">Min Trades
+                <input id="abMinTrades" class="field-input" type="number" min="1" value="30" />
+              </label>
+              <label class="field-label">Min PF
+                <input id="abMinPf" class="field-input" type="number" min="0.1" step="0.05" value="1.20" />
+              </label>
+              <label class="field-label">Min Exp R
+                <input id="abMinExp" class="field-input" type="number" step="0.01" value="0.00" />
+              </label>
+              <label class="field-label">Min Exp Gain
+                <input id="abMinExpGain" class="field-input" type="number" step="0.01" value="0.02" />
+              </label>
+              <label class="field-label">Max DD R
+                <input id="abMaxDd" class="field-input" type="number" min="0.1" step="0.5" value="12" />
+              </label>
+              <label class="field-label">Max DD Worsen
+                <input id="abMaxDdWorsen" class="field-input" type="number" min="0" step="0.5" value="2" />
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="mt-4 grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
+          <div>
+            <div id="abSummary" class="metric-grid text-sm"></div>
+            <div id="savedExperimentsPanel" class="mt-3 text-sm"></div>
+          </div>
+          <div id="abComparisonTable" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section class="mb-5 border border-emerald-200 bg-emerald-50/60 p-4">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-semibold">Regime Calibration</h2>
+            <p class="text-sm text-slate-600">Apply per-regime threshold profiles before backtesting or tune selected-regime thresholds through the optimizer grid.</p>
+          </div>
+          <button id="previewCalibration" class="action-btn">Preview Calibration</button>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <label class="field-label">Profile
+            <select id="calibrationProfile" class="field-input">
+              <option value="balanced">balanced</option>
+              <option value="conservative">conservative</option>
+              <option value="aggressive">aggressive</option>
+              <option value="funded_style">funded_style</option>
+            </select>
+          </label>
+          <label class="field-label">ADX Min
+            <input id="calAdxMin" class="field-input" type="number" step="0.5" placeholder="profile/default" />
+          </label>
+          <label class="field-label">ADX Max
+            <input id="calAdxMax" class="field-input" type="number" step="0.5" placeholder="profile/default" />
+          </label>
+          <label class="field-label">ER Min
+            <input id="calErMin" class="field-input" type="number" step="0.01" placeholder="profile/default" />
+          </label>
+          <label class="field-label">ER Max
+            <input id="calErMax" class="field-input" type="number" step="0.01" placeholder="profile/default" />
+          </label>
+          <label class="field-label">ATR % Min
+            <input id="calAtrMin" class="field-input" type="number" step="1" placeholder="profile/default" />
+          </label>
+          <label class="field-label">ATR % Max
+            <input id="calAtrMax" class="field-input" type="number" step="1" placeholder="profile/default" />
+          </label>
+          <label class="field-label">Spread Max
+            <input id="calSpreadMax" class="field-input" type="number" step="1" placeholder="profile/default" />
+          </label>
+          <label class="field-label">Min Alpha
+            <input id="calMinAlpha" class="field-input" type="number" step="1" placeholder="profile/default" />
+          </label>
+          <label class="field-label">Range Edge ATR
+            <input id="calRangeEdge" class="field-input" type="number" step="0.01" placeholder="R03 only" />
+          </label>
+          <label class="field-label">Candle ATR Min
+            <input id="calCandleMin" class="field-input" type="number" step="0.05" placeholder="breakout/session" />
+          </label>
+          <label class="field-label">Candle ATR Max
+            <input id="calCandleMax" class="field-input" type="number" step="0.05" placeholder="compression/VWAP" />
+          </label>
+          <label class="field-label">Upper Wick Min
+            <input id="calUpperWick" class="field-input" type="number" step="0.01" placeholder="sweep/rejection" />
+          </label>
+          <label class="field-label">Lower Wick Min
+            <input id="calLowerWick" class="field-input" type="number" step="0.01" placeholder="sweep/rejection" />
+          </label>
+          <label class="field-label">VWAP Dist ATR
+            <input id="calVwapDistance" class="field-input" type="number" step="0.1" placeholder="R36" />
+          </label>
+          <label class="field-label">Macro Confidence
+            <input id="calMacroConfidence" class="field-input" type="number" step="0.05" min="0" max="1" placeholder="R25-R29" />
+          </label>
+          <label class="field-label">Regime Confidence
+            <input id="calConfidenceMin" class="field-input" type="number" step="0.05" min="0" max="1" placeholder="activation gate" />
+          </label>
+        </div>
+        <div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <label class="field-label">Opt Calibration Profiles
+            <input id="optCalibrationProfiles" class="field-input" value="balanced,conservative,funded_style" />
+          </label>
+          <label class="field-label">Opt ADX Min Values
+            <input id="optCalAdxMinValues" class="field-input" placeholder="18,20,22" />
+          </label>
+          <label class="field-label">Opt ER Min Values
+            <input id="optCalErMinValues" class="field-input" placeholder="0.25,0.3" />
+          </label>
+          <label class="field-label">Opt ATR Max Values
+            <input id="optCalAtrMaxValues" class="field-input" placeholder="75,80,85" />
+          </label>
+          <label class="field-label">Opt ADX Max Values
+            <input id="optCalAdxMaxValues" class="field-input" placeholder="18,25,35" />
+          </label>
+          <label class="field-label">Opt ER Max Values
+            <input id="optCalErMaxValues" class="field-input" placeholder="0.2,0.25,0.3" />
+          </label>
+          <label class="field-label">Opt ATR Min Values
+            <input id="optCalAtrMinValues" class="field-input" placeholder="15,25,40,75" />
+          </label>
+          <label class="field-label">Opt Candle Min Values
+            <input id="optCalCandleMinValues" class="field-input" placeholder="1.0,1.2,1.5" />
+          </label>
+          <label class="field-label">Opt Candle Max Values
+            <input id="optCalCandleMaxValues" class="field-input" placeholder="0.7,1.0,2.0" />
+          </label>
+          <label class="field-label">Opt Wick Min Values
+            <input id="optCalWickMinValues" class="field-input" placeholder="0.35,0.4,0.45" />
+          </label>
+          <label class="field-label">Opt Conf Min Values
+            <input id="optCalConfidenceValues" class="field-input" placeholder="0.7,0.75,0.8" />
+          </label>
+          <label class="field-label">Opt Macro Conf Values
+            <input id="optCalMacroConfidenceValues" class="field-input" placeholder="0.5,0.6,0.7" />
+          </label>
+        </div>
+        <div id="calibrationPreview" class="mt-4 rounded border border-emerald-200 bg-white p-3 text-sm text-slate-700">Select a regime or keep ALL, then preview the active calibration payload.</div>
+      </section>
+
+      <section class="mb-5 border border-slate-200 bg-white p-4">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-semibold">MT5 Strategy Tester Automation</h2>
+            <p class="text-sm text-slate-500">Generate MT5 tester config from the selected regime, strategy, pattern, filter, and risk controls. Optionally launch MT5 and import the generated tester report.</p>
+            <p class="mt-1 text-sm font-semibold text-rose-700">Safety: the research EA is Strategy Tester only by default. Non-tester execution requires an explicit confirmation token and can send demo/live orders.</p>
+          </div>
+          <button id="runMt5Tester" class="action-btn primary-btn">Run MT5 Tester</button>
+          <button id="buildParityPacket" class="action-btn">Build Parity Packet</button>
+          <button id="checkMt5Parity" class="action-btn">Check Python/MT5 Parity</button>
+          <button id="completeMt5Parity" class="action-btn primary-btn">Complete Parity Proof</button>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <label class="field-label lg:col-span-2">Terminal Path
+            <input id="mt5TerminalPath" class="field-input" placeholder="optional, uses MT5_TERMINAL_PATH or MT5_PATH" />
+          </label>
+          <label class="field-label">Expert
+            <input id="mt5ExpertName" class="field-input" value="QuantForexV10_ResearchEA.ex5" />
+          </label>
+          <label class="field-label">Tester Model
+            <select id="mt5TesterModel" class="field-input">
+              <option value="one_min_ohlc">1-Min OHLC</option>
+              <option value="every_tick">Every Tick</option>
+              <option value="every_tick_real_ticks" selected>Every Tick Based On Real Ticks</option>
+              <option value="candle_close">Candle Close</option>
+            </select>
+          </label>
+          <label class="field-label">Timeout Seconds
+            <input id="mt5TimeoutSeconds" class="field-input" type="number" min="1" max="3600" step="1" value="120" />
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="mt5LaunchTerminal" type="checkbox" class="h-4 w-4" checked />
+            Launch terminal
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="mt5WaitForReport" type="checkbox" class="h-4 w-4" />
+            Wait and import report
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="mt5ShutdownTerminal" type="checkbox" class="h-4 w-4" checked />
+            Shutdown after test
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="mt5VisualMode" type="checkbox" class="h-4 w-4" />
+            Visual mode
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700 lg:col-span-2">
+            <input id="mt5UsePythonSignals" type="checkbox" class="h-4 w-4" checked />
+            Use Python signals as MT5 source of truth
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700 lg:col-span-2">
+            <input id="mt5BuildPythonSignals" type="checkbox" class="h-4 w-4" checked />
+            Build Python signal CSV before tester
+          </label>
+        </div>
+        <div class="mt-4 grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+          <div id="mt5TesterSummary" class="metric-grid text-sm"></div>
+          <div id="mt5TesterConfig" class="table-wrap"></div>
+        </div>
+        <div class="mt-5 rounded border border-indigo-200 bg-indigo-50 p-3">
+          <div class="mb-3">
+            <h3 class="text-sm font-semibold uppercase text-indigo-950">Python / MT5 Parity Packet</h3>
+            <p class="text-xs text-indigo-900">After a Python backtest, build deterministic PYIDX/PYHASH rows. The MT5 EA/report should export these fields so parity is matched by key, not by row order.</p>
+          </div>
+          <div class="mb-3 grid gap-3 lg:grid-cols-4">
+            <label class="field-label">Proof Symbol
+              <input id="parityRequiredSymbol" class="field-input" value="EURUSD" />
+            </label>
+            <label class="field-label">Proof Timeframe
+              <input id="parityRequiredTimeframe" class="field-input" value="M15" />
+            </label>
+            <label class="flex items-center gap-2 font-semibold text-indigo-950">
+              <input id="parityPrepareTester" type="checkbox" class="h-4 w-4" checked />
+              Prepare tester config
+            </label>
+            <label class="flex items-center gap-2 font-semibold text-indigo-950">
+              <input id="parityLaunchTerminal" type="checkbox" class="h-4 w-4" />
+              Launch MT5 now
+            </label>
+          </div>
+          <div id="mt5ParityCompletionSummary" class="metric-grid mb-3 text-sm"></div>
+          <div id="mt5ParityChecklist" class="table-wrap mb-3"></div>
+          <div id="mt5ParitySummary" class="metric-grid text-sm"></div>
+          <div id="mt5ParityTable" class="table-wrap mt-3"></div>
+        </div>
+        <div class="mt-5 rounded border border-emerald-200 bg-emerald-50 p-3">
+          <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 class="text-sm font-semibold uppercase text-emerald-900">Real Tick Validation Workflow</h3>
+              <p class="text-xs text-emerald-800">One guided lane for final MT5 validation: prepare configs, run the three tester models, import reports, then compare drift and parity.</p>
+            </div>
+            <button id="runRealTickWorkflow" class="action-btn">Prepare / Compare Real Tick Workflow</button>
+          </div>
+          <div id="realTickQuickStart" class="workflow-card-grid mb-3"></div>
+          <div class="mb-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label class="flex items-center gap-2 rounded border border-emerald-200 bg-white p-2 text-sm font-semibold text-emerald-950">
+              <input id="realTickLaunchTerminal" type="checkbox" class="h-4 w-4" />
+              Launch MT5 for all 3 models
+            </label>
+            <label class="flex items-center gap-2 rounded border border-emerald-200 bg-white p-2 text-sm font-semibold text-emerald-950">
+              <input id="realTickWaitForReport" type="checkbox" class="h-4 w-4" />
+              Wait/import generated reports
+            </label>
+            <div class="rounded border border-emerald-200 bg-white p-2 text-xs text-emerald-900 lg:col-span-2">
+              Default is safe config generation only. Enable launch/wait only when MT5 terminal path and compiled research EA are ready.
+            </div>
+          </div>
+          <div id="realTickReadiness" class="mb-3"></div>
+          <div id="realTickWorkflowSummary" class="metric-grid text-sm"></div>
+          <div id="realTickModelCards" class="workflow-model-grid mt-3"></div>
+          <div id="realTickNextActions" class="mt-3"></div>
+          <div id="realTickWorkflowSteps" class="table-wrap mt-3"></div>
+        </div>
+      </section>
+
+      <section class="mb-5 border border-indigo-200 bg-indigo-50/60 p-4">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-semibold">Backtest Validation Cockpit</h2>
+            <p class="text-sm text-slate-600">Runs the institutional validation chain in one pass: local backtest, out-of-sample, walk-forward, Monte Carlo, optional portfolio breadth, and optional MT5 real-tick comparison gate.</p>
+          </div>
+          <button id="runValidationCockpit" class="action-btn primary-btn">Run Full Validation</button>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="valRunBacktest" type="checkbox" class="h-4 w-4" checked />
+            Backtest
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="valRunOos" type="checkbox" class="h-4 w-4" checked />
+            OOS
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="valRunWalkForward" type="checkbox" class="h-4 w-4" checked />
+            Walk-forward
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="valRunMonteCarlo" type="checkbox" class="h-4 w-4" checked />
+            Monte Carlo
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="valRunPortfolio" type="checkbox" class="h-4 w-4" />
+            Portfolio breadth
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="valRequireMt5" type="checkbox" class="h-4 w-4" />
+            Require MT5 comparison
+          </label>
+          <label class="field-label">Min Backtest Trades
+            <input id="valMinBacktestTrades" class="field-input" type="number" min="1" value="50" />
+          </label>
+          <label class="field-label">Min Backtest PF
+            <input id="valMinBacktestPf" class="field-input" type="number" min="0.1" step="0.05" value="1.15" />
+          </label>
+          <label class="field-label">Max Backtest DD R
+            <input id="valMaxBacktestDdR" class="field-input" type="number" min="0.1" step="0.5" value="12" />
+          </label>
+          <label class="field-label">Min WF Pass Rate
+            <input id="valMinWfPassRate" class="field-input" type="number" min="0" max="1" step="0.05" value="0.60" />
+          </label>
+          <label class="field-label">Max MC DD Prob
+            <input id="valMaxMcDdProb" class="field-input" type="number" min="0" max="1" step="0.01" value="0.10" />
+          </label>
+          <label class="field-label">Max MC Loss Prob
+            <input id="valMaxMcLossProb" class="field-input" type="number" min="0" max="1" step="0.01" value="0.25" />
+          </label>
+        </div>
+        <div class="mt-4 grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
+          <div>
+            <div id="validationSummary" class="metric-grid text-sm"></div>
+            <div id="validationDecision" class="mt-3 text-sm"></div>
+          </div>
+          <div id="validationScorecard" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section class="mb-5 border border-slate-200 bg-white p-4">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-semibold">Walk-Forward Testing</h2>
+            <p class="text-sm text-slate-500">Runs repeated train/test windows with the same regime, strategy, filter, pattern, and risk controls above.</p>
+          </div>
+          <button id="runWalkForward" class="action-btn primary-btn">Run Walk-Forward</button>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <label class="field-label">Train Months
+            <input id="wfTrainMonths" class="field-input" type="number" min="1" max="36" step="1" value="2" />
+          </label>
+          <label class="field-label">Test Months
+            <input id="wfTestMonths" class="field-input" type="number" min="1" max="12" step="1" value="1" />
+          </label>
+          <label class="field-label">Step Months
+            <input id="wfStepMonths" class="field-input" type="number" min="1" max="12" step="1" value="1" />
+          </label>
+          <label class="field-label">Min Test Trades
+            <input id="wfMinTestTrades" class="field-input" type="number" min="1" step="1" value="20" />
+          </label>
+          <label class="field-label">Min Test PF
+            <input id="wfMinTestPf" class="field-input" type="number" min="0.1" step="0.05" value="1.10" />
+          </label>
+        </div>
+        <div class="mt-4 grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+          <div id="walkForwardSummary" class="metric-grid text-sm"></div>
+          <div id="walkForwardTable" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section class="mb-5 border border-slate-200 bg-white p-4">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-semibold">Out-of-Sample Testing</h2>
+            <p class="text-sm text-slate-500">Validates the selected setup on a future unseen period after the in-sample research period.</p>
+          </div>
+          <button id="runOutOfSample" class="action-btn primary-btn">Run Out-of-Sample</button>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <label class="field-label">Split Date Optional
+            <input id="oosSplitDate" class="field-input" type="date" />
+          </label>
+          <label class="field-label">OOS %
+            <input id="oosPercent" class="field-input" type="number" min="5" max="80" step="5" value="30" />
+          </label>
+          <label class="field-label">Min OOS Trades
+            <input id="oosMinTrades" class="field-input" type="number" min="1" step="1" value="20" />
+          </label>
+          <label class="field-label">Min OOS PF
+            <input id="oosMinPf" class="field-input" type="number" min="0.1" step="0.05" value="1.10" />
+          </label>
+        </div>
+        <div class="mt-4 grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+          <div id="outOfSampleSummary" class="metric-grid text-sm"></div>
+          <div id="outOfSampleTable" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section class="mb-5 border border-slate-200 bg-white p-4">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-semibold">Portfolio Research</h2>
+            <p class="text-sm text-slate-500">Runs the selected setup across multiple symbols and timeframes, then checks concentration, correlation, drawdown, and regime robustness.</p>
+          </div>
+          <button id="runPortfolioBacktest" class="action-btn primary-btn">Run Portfolio Backtest</button>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <label class="field-label">Symbols CSV
+            <input id="portfolioSymbols" class="field-input" value="EURUSD,GBPUSD,USDJPY,XAUUSD" />
+          </label>
+          <label class="field-label">Timeframes CSV
+            <input id="portfolioTimeframes" class="field-input" value="M15,M5,H1" />
+          </label>
+          <label class="field-label">Max Legs
+            <input id="portfolioMaxLegs" class="field-input" type="number" min="1" max="200" value="12" />
+          </label>
+          <label class="field-label">Scope
+            <input class="field-input" value="uses current regime/strategy/filter controls" disabled />
+          </label>
+          <label class="field-label">Max Portfolio DD R
+            <input id="portfolioMaxDdR" class="field-input" type="number" min="0.1" step="0.5" value="12" />
+          </label>
+          <label class="field-label">Max Symbol Share %
+            <input id="portfolioMaxSymbolShare" class="field-input" type="number" min="1" max="100" step="1" value="50" />
+          </label>
+          <label class="field-label">Max Currency Share %
+            <input id="portfolioMaxCurrencyShare" class="field-input" type="number" min="1" max="100" step="1" value="65" />
+          </label>
+          <label class="field-label">Min Symbols With Trades
+            <input id="portfolioMinSymbols" class="field-input" type="number" min="1" max="20" value="2" />
+          </label>
+        </div>
+        <div class="mt-4 grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
+          <div id="portfolioSummary" class="metric-grid text-sm"></div>
+          <div id="portfolioLegsTable" class="table-wrap"></div>
+        </div>
+        <div class="mt-5 grid gap-5 xl:grid-cols-2">
+          <div class="table-panel">
+            <h3 class="table-title">Symbol Performance</h3>
+            <div id="portfolioSymbolTable" class="table-wrap"></div>
+          </div>
+          <div class="table-panel">
+            <h3 class="table-title">Timeframe Performance</h3>
+            <div id="portfolioTimeframeTable" class="table-wrap"></div>
+          </div>
+          <div class="table-panel">
+            <h3 class="table-title">Symbol / Timeframe Matrix</h3>
+            <div id="portfolioMatrixTable" class="table-wrap"></div>
+          </div>
+          <div class="table-panel">
+            <h3 class="table-title">Regime Robustness</h3>
+            <div id="portfolioRegimeTable" class="table-wrap"></div>
+          </div>
+          <div class="table-panel">
+            <h3 class="table-title">Portfolio Risk Checks</h3>
+            <div id="portfolioRiskChecksTable" class="table-wrap"></div>
+          </div>
+          <div class="table-panel">
+            <h3 class="table-title">Currency Exposure</h3>
+            <div id="portfolioCurrencyExposureTable" class="table-wrap"></div>
+          </div>
+          <div class="table-panel">
+            <h3 class="table-title">Daily Portfolio Risk</h3>
+            <div id="portfolioDailyRiskTable" class="table-wrap"></div>
+          </div>
+          <div class="table-panel">
+            <h3 class="table-title">Portfolio Risk Recommendations</h3>
+            <div id="portfolioRiskRecommendations" class="text-sm text-slate-700"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="mb-5 border border-slate-200 bg-white p-4">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-semibold">Optimizer Grid</h2>
+            <p class="text-sm text-slate-500">Runs controlled permutations. Treat winners as candidates that still need out-of-sample, walk-forward, and MT5 real-tick validation.</p>
+          </div>
+          <button id="runOptimizerGrid" class="action-btn primary-btn">Run Optimizer Grid</button>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <label class="field-label">Regimes CSV
+            <input id="optRegimes" class="field-input" placeholder="R01,R02 or blank=current" />
+          </label>
+          <label class="field-label">Strategies CSV
+            <input id="optStrategies" class="field-input" placeholder="T1,T2 or blank=current" />
+          </label>
+          <label class="field-label">RR Values
+            <input id="optRrValues" class="field-input" value="1.5,2" />
+          </label>
+          <label class="field-label">Min Alpha Values
+            <input id="optAlphaValues" class="field-input" value="5,7" />
+          </label>
+          <label class="field-label">Max Spread Values
+            <input id="optSpreadValues" class="field-input" value="65,70" />
+          </label>
+          <label class="field-label">Killzone Modes
+            <input id="optKillzoneModes" class="field-input" value="score_only,hard_filter" />
+          </label>
+          <label class="field-label">Pattern Modes
+            <input id="optPatternModes" class="field-input" value="score_only" />
+          </label>
+          <label class="field-label">Min Pattern Scores
+            <input id="optPatternScores" class="field-input" value="0,2" />
+          </label>
+          <label class="field-label">Max Combos
+            <input id="optMaxCombos" class="field-input" type="number" min="1" max="500" value="32" />
+          </label>
+          <label class="field-label">Min Trades
+            <input id="optMinTrades" class="field-input" type="number" min="1" value="30" />
+          </label>
+          <label class="field-label">Min PF
+            <input id="optMinPf" class="field-input" type="number" min="0.1" step="0.05" value="1.20" />
+          </label>
+          <label class="field-label">Max DD R
+            <input id="optMaxDd" class="field-input" type="number" min="0.1" step="0.5" value="10" />
+          </label>
+        </div>
+        <div class="mt-4 grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+          <div id="optimizerSummary" class="metric-grid text-sm"></div>
+          <div id="optimizerTable" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section class="mb-5 border border-slate-200 bg-white p-4">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-semibold">Monte Carlo Drawdown Test</h2>
+            <p class="text-sm text-slate-500">Stress-tests the selected setup by resampling trade R outcomes. Use this after optimizer/OOS/walk-forward to study drawdown tails and losing-streak risk.</p>
+          </div>
+          <button id="runMonteCarlo" class="action-btn primary-btn">Run Monte Carlo</button>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <label class="field-label">Simulations
+            <input id="mcSimulations" class="field-input" type="number" min="1" max="10000" step="100" value="1000" />
+          </label>
+          <label class="field-label">Sample Mode
+            <select id="mcSampleMode" class="field-input">
+              <option value="bootstrap">bootstrap</option>
+              <option value="shuffle">shuffle</option>
+            </select>
+          </label>
+          <label class="field-label">Seed
+            <input id="mcSeed" class="field-input" type="number" value="42" />
+          </label>
+          <label class="field-label">Min Trades
+            <input id="mcMinTrades" class="field-input" type="number" min="1" value="30" />
+          </label>
+          <label class="field-label">Max DD %
+            <input id="mcMaxDdPercent" class="field-input" type="number" min="0.1" step="0.5" value="10" />
+          </label>
+          <label class="field-label">Max Loss Streak
+            <input id="mcMaxLosingStreak" class="field-input" type="number" min="1" value="5" />
+          </label>
+        </div>
+        <div class="mt-4 grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+          <div id="monteCarloSummary" class="metric-grid text-sm"></div>
+          <div>
+            <div id="monteCarloTable" class="table-wrap"></div>
+            <div class="mt-4 rounded border border-slate-200 bg-slate-50 p-3">
+              <canvas id="monteCarloChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="mb-5 grid gap-5 xl:grid-cols-2">
+        <div class="table-panel">
+          <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h2 class="panel-title mb-0">Saved Backtest Runs</h2>
+            <button id="loadSavedRuns" class="action-btn muted-btn">Load Saved Runs</button>
+          </div>
+          <div id="savedRunsPanel" class="table-wrap"></div>
+        </div>
+        <div class="table-panel">
+          <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h2 class="panel-title mb-0">Saved Feature Rows</h2>
+            <button id="loadSavedFeatures" class="action-btn muted-btn">Load Saved Features</button>
+          </div>
+          <div id="savedFeaturesPanel" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section class="mb-5 grid gap-4 lg:grid-cols-4">
+        <div class="lg:col-span-3">
+          <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" id="summaryCards"></div>
+        </div>
+        <div class="current-regime-panel border border-slate-200 bg-white p-4">
+          <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h2 class="text-base font-semibold">Current Regime</h2>
+            <span id="currentRegimeBadge" class="badge badge-gray">WAITING</span>
+          </div>
+          <div id="latestRegime" class="text-sm text-slate-600">Run Detect Latest to show the current market regime.</div>
+        </div>
+      </section>
+
+      <section class="mb-5 border border-emerald-200 bg-emerald-50 p-4">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-semibold text-emerald-950">Final Semi-Manual Watchlist</h2>
+            <p class="text-sm text-emerald-800">Shows candidates only after final validation gates pass. This is watchlist/review only and does not create MT5 orders.</p>
+          </div>
+          <span id="semiManualGateBadge" class="badge badge-gray">WAITING</span>
+        </div>
+        <div id="semiManualGatePanel" class="mb-4"></div>
+        <div class="grid gap-5 xl:grid-cols-[420px_minmax(0,1fr)]">
+          <div>
+            <div id="semiManualCurrentPanel" class="metric-grid text-sm"></div>
+            <div id="semiManualCandidates" class="mt-4 space-y-3"></div>
+          </div>
+          <div>
+            <h3 class="mb-2 text-sm font-black uppercase text-emerald-900">Focused Past History</h3>
+            <div id="semiManualHistory" class="table-wrap"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="mb-5 grid gap-5 xl:grid-cols-4">
+        <div class="table-panel accent-panel">
+          <h2 class="panel-title">Data Health</h2>
+          <div id="dataHealthPanel" class="metric-grid text-sm"></div>
+        </div>
+        <div class="table-panel accent-panel">
+          <h2 class="panel-title">Feature Summary</h2>
+          <div id="featureSummaryPanel" class="metric-grid text-sm"></div>
+        </div>
+        <div class="table-panel accent-panel">
+          <h2 class="panel-title">Cost Summary</h2>
+          <div id="costSummaryPanel" class="metric-grid text-sm"></div>
+        </div>
+        <div class="table-panel accent-panel">
+          <h2 class="panel-title">Regime Confidence</h2>
+          <div id="regimeConfidencePanel" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section class="mb-5 grid gap-5 xl:grid-cols-3">
+        <div class="table-panel">
+          <h2 class="panel-title">Spread / Slippage By Session</h2>
+          <div id="spreadSessionDiagnostics" class="table-wrap"></div>
+        </div>
+        <div class="table-panel">
+          <h2 class="panel-title">Spread / Cost By Regime</h2>
+          <div id="spreadRegimeDiagnostics" class="table-wrap"></div>
+        </div>
+        <div class="table-panel">
+          <h2 class="panel-title">Symbol Spread Diagnostics</h2>
+          <div id="spreadSymbolDiagnostics" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section class="mb-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div class="border border-slate-200 bg-white p-4">
+          <div class="mb-3 flex items-center justify-between gap-3">
+            <h2 class="text-base font-semibold">Regime Cards</h2>
+            <input id="regimeSearch" class="w-64 max-w-full border border-slate-300 px-3 py-2 text-sm" placeholder="Search regimes" />
+          </div>
+          <div id="regimeCards" class="grid gap-3 md:grid-cols-2 xl:grid-cols-3"></div>
+        </div>
+
+        <aside class="border border-slate-200 bg-white p-4">
+          <h2 class="mb-2 text-base font-semibold">Selected Regime</h2>
+          <div id="regimeDetail" class="text-sm text-slate-600">Click a regime card to inspect conditions, rules, mapped strategies, and backtest analysis.</div>
+        </aside>
+      </section>
+
+      <section class="mb-5 grid gap-5 xl:grid-cols-2">
+        <div class="table-panel">
+          <h2 class="panel-title">Regime Performance</h2>
+          <div id="regimePerformance" class="table-wrap"></div>
+        </div>
+        <div class="table-panel">
+          <h2 class="panel-title">Strategy Performance</h2>
+          <div id="strategyPerformance" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section class="mb-5 grid gap-5 xl:grid-cols-2">
+        <div class="table-panel">
+          <h2 class="panel-title">Unique Setup Combinations</h2>
+          <div id="combinationPerformance" class="table-wrap"></div>
+        </div>
+        <div class="table-panel">
+          <h2 class="panel-title">Modifier Impact</h2>
+          <div id="modifierImpact" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section class="mb-5 grid gap-5 xl:grid-cols-2">
+        <div class="table-panel">
+          <h2 class="panel-title">Pattern Performance</h2>
+          <div id="patternPerformance" class="table-wrap"></div>
+        </div>
+        <div class="table-panel">
+          <h2 class="panel-title">MT5 Model Comparison</h2>
+          <div id="mt5ModelComparison" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section class="mb-5 border border-slate-200 bg-white p-4">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-semibold">MT5 Real Tick Report Importer</h2>
+            <p class="text-sm text-slate-500">Paste MT5 Strategy Tester deals/history report text. The importer reconciles real-tick/every-tick/1-minute results without running MT5 or sending orders.</p>
+          </div>
+          <button id="importMt5Report" class="action-btn primary-btn">Import MT5 Report</button>
+        </div>
+        <div class="grid gap-3 lg:grid-cols-4">
+          <label class="field-label">File Name
+            <input id="mt5ReportFileName" class="field-input" value="pasted_mt5_report.csv" />
+          </label>
+          <label class="field-label">Tester Model
+            <select id="mt5ReportModel" class="field-input">
+              <option value="every_tick_real_ticks">every_tick_real_ticks</option>
+              <option value="every_tick">every_tick</option>
+              <option value="one_min_ohlc">one_min_ohlc</option>
+              <option value="unknown">unknown</option>
+            </select>
+          </label>
+          <label class="field-label">Matched Run ID
+            <input id="mt5ReportRunId" class="field-input" placeholder="optional saved run_id" />
+          </label>
+          <label class="field-label">Returned Deals
+            <input id="mt5ReportMaxDeals" class="field-input" type="number" min="1" max="5000" value="500" />
+          </label>
+        </div>
+        <label class="field-label mt-3 block">Report Text
+          <textarea id="mt5ReportText" class="field-input min-h-40 font-mono text-xs" placeholder="Paste CSV/TSV/HTML report table with columns like Time, Symbol, Type, Volume, Price, Profit, Balance, Comment"></textarea>
+        </label>
+        <div class="mt-5 border border-slate-200 bg-slate-50 p-3">
+          <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 class="text-sm font-semibold uppercase text-slate-600">Three-Model Comparison Import</h3>
+              <p class="text-xs text-slate-500">Paste the three MT5 reports from the same setup to compare 1-Min OHLC vs Every Tick vs Real Ticks.</p>
+            </div>
+            <button id="importMt5Comparison" class="action-btn">Import Model Comparison</button>
+          </div>
+          <div class="grid gap-3 lg:grid-cols-3">
+            <label class="field-label">1-Min OHLC Report
+              <textarea id="mt5OneMinReportText" class="field-input min-h-32 font-mono text-xs" placeholder="Paste 1-Min OHLC tester report"></textarea>
+            </label>
+            <label class="field-label">Every Tick Report
+              <textarea id="mt5EveryTickReportText" class="field-input min-h-32 font-mono text-xs" placeholder="Paste Every Tick tester report"></textarea>
+            </label>
+            <label class="field-label">Real Ticks Report
+              <textarea id="mt5RealTickReportText" class="field-input min-h-32 font-mono text-xs" placeholder="Paste Every Tick Based On Real Ticks report"></textarea>
+            </label>
+          </div>
+          <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <label class="field-label">Min Trades
+              <input id="mt5CompareMinTrades" class="field-input" type="number" min="1" step="1" value="30" />
+            </label>
+            <label class="field-label">Min PF
+              <input id="mt5CompareMinPf" class="field-input" type="number" min="0" step="0.05" value="1.10" />
+            </label>
+            <label class="field-label">Max PF Drift
+              <input id="mt5CompareMaxPfDrift" class="field-input" type="number" min="0" step="0.05" value="0.35" />
+            </label>
+            <label class="field-label">Max Trade Drift %
+              <input id="mt5CompareMaxTradeDrift" class="field-input" type="number" min="0" step="0.05" value="0.35" />
+            </label>
+            <label class="field-label">Max Net Drop %
+              <input id="mt5CompareMaxNetDrop" class="field-input" type="number" min="0" step="0.05" value="0.50" />
+            </label>
+            </div>
+            <div id="mt5ComparisonSummary" class="mt-4 metric-grid text-sm"></div>
+            <div id="mt5ComparisonDecision" class="mt-4"></div>
+            <div id="mt5ComparisonModels" class="table-wrap mt-4"></div>
+            <div id="mt5ComparisonChecks" class="table-wrap mt-4"></div>
+          </div>
+        <div class="mt-4 grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+          <div id="mt5ImportSummary" class="metric-grid text-sm"></div>
+          <div>
+            <div id="mt5ImportTable" class="table-wrap"></div>
+            <div id="mt5ImportDeals" class="table-wrap mt-4"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="mb-5 grid gap-5 xl:grid-cols-2">
+        <div class="table-panel">
+          <h2 class="panel-title">Session Performance</h2>
+          <div id="sessionPerformance" class="table-wrap"></div>
+        </div>
+        <div class="table-panel">
+          <h2 class="panel-title">Monthly Performance</h2>
+          <div id="monthlyPerformance" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section class="mb-5 grid gap-5 xl:grid-cols-2">
+        <div class="table-panel">
+          <h2 class="panel-title">MAE / MFE By Regime</h2>
+          <p class="mb-3 text-xs text-slate-500">Measures how far trades moved against and for the position before exit, in initial-risk R.</p>
+          <div id="maeMfeRegimeTable" class="table-wrap"></div>
+        </div>
+        <div class="table-panel">
+          <h2 class="panel-title">MAE / MFE By Strategy</h2>
+          <p class="mb-3 text-xs text-slate-500">Use this to see whether strategy stops are too tight or entries are not producing enough favorable excursion.</p>
+          <div id="maeMfeStrategyTable" class="table-wrap"></div>
+        </div>
+        <div class="table-panel">
+          <h2 class="panel-title">MAE / MFE Regime + Strategy Review</h2>
+          <div id="maeMfeComboTable" class="table-wrap"></div>
+        </div>
+        <div class="table-panel">
+          <h2 class="panel-title">Stop Efficiency Notes</h2>
+          <div id="maeMfeNotes" class="space-y-3 text-sm text-slate-700"></div>
+        </div>
+      </section>
+
+      <section class="mb-5 grid gap-5 xl:grid-cols-2">
+        <div class="table-panel">
+          <h2 class="panel-title">Equity / Drawdown</h2>
+          <div class="chart-grid">
+            <canvas id="equityChart"></canvas>
+            <canvas id="drawdownChart"></canvas>
+          </div>
+        </div>
+        <div class="table-panel">
+          <h2 class="panel-title">Monthly / Session Charts</h2>
+          <div class="chart-grid">
+            <canvas id="monthlyChart"></canvas>
+            <canvas id="sessionChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <section class="mb-5 table-panel">
+        <h2 class="panel-title">Trade List</h2>
+        <div id="tradeList" class="table-wrap"></div>
+      </section>
+
+      <section class="mb-5 grid gap-5 xl:grid-cols-2">
+        <div class="table-panel">
+          <h2 class="panel-title">Skipped / Blocked Setups</h2>
+          <div id="skippedSetups" class="table-wrap"></div>
+        </div>
+        <div class="table-panel">
+          <h2 class="panel-title">Approval Checklist</h2>
+          <div id="approvalChecklist" class="space-y-3 text-sm"></div>
+        </div>
+      </section>
+
+      <section class="mb-5 table-panel">
+        <h2 class="panel-title">What Worked / Failed / Next Tests</h2>
+        <div id="explanationPanel" class="grid gap-4 text-sm text-slate-700 lg:grid-cols-3"></div>
+      </section>
+
+      <section class="mb-5 border border-slate-200 bg-white p-4">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-semibold">Final Approval Gate</h2>
+            <p class="text-sm text-slate-500">Optimizer ranking creates candidates only. Final approval requires local backtest, OOS, walk-forward, Monte Carlo, and MT5 real-tick validation to pass.</p>
+          </div>
+          <button id="runFinalApproval" class="action-btn primary-btn">Run Final Approval</button>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+          <label class="field-label">Min Backtest Trades
+            <input id="faMinBacktestTrades" class="field-input" type="number" min="1" value="50" />
+          </label>
+          <label class="field-label">Min Backtest PF
+            <input id="faMinBacktestPf" class="field-input" type="number" min="0" step="0.05" value="1.15" />
+          </label>
+          <label class="field-label">Max Backtest DD R
+            <input id="faMaxBacktestDdR" class="field-input" type="number" min="0" step="0.5" value="12" />
+          </label>
+          <label class="field-label">Min Real-Tick Trades
+            <input id="faMinRealTickTrades" class="field-input" type="number" min="1" value="30" />
+          </label>
+          <label class="field-label">Min Real-Tick PF
+            <input id="faMinRealTickPf" class="field-input" type="number" min="0" step="0.05" value="1.10" />
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="faAutoRunMissing" type="checkbox" class="h-4 w-4" />
+            Auto-run local missing tests
+          </label>
+        </div>
+        <div class="mt-4 grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+          <div id="finalApprovalSummary" class="metric-grid text-sm"></div>
+          <div>
+            <div id="finalApprovalChecks" class="table-wrap"></div>
+            <div id="finalApprovalWarnings" class="mt-3 text-sm text-slate-600"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="mb-5 border border-slate-200 bg-white p-4">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-semibold">Ollama / LLM Quant Reviewer</h2>
+            <p class="text-sm text-slate-500">Send the latest backtest, MT5 model comparison, optimizer, walk-forward, and Monte Carlo context to local Ollama. If Ollama is offline, the app returns a rule-based reviewer result.</p>
+          </div>
+          <button id="runLlmReview" class="action-btn primary-btn">Run Reviewer</button>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <label class="field-label">Model
+            <input id="ollamaModel" class="field-input" value="llama3.1:8b" />
+          </label>
+          <label class="field-label lg:col-span-2">Ollama URL
+            <input id="ollamaUrl" class="field-input" value="http://127.0.0.1:11434" />
+          </label>
+          <label class="field-label">Timeout Seconds
+            <input id="ollamaTimeout" class="field-input" type="number" min="5" max="600" value="120" />
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="useOllama" type="checkbox" class="h-4 w-4" checked />
+            Use Ollama
+          </label>
+        </div>
+        <div class="mt-4 grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+          <div id="llmReviewSummary" class="metric-grid text-sm"></div>
+          <div id="llmReviewPanel" class="grid gap-4 text-sm text-slate-700 lg:grid-cols-2"></div>
+        </div>
+      </section>
+
+      <section class="mb-5 grid gap-5 xl:grid-cols-3">
+        <div class="table-panel">
+          <h2 class="panel-title">Strategy Library</h2>
+          <div id="strategyLibrary" class="table-wrap"></div>
+        </div>
+        <div class="table-panel">
+          <h2 class="panel-title">Modifier Library</h2>
+          <div id="modifierLibrary" class="table-wrap"></div>
+        </div>
+        <div class="table-panel">
+          <h2 class="panel-title">Formula Reference</h2>
+          <div id="formulaReference" class="space-y-3 text-sm"></div>
+        </div>
+      </section>
+
+      <section class="mb-8 table-panel">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 class="panel-title mb-0">API Request Examples</h2>
+          <button id="loadApiStructure" class="action-btn muted-btn">Refresh API Structure</button>
+        </div>
+        <div id="apiStructure" class="grid gap-3 lg:grid-cols-2"></div>
+      </section>
+    </main>
+
+    <script src="/static/app.js?v=regime-lab-1"></script>
+  </body>
+</html>
