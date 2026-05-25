@@ -1,0 +1,34 @@
+{
+  "adx": {
+    "dead_max": 15,
+    "trend_min": 18,
+    "strong_trend_max": 35
+  },
+  "er": {
+    "noisy_max": 0.20,
+    "trend_min": 0.25,
+    "very_clean_min": 0.40
+  },
+  "atr_percentile": {
+    "low_max": 25,
+    "normal_min": 25,
+    "normal_max": 80,
+    "high_min": 75,
+    "shock_min": 90
+  },
+  "spread_percentile": {
+    "normal_max": 70,
+    "stress_min": 90
+  },
+  "wick_ratio": {
+    "rejection_min": 0.35,
+    "sweep_min": 0.40,
+    "exhaustion_min": 0.45
+  },
+  "ema_distance_atr": {
+    "exhaustion_min": 2.5
+  },
+  "alpha": {
+    "minimum": 5
+  }
+}

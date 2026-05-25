@@ -1,0 +1,18 @@
+[
+  {"id": "M00", "name": "Not enough data", "hard_block": true},
+  {"id": "M01", "name": "Clean condition", "hard_block": false},
+  {"id": "M02", "name": "Compression", "hard_block": false},
+  {"id": "M03", "name": "Volatility expansion", "hard_block": false},
+  {"id": "M04", "name": "London kill zone", "hard_block": false},
+  {"id": "M05", "name": "New York kill zone", "hard_block": false},
+  {"id": "M06", "name": "Asia range window", "hard_block": false},
+  {"id": "M07", "name": "News risk", "hard_block": true},
+  {"id": "M08", "name": "HTF/LTF conflict", "hard_block": false},
+  {"id": "M09", "name": "Liquidity sweep", "hard_block": false},
+  {"id": "M10", "name": "Spread stress", "hard_block": true},
+  {"id": "M11", "name": "Exhaustion", "hard_block": false},
+  {"id": "M12", "name": "Multi-timeframe agreement", "hard_block": false},
+  {"id": "M13", "name": "Rollover / low liquidity", "hard_block": true},
+  {"id": "M14", "name": "Sentiment aligned", "hard_block": false},
+  {"id": "M15", "name": "Sentiment conflict", "hard_block": false}
+]
