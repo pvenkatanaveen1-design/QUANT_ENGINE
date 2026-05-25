@@ -890,6 +890,7 @@ def save_features(symbol: str, timeframe: str, features: pd.DataFrame) -> int:
 
 
 def save_backtest_result(result: dict[str, Any]) -> None:
+    init_db()
     run = result["request"]
     with get_connection() as conn:
         conn.execute(
