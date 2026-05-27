@@ -204,11 +204,27 @@ def _python_signal_mode(request: dict[str, Any], payload: dict[str, Any]) -> boo
     return _truthy(request.get("use_python_signals")) or _truthy(mt5.get("use_python_signals")) or _truthy(payload.get("use_python_signals"))
 
 
+def _python_signal_build_enabled(request: dict[str, Any]) -> bool:
+    if "build_python_signals" not in request:
+        return True
+    return _truthy(request.get("build_python_signals"))
+
+
 def _prepare_python_signal_csv(request: dict[str, Any], payload: dict[str, Any], folder: Path) -> dict[str, Any] | None:
     if not _python_signal_mode(request, payload):
         return None
     run_id = request.get("python_run_id") or payload.get("python_run_id")
     if not run_id:
+        if not _python_signal_build_enabled(request):
+            return {
+                "enabled": True,
+                "status": "SKIPPED_NO_PYTHON_RUN_ID",
+                "python_run_id": None,
+                "note": (
+                    "Python signal CSV mode is enabled, but build_python_signals=false and no python_run_id was supplied. "
+                    "Tester config is still generated; run a Python backtest first or enable Build Python signal CSV for parity-source testing."
+                ),
+            }
         python_result = run_backtest(payload, persist=True)
         run_id = python_result.get("run_id")
         payload["python_run_id"] = run_id
@@ -246,7 +262,7 @@ def run_mt5_strategy_tester(request: dict[str, Any]) -> dict[str, Any]:
     python_signal_source = _prepare_python_signal_csv(request, payload, folder)
     bridge = build_mt5_backtest_bridge_response({"payload": payload})
     ea_inputs = bridge.get("ea_inputs_prepared", {})
-    if python_signal_source:
+    if python_signal_source and python_signal_source.get("mt5_file_name"):
         ea_inputs["UsePythonSignalCsv"] = True
         ea_inputs["PythonSignalCsvFile"] = python_signal_source["mt5_file_name"]
         ea_inputs["RequirePythonSignalCsv"] = True
@@ -280,7 +296,9 @@ def run_mt5_strategy_tester(request: dict[str, Any]) -> dict[str, Any]:
     }
     safety = bridge.get("safety") if isinstance(bridge.get("safety"), dict) else {}
     result["warnings"].extend(safety.get("warnings", []))
-    if python_signal_source and not python_signal_source.get("common_file_path"):
+    if python_signal_source and python_signal_source.get("status") == "SKIPPED_NO_PYTHON_RUN_ID":
+        result["warnings"].append(python_signal_source["note"])
+    elif python_signal_source and not python_signal_source.get("common_file_path"):
         result["warnings"].append(
             f"Python signal CSV was generated at {python_signal_source['file_path']}. Copy it to MT5 Common/Files as {python_signal_source['file_name']} before launch."
         )

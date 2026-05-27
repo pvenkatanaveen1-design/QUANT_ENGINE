@@ -181,6 +181,31 @@
   background: rgb(241 245 249);
 }
 
+.favorite-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: 1px solid rgb(203 213 225);
+  background: white;
+  color: rgb(100 116 139);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.favorite-btn:hover {
+  background: rgb(255 251 235);
+  border-color: rgb(245 158 11);
+  color: rgb(180 83 9);
+}
+
+.favorite-btn.is-favorite {
+  background: rgb(254 243 199);
+  border-color: rgb(245 158 11);
+  color: rgb(180 83 9);
+}
+
 .primary-btn {
   border-color: rgb(15 23 42);
   background: rgb(15 23 42);

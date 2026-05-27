@@ -28,6 +28,7 @@ from backend.calibration_engine import (
 from backend.cost_model_engine import DEFAULT_FIXED_COST_R, calculate_trade_cost, resolve_cost_model
 from backend.database import save_backtest_result
 from backend.feature_cache_engine import load_or_calculate_features
+from backend.institutional_data_engine import evaluate_institutional_data_quality
 
 
 COST_R = DEFAULT_FIXED_COST_R
@@ -554,6 +555,7 @@ def _prepare_features(
     use_sweeps: bool,
     regime_controls: dict[str, Any] | None = None,
     calibration: dict[str, Any] | None = None,
+    data_source_controls: dict[str, Any] | None = None,
     use_feature_cache: bool = True,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     macro_payload = dict(macro_evidence or {})
@@ -571,6 +573,7 @@ def _prepare_features(
         risk_sentiment=risk_sentiment,
         cb_divergence=cb_divergence,
         macro_evidence=macro_payload,
+        data_source_controls=data_source_controls,
         use_cache=use_feature_cache,
         persist_cache=True,
     )
@@ -1379,6 +1382,7 @@ def run_backtest(request: dict[str, Any], persist: bool = True) -> dict[str, Any
         use_sweeps,
         regime_controls,
         calibration,
+        request.get("data_source_controls", {}),
         use_feature_cache,
     )
     trades: list[dict[str, Any]] = []
@@ -1636,6 +1640,13 @@ def run_backtest(request: dict[str, Any], persist: bool = True) -> dict[str, Any
         "note": "Patterns are measurable OHLC/tick-volume confirmations. Real ticks validate execution quality, not the candle pattern itself.",
     }
     mt5_model_comparison = _mt5_model_comparison(request)
+    institutional_data_quality = evaluate_institutional_data_quality(
+        candles=candles,
+        features=df,
+        trades=trades,
+        request=request,
+        mt5_model_comparison=mt5_model_comparison,
+    )
 
     best_regime = max(regime_performance, key=lambda x: x["expectancy_R"], default={}).get("regime_name")
     worst_regime = min(regime_performance, key=lambda x: x["expectancy_R"], default={}).get("regime_name")
@@ -1678,6 +1689,9 @@ def run_backtest(request: dict[str, Any], persist: bool = True) -> dict[str, Any
         "best_session": best_session,
         "worst_session": worst_session,
         "skipped_setups": len(skipped_setups),
+        "data_grade": institutional_data_quality.get("data_grade"),
+        "data_score": institutional_data_quality.get("data_score"),
+        "data_validation_status": institutional_data_quality.get("validation_status"),
         "mae_mfe_decision": mae_mfe_analysis.get("summary", {}).get("decision"),
         "avg_mae_R": mae_mfe_analysis.get("summary", {}).get("avg_mae_R", 0),
         "avg_mfe_R": mae_mfe_analysis.get("summary", {}).get("avg_mfe_R", 0),
@@ -1798,6 +1812,7 @@ def run_backtest(request: dict[str, Any], persist: bool = True) -> dict[str, Any
             "pattern_engine": pattern_options,
             "statistical_regime": request.get("statistical_regime", {}),
             "mt5_backtest": request.get("mt5_backtest", {}),
+            "data_source_controls": request.get("data_source_controls", {}),
             "costs": costs,
             "calibration": request.get("calibration", {}),
             "execution_assumption": request.get("execution_assumption", {"entry_price": "signal_close", "same_candle_sl_tp": "sl_first", "one_trade_at_a_time": True}),
@@ -1811,6 +1826,7 @@ def run_backtest(request: dict[str, Any], persist: bool = True) -> dict[str, Any
         "data_health": data_health,
         "feature_summary": feature_summary,
         "spread_slippage_diagnostics": spread_slippage_diagnostics,
+        "institutional_data_quality": institutional_data_quality,
         "macro_context": macro_context,
         "regime_confidence": regime_confidence,
         "regime_performance": regime_performance,

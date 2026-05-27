@@ -12,6 +12,7 @@ from backend.database import (
     load_candles,
     load_feature_cache_metadata,
     load_features_for_cache,
+    normalize_data_source,
     save_feature_cache_metadata,
     save_features,
 )
@@ -19,6 +20,21 @@ from backend.database import (
 
 FINGERPRINT_COLUMNS = ["timestamp", "open", "high", "low", "close", "tick_volume", "spread", "real_volume"]
 FEATURE_ENGINE_VERSION = "2026-05-25-stat-regime-v2"
+
+
+def candles_provider_name(data_source: str) -> str:
+    names = {
+        "mt5_retail_candles": "MT5 / SQLite",
+        "mt5_every_tick": "MT5 Strategy Tester every tick",
+        "mt5_real_ticks": "MT5 Strategy Tester real ticks",
+        "dukascopy_ticks": "Dukascopy",
+        "alpha_vantage_fx": "Alpha Vantage",
+        "twelve_data_fx": "Twelve Data",
+        "polygon_fx": "Polygon.io",
+        "csv_import": "CSV import",
+        "cme_fx_futures_proxy": "CME FX futures proxy",
+    }
+    return names.get(data_source, data_source.replace("_", " ").title())
 
 
 def _stable_json(value: Any) -> str:
@@ -37,11 +53,14 @@ def feature_params(
     risk_sentiment: str = "NEUTRAL",
     cb_divergence: str = "NEUTRAL",
     macro_evidence: dict[str, Any] | None = None,
+    data_source: str | None = None,
 ) -> dict[str, Any]:
     macro = dict(macro_evidence or {})
+    source = normalize_data_source(data_source)
     return {
         "feature_engine_version": FEATURE_ENGINE_VERSION,
         "timeframe": timeframe,
+        "data_source": source,
         "sentiment": sentiment or "NEUTRAL",
         "usd_bias": usd_bias or "NEUTRAL",
         "risk_sentiment": risk_sentiment or "NEUTRAL",
@@ -89,16 +108,36 @@ def _attach_candle_columns(features: pd.DataFrame, candles: pd.DataFrame) -> pd.
     return merged
 
 
-def cache_key(symbol: str, timeframe: str, start_date: str, end_date: str, param_hash: str) -> str:
-    return _hash_text(_stable_json({"symbol": symbol.upper(), "timeframe": timeframe.upper(), "start_date": start_date, "end_date": end_date, "params_hash": param_hash}))
+def cache_key(symbol: str, timeframe: str, start_date: str, end_date: str, param_hash: str, data_source: str | None = None) -> str:
+    return _hash_text(
+        _stable_json(
+            {
+                "symbol": symbol.upper(),
+                "timeframe": timeframe.upper(),
+                "start_date": start_date,
+                "end_date": end_date,
+                "data_source": normalize_data_source(data_source),
+                "params_hash": param_hash,
+            }
+        )
+    )
 
 
-def feature_cache_status(symbol: str, timeframe: str, start_date: str, end_date: str, params: dict[str, Any], candles: pd.DataFrame | None = None) -> dict[str, Any]:
+def feature_cache_status(
+    symbol: str,
+    timeframe: str,
+    start_date: str,
+    end_date: str,
+    params: dict[str, Any],
+    candles: pd.DataFrame | None = None,
+    data_source: str | None = None,
+) -> dict[str, Any]:
+    source = normalize_data_source(data_source or params.get("data_source"))
     param_hash = params_hash(params)
-    key = cache_key(symbol, timeframe, start_date, end_date, param_hash)
+    key = cache_key(symbol, timeframe, start_date, end_date, param_hash, source)
     metadata = load_feature_cache_metadata(key)
     if candles is None:
-        candles = load_candles(symbol, timeframe, start_date, end_date)
+        candles = load_candles(symbol, timeframe, start_date, end_date, data_source=source)
     if candles.empty:
         return {"enabled": True, "cache_key": key, "cache_hit": False, "status": "MISS", "reason": "No candles available for cache validation."}
     fingerprint = candle_fingerprint(candles)
@@ -135,12 +174,16 @@ def load_or_calculate_features(
     risk_sentiment: str = "NEUTRAL",
     cb_divergence: str = "NEUTRAL",
     macro_evidence: dict[str, Any] | None = None,
+    data_source_controls: dict[str, Any] | None = None,
     use_cache: bool = True,
     persist_cache: bool = True,
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
-    candles = load_candles(symbol, timeframe, start_date, end_date)
+    controls = data_source_controls if isinstance(data_source_controls, dict) else {}
+    source = normalize_data_source(controls.get("data_source"))
+    provider = str(controls.get("provider") or candles_provider_name(source)).strip()
+    candles = load_candles(symbol, timeframe, start_date, end_date, data_source=source)
     if candles.empty:
-        raise ValueError("No candles found for selected symbol/timeframe/date range.")
+        raise ValueError(f"No candles found for selected symbol/timeframe/date range and data source '{source}'. Fetch/import that source first.")
 
     params = feature_params(
         timeframe=timeframe,
@@ -149,9 +192,10 @@ def load_or_calculate_features(
         risk_sentiment=risk_sentiment,
         cb_divergence=cb_divergence,
         macro_evidence=macro_evidence,
+        data_source=source,
     )
     param_hash = params_hash(params)
-    key = cache_key(symbol, timeframe, start_date, end_date, param_hash)
+    key = cache_key(symbol, timeframe, start_date, end_date, param_hash, source)
     fingerprint = candle_fingerprint(candles)
     base_meta = {
         "enabled": bool(use_cache),
@@ -165,7 +209,7 @@ def load_or_calculate_features(
     if use_cache:
         metadata = load_feature_cache_metadata(key)
         if metadata and metadata.get("status") == "READY" and metadata.get("candle_fingerprint") == fingerprint and int(metadata.get("candle_count") or 0) == len(candles):
-            cached = load_features_for_cache(symbol, timeframe, start_date, end_date)
+            cached = load_features_for_cache(symbol, timeframe, start_date, end_date, data_source=source)
             if len(cached) == len(candles):
                 cached = _attach_candle_columns(cached, candles)
                 meta = {**base_meta, "cache_hit": True, "status": "HIT", "reason": "Loaded calculated features from SQLite cache.", "feature_count": int(len(cached)), "created_at": metadata.get("created_at")}
@@ -183,7 +227,7 @@ def load_or_calculate_features(
     )
     saved = 0
     if persist_cache:
-        saved = save_features(symbol, timeframe, features)
+        saved = save_features(symbol, timeframe, features, data_source=source, provider=provider)
         save_feature_cache_metadata(
             {
                 "cache_key": key,
@@ -191,6 +235,8 @@ def load_or_calculate_features(
                 "timeframe": timeframe,
                 "start_date": start_date,
                 "end_date": end_date,
+                "data_source": source,
+                "provider": provider,
                 "params_hash": param_hash,
                 "candle_fingerprint": fingerprint,
                 "candle_count": int(len(candles)),

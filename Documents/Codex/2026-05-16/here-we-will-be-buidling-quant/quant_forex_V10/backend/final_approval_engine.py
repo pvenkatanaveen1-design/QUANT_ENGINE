@@ -126,6 +126,9 @@ def final_approval_review(request: dict[str, Any]) -> dict[str, Any]:
     )
 
     summary = backtest.get("summary", {}) if isinstance(backtest, dict) else {}
+    data_quality = backtest.get("institutional_data_quality", {}) if isinstance(backtest, dict) else {}
+    data_controls = payload.get("data_source_controls") if isinstance(payload.get("data_source_controls"), dict) else {}
+    requires_institutional_order_flow = bool(data_controls.get("require_institutional_order_flow"))
     checks.extend(
         [
             _check("backtest_present", bool(summary), True, "Local backtest result is available." if summary else "Run local backtest first."),
@@ -133,6 +136,21 @@ def final_approval_review(request: dict[str, Any]) -> dict[str, Any]:
             _check("backtest_profit_factor", _num(summary.get("profit_factor")) >= thresholds["min_backtest_pf"], True, f"Backtest PF must be >= {thresholds['min_backtest_pf']}.", summary.get("profit_factor")),
             _check("backtest_expectancy", _num(summary.get("expectancy_R")) > thresholds["min_backtest_expectancy_R"], True, "Backtest expectancy must be positive.", summary.get("expectancy_R")),
             _check("backtest_drawdown", abs(_num(summary.get("max_drawdown_R"))) <= thresholds["max_backtest_drawdown_R"], True, f"Backtest drawdown must be within {thresholds['max_backtest_drawdown_R']}R.", summary.get("max_drawdown_R")),
+            _check("data_provenance_present", bool(data_quality), True, "Data provenance grade is available." if data_quality else "Run backtest with data-source controls so data provenance can be graded."),
+            _check(
+                "data_not_untrustworthy",
+                data_quality.get("validation_status") not in {"DATA_NOT_TRUSTWORTHY", "BLOCKED_INSTITUTIONAL_DATA_REQUIRED"} if data_quality else False,
+                True,
+                f"Data validation status: {data_quality.get('validation_status') or 'missing'}.",
+                data_quality.get("validation_status"),
+            ),
+            _check(
+                "institutional_order_flow_gate",
+                bool(data_quality.get("institutional_order_flow_available")),
+                requires_institutional_order_flow,
+                "Institutional order-flow is present." if data_quality.get("institutional_order_flow_available") else "Institutional order-flow is not present; MT5 candle/tick evidence remains broker/proxy research.",
+                data_quality.get("data_grade"),
+            ),
         ]
     )
 

@@ -327,7 +327,9 @@ def import_cross_pair_evidence(
     end_date: str,
     symbols: list[str] | None = None,
     source: str = "cross_pair_candles",
+    data_source_controls: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    data_source = (data_source_controls or {}).get("data_source")
     selected_symbols = [str(item).upper().strip() for item in (symbols or MAJOR_FX_SYMBOLS) if str(item).strip()]
     if not selected_symbols:
         raise ValueError("At least one cross-pair symbol is required.")
@@ -340,7 +342,7 @@ def import_cross_pair_evidence(
     latest_timestamp: pd.Timestamp | None = None
 
     for pair in selected_symbols:
-        df = load_candles(pair, timeframe, start_date, end_date)
+        df = load_candles(pair, timeframe, start_date, end_date, data_source=data_source)
         change = _pair_change_percent(df)
         if change is None:
             components.append({"symbol": pair, "status": "missing_or_insufficient_candles"})
@@ -397,6 +399,7 @@ def import_cross_pair_evidence(
         "timeframe": timeframe,
         "start_date": start_date,
         "end_date": end_date,
+        "data_source": data_source or "mt5_retail_candles",
         "symbols_requested": selected_symbols,
         "symbols_used": sum(1 for item in components if item.get("status") == "ok"),
         "usd_basket_change_percent": round(usd_basket_change, 4),

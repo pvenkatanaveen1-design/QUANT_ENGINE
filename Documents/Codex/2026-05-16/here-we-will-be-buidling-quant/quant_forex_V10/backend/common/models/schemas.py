@@ -16,6 +16,7 @@ class DateRangeRequest(BaseModel):
     timeframe: str = "M15"
     start_date: str
     end_date: str
+    data_source_controls: dict[str, Any] = Field(default_factory=dict)
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -45,6 +46,7 @@ class DetectLatestRequest(BaseModel):
     risk_sentiment: RiskSentiment = "NEUTRAL"
     cb_divergence: CbDivergence = "NEUTRAL"
     macro_evidence: dict[str, Any] = Field(default_factory=dict)
+    data_source_controls: dict[str, Any] = Field(default_factory=dict)
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -84,6 +86,7 @@ class BacktestRequest(DateRangeRequest):
     pattern_engine: dict[str, Any] = Field(default_factory=dict)
     statistical_regime: dict[str, Any] = Field(default_factory=dict)
     mt5_backtest: dict[str, Any] = Field(default_factory=dict)
+    data_source_controls: dict[str, Any] = Field(default_factory=dict)
     killzone_mode: Literal["score_only", "hard_filter"] = "score_only"
     spread_filter_mode: Literal["score_only", "hard_filter"] = "score_only"
     alpha_mode: Literal["score_only", "hard_minimum"] = "hard_minimum"
@@ -127,6 +130,14 @@ class BacktestRequest(DateRangeRequest):
                 "use_spread_filter": True,
                 "use_sweeps": True,
                 "use_alpha": True,
+                "data_source_controls": {
+                    "data_source": "mt5_retail_candles",
+                    "provider": "MT5 / SQLite",
+                    "require_real_tick_validation": True,
+                    "require_institutional_order_flow": False,
+                    "has_true_order_flow": False,
+                    "has_l2_order_book": False
+                },
                 "pattern_engine": {
                     "use_patterns": True,
                     "use_ict": True,
@@ -354,6 +365,10 @@ class FetchCandlesResponse(BaseModel):
     saved: int
     symbol: str | None = None
     timeframe: str | None = None
+    data_source: str | None = None
+    provider: str | None = None
+    selected_source_only: bool = False
+    message: str | None = None
     error: str | None = None
     details: str | None = None
 
@@ -491,6 +506,7 @@ class BacktestRunResponse(BaseModel):
     cost_summary: dict[str, Any] = Field(default_factory=dict)
     calibration_summary: dict[str, Any] = Field(default_factory=dict)
     spread_slippage_diagnostics: dict[str, Any] = Field(default_factory=dict)
+    institutional_data_quality: dict[str, Any] = Field(default_factory=dict)
     data_health: dict[str, Any] = Field(default_factory=dict)
     feature_summary: dict[str, Any] = Field(default_factory=dict)
     regime_confidence: list[dict[str, Any]] = Field(default_factory=list)
@@ -548,6 +564,7 @@ class BacktestStoredResponse(BaseModel):
     cost_summary: dict[str, Any] = Field(default_factory=dict)
     calibration_summary: dict[str, Any] = Field(default_factory=dict)
     spread_slippage_diagnostics: dict[str, Any] = Field(default_factory=dict)
+    institutional_data_quality: dict[str, Any] = Field(default_factory=dict)
     data_health: dict[str, Any] = Field(default_factory=dict)
     feature_summary: dict[str, Any] = Field(default_factory=dict)
     regime_confidence: list[dict[str, Any]] = Field(default_factory=list)
@@ -559,6 +576,8 @@ class BacktestStoredResponse(BaseModel):
 
 
 class WalkForwardResponse(BaseModel):
+    validation_run_id: str | None = None
+    validation_saved: bool = False
     summary: dict[str, Any]
     windows: list[dict[str, Any]]
     warnings: list[str] = Field(default_factory=list)
@@ -606,6 +625,8 @@ class OutOfSampleRequest(BacktestRequest):
 
 
 class OutOfSampleResponse(BaseModel):
+    validation_run_id: str | None = None
+    validation_saved: bool = False
     summary: dict[str, Any]
     in_sample: dict[str, Any]
     out_of_sample: dict[str, Any]
@@ -657,6 +678,8 @@ class PortfolioBacktestRequest(BacktestRequest):
 
 
 class PortfolioBacktestResponse(BaseModel):
+    validation_run_id: str | None = None
+    validation_saved: bool = False
     summary: dict[str, Any]
     legs: list[dict[str, Any]]
     symbol_performance: list[dict[str, Any]]
@@ -822,6 +845,8 @@ class MonteCarloRequest(BacktestRequest):
 
 
 class MonteCarloResponse(BaseModel):
+    validation_run_id: str | None = None
+    validation_saved: bool = False
     summary: dict[str, Any]
     observed: dict[str, Any]
     distribution: dict[str, Any]
@@ -1040,6 +1065,8 @@ class MT5ReportImportRequest(BaseModel):
 
 
 class MT5ReportImportResponse(BaseModel):
+    validation_run_id: str | None = None
+    validation_saved: bool = False
     import_id: str
     run_id: str | None = None
     created_at: str
@@ -1086,6 +1113,8 @@ class MT5ModelComparisonImportRequest(BaseModel):
 
 
 class MT5ModelComparisonImportResponse(BaseModel):
+    validation_run_id: str | None = None
+    validation_saved: bool = False
     comparison_id: str
     created_at: str
     status: str
@@ -1158,6 +1187,7 @@ class MT5TesterRunRequest(BaseModel):
     currency: str = "USD"
     python_run_id: str | None = None
     use_python_signals: bool = True
+    build_python_signals: bool = True
     copy_python_signals_to_common: bool = True
     python_signal_file: str | None = None
     max_deals_returned: int = Field(default=500, ge=1, le=5000)
@@ -1191,6 +1221,8 @@ class MT5TesterRunRequest(BaseModel):
 
 
 class MT5TesterRunResponse(BaseModel):
+    validation_run_id: str | None = None
+    validation_saved: bool = False
     run_id: str
     created_at: str
     status: str
@@ -1254,6 +1286,8 @@ class MT5RealTickWorkflowRequest(BaseModel):
 
 
 class MT5RealTickWorkflowResponse(BaseModel):
+    validation_run_id: str | None = None
+    validation_saved: bool = False
     workflow_id: str
     created_at: str
     status: str

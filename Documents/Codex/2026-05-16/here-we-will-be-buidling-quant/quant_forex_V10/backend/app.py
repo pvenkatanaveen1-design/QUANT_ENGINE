@@ -36,6 +36,7 @@ from backend.common.config_loader import load_formulas, load_market_defaults, lo
 from backend.common.engines.explanation_engine import explain_regime_detection
 from backend.common.engines.regime_engine import detect_regime
 from backend.common.engines.strategy_engine import STRATEGIES
+from backend.data_provider_engine import data_source_catalog, fetch_candles_from_selected_source
 from backend.common.models.schemas import (
     ApiStructureResponse,
     ABExperimentRequest,
@@ -103,15 +104,20 @@ from backend.database import (
     init_db,
     list_ab_experiments,
     list_backtest_runs,
+    list_favorites,
     list_mt5_report_imports,
+    list_validation_runs,
     load_ab_experiment,
     load_backtest,
     load_backtest_trades,
     load_candles,
     load_features,
+    load_validation_run,
+    set_favorite,
+    save_validation_result,
 )
 from backend.feature_cache_engine import feature_cache_status, feature_params, load_or_calculate_features
-from backend.mt5.mt5_client import build_mt5_backtest_bridge_response, connect_mt5, fetch_candles, get_symbols
+from backend.mt5.mt5_client import build_mt5_backtest_bridge_response, connect_mt5, get_symbols
 
 
 app = FastAPI(title="quant_forex_V10 API", version="0.1.0")
@@ -151,6 +157,14 @@ def _clean(value: Any) -> Any:
     return value
 
 
+def _feature_favorite_id(record: dict[str, Any]) -> str:
+    symbol = record.get("display_symbol") or record.get("symbol") or ""
+    timeframe = record.get("timeframe") or ""
+    timestamp = record.get("timestamp") or ""
+    data_source = record.get("data_source") or ""
+    return "|".join(str(part) for part in [symbol, timeframe, timestamp, data_source])
+
+
 @app.get("/", include_in_schema=False)
 def index() -> FileResponse:
     index_path = FRONTEND_DIR / "index.html"
@@ -181,12 +195,15 @@ def api_mt5_backtest_run(request: dict[str, Any]) -> dict[str, Any]:
 
 @app.post("/api/mt5/tester/run", response_model=MT5TesterRunResponse)
 def api_mt5_tester_run(request: MT5TesterRunRequest) -> dict[str, Any]:
-    return _clean(run_mt5_strategy_tester(_body(request)))
+    body = _body(request)
+    result = run_mt5_strategy_tester(body)
+    save_validation_result("mt5_tester", result, body)
+    return _clean(result)
 
 
 @app.post("/api/candles/fetch", response_model=FetchCandlesResponse)
 def api_fetch_candles(request: FetchCandlesRequest) -> dict[str, Any]:
-    result = fetch_candles(request.symbol, request.timeframe, request.start_date, request.end_date)
+    result = fetch_candles_from_selected_source(request.symbol, request.timeframe, request.start_date, request.end_date, request.data_source_controls)
     return _clean(result)
 
 
@@ -196,8 +213,9 @@ def api_get_candles(
     timeframe: str = Query(...),
     start_date: str | None = None,
     end_date: str | None = None,
+    data_source: str | None = None,
 ) -> dict[str, Any]:
-    df = load_candles(symbol, timeframe, start_date, end_date)
+    df = load_candles(symbol, timeframe, start_date, end_date, data_source=data_source)
     records = df.to_dict(orient="records") if not df.empty else []
     return _clean({"count": len(records), "candles": records})
 
@@ -209,9 +227,16 @@ def api_get_features(
     start_date: str | None = None,
     end_date: str | None = None,
     limit: int = Query(250, ge=1, le=5000),
+    data_source: str | None = None,
 ) -> dict[str, Any]:
-    df = load_features(symbol, timeframe, start_date, end_date, limit)
+    df = load_features(symbol, timeframe, start_date, end_date, limit, data_source=data_source)
     records = df.to_dict(orient="records") if not df.empty else []
+    favorite_feature_ids = {item["item_id"] for item in list_favorites("feature")}
+    for record in records:
+        favorite_id = _feature_favorite_id(record)
+        record["favorite_id"] = favorite_id
+        record["is_favorite"] = 1 if favorite_id in favorite_feature_ids else 0
+    records.sort(key=lambda item: (int(item.get("is_favorite") or 0), str(item.get("timestamp") or "")), reverse=True)
     return _clean({"count": len(records), "features": records})
 
 
@@ -225,6 +250,7 @@ def api_feature_cache_status(
     usd_bias: str = "NEUTRAL",
     risk_sentiment: str = "NEUTRAL",
     cb_divergence: str = "NEUTRAL",
+    data_source: str | None = None,
 ) -> dict[str, Any]:
     params = feature_params(
         timeframe=timeframe,
@@ -233,8 +259,9 @@ def api_feature_cache_status(
         risk_sentiment=risk_sentiment,
         cb_divergence=cb_divergence,
         macro_evidence={"symbol": symbol, "start_date": start_date, "end_date": end_date, "as_of": end_date},
+        data_source=data_source,
     )
-    return _clean(feature_cache_status(symbol, timeframe, start_date, end_date, params))
+    return _clean(feature_cache_status(symbol, timeframe, start_date, end_date, params, data_source=data_source))
 
 
 @app.post("/api/features/calculate", response_model=FeatureCalculateResponse)
@@ -255,6 +282,7 @@ def api_calculate_features(request: FeatureCalculateRequest) -> dict[str, Any]:
             risk_sentiment=request.risk_sentiment,
             cb_divergence=request.cb_divergence,
             macro_evidence=macro_evidence,
+            data_source_controls=request.data_source_controls,
             use_cache=True,
             persist_cache=True,
         )
@@ -283,6 +311,59 @@ def api_reference_modifiers() -> list[dict[str, Any]]:
 @app.get("/api/reference/formulas")
 def api_reference_formulas() -> dict[str, str]:
     return load_formulas()
+
+
+@app.get("/api/data-sources")
+def api_data_sources() -> dict[str, Any]:
+    return data_source_catalog()
+
+
+@app.get("/api/reference/institutional-data")
+def api_reference_institutional_data() -> dict[str, Any]:
+    return {
+        "principle": "MT5 candles are retail-broker OHLC research data, not institutional order-flow.",
+        "grades": [
+            {"grade": "RETAIL_PROXY_RESEARCH", "meaning": "Usable for hypothesis discovery only; liquidity and order-flow are inferred from OHLC/tick-volume proxies."},
+            {"grade": "BROKER_REAL_TICK_VALIDATED", "meaning": "Same setup survived MT5 real-tick tester evidence; acceptable for demo/semi-manual review, not proof of institutional flow."},
+            {"grade": "INSTITUTIONAL_ORDER_FLOW_READY", "meaning": "External tick/order-flow/depth data is present and explicitly declared in data-source controls."},
+        ],
+        "supported_data_sources": [
+            "mt5_retail_candles",
+            "mt5_every_tick",
+            "mt5_real_ticks",
+            "dukascopy_ticks",
+            "alpha_vantage_fx",
+            "twelve_data_fx",
+            "polygon_fx",
+            "csv_import",
+            "cme_fx_futures_proxy",
+            "prime_broker_ticks",
+            "ecn_l2_order_book",
+            "reuters_ebs_tick",
+            "bloomberg_bpipe_tick",
+            "institutional_order_flow",
+        ],
+        "data_source_controls": {
+            "data_source": "mt5_retail_candles",
+            "provider": "MT5 / SQLite",
+            "require_real_tick_validation": True,
+            "require_institutional_order_flow": False,
+            "has_true_order_flow": False,
+            "has_l2_order_book": False,
+            "has_external_tick_data": False,
+        },
+        "institutional_import_schema": [
+            "timestamp",
+            "symbol",
+            "bid",
+            "ask",
+            "last",
+            "bid_size",
+            "ask_size",
+            "aggressor_side",
+            "venue",
+        ],
+    }
 
 
 @app.get("/api/reference/market")
@@ -949,9 +1030,10 @@ def api_reference_api_structure() -> dict[str, Any]:
 
 @app.post("/api/regime/detect-latest", response_model=DetectLatestResponse)
 def api_detect_latest(request: DetectLatestRequest) -> dict[str, Any]:
-    candles = load_candles(request.symbol, request.timeframe)
+    data_source = (request.data_source_controls or {}).get("data_source")
+    candles = load_candles(request.symbol, request.timeframe, data_source=data_source)
     if candles.empty:
-        raise HTTPException(status_code=404, detail="No candles found. Fetch MT5 candles first.")
+        raise HTTPException(status_code=404, detail="No candles found for the selected data source. Fetch/import that source first.")
     tail = candles.tail(400)
     macro_evidence = dict(request.macro_evidence or {})
     macro_evidence.setdefault("symbol", request.symbol)
@@ -968,6 +1050,7 @@ def api_detect_latest(request: DetectLatestRequest) -> dict[str, Any]:
         risk_sentiment=request.risk_sentiment,
         cb_divergence=request.cb_divergence,
         macro_evidence=macro_evidence,
+        data_source_controls=request.data_source_controls,
         use_cache=True,
         persist_cache=True,
     )
@@ -999,25 +1082,31 @@ def api_run_backtest(request: BacktestRequest) -> dict[str, Any]:
 
 @app.post("/api/walk-forward/run", response_model=WalkForwardResponse)
 def api_run_walk_forward(request: WalkForwardRequest) -> dict[str, Any]:
+    body = _body(request)
     try:
-        result = run_walk_forward(_body(request))
+        result = run_walk_forward(body)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    save_validation_result("walk_forward", result, body)
     return _clean(result)
 
 
 @app.post("/api/out-of-sample/run", response_model=OutOfSampleResponse)
 def api_run_out_of_sample(request: OutOfSampleRequest) -> dict[str, Any]:
+    body = _body(request)
     try:
-        result = run_out_of_sample(_body(request))
+        result = run_out_of_sample(body)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    save_validation_result("out_of_sample", result, body)
     return _clean(result)
 
 
 @app.post("/api/portfolio/backtest", response_model=PortfolioBacktestResponse)
 def api_run_portfolio_backtest(request: PortfolioBacktestRequest) -> dict[str, Any]:
-    result = run_portfolio_backtest(_body(request))
+    body = _body(request)
+    result = run_portfolio_backtest(body)
+    save_validation_result("portfolio", result, body)
     return _clean(result)
 
 
@@ -1059,7 +1148,9 @@ def api_calibration_profiles() -> dict[str, Any]:
 
 @app.post("/api/monte-carlo/run", response_model=MonteCarloResponse)
 def api_run_monte_carlo(request: MonteCarloRequest) -> dict[str, Any]:
-    result = run_monte_carlo(_body(request))
+    body = _body(request)
+    result = run_monte_carlo(body)
+    save_validation_result("monte_carlo", result, body)
     return _clean(result)
 
 
@@ -1069,6 +1160,7 @@ def api_validation_cockpit(request: dict[str, Any]) -> dict[str, Any]:
         result = run_validation_cockpit(request)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    save_validation_result("validation_cockpit", result, request)
     return _clean(result)
 
 
@@ -1133,6 +1225,7 @@ def api_macro_cross_pair_import(request: CrossPairEvidenceRequest) -> dict[str, 
             request.end_date,
             request.symbols,
             request.source,
+            request.data_source_controls,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -1177,16 +1270,20 @@ def api_macro_diagnostics(
 
 @app.post("/api/mt5/report/import", response_model=MT5ReportImportResponse)
 def api_import_mt5_report(request: MT5ReportImportRequest) -> dict[str, Any]:
+    body = _body(request)
     try:
-        result = import_mt5_report(_body(request))
+        result = import_mt5_report(body)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    save_validation_result("mt5_report_import", result, body)
     return _clean(result)
 
 
 @app.post("/api/mt5/model-comparison/import", response_model=MT5ModelComparisonImportResponse)
 def api_import_mt5_model_comparison(request: MT5ModelComparisonImportRequest) -> dict[str, Any]:
-    result = compare_mt5_model_reports(_body(request))
+    body = _body(request)
+    result = compare_mt5_model_reports(body)
+    save_validation_result("mt5_model_comparison", result, body)
     return _clean(result)
 
 
@@ -1198,7 +1295,9 @@ def api_broker_cost_calibration(request: BrokerCostCalibrationRequest) -> dict[s
 
 @app.post("/api/mt5/real-tick-workflow", response_model=MT5RealTickWorkflowResponse)
 def api_mt5_real_tick_workflow(request: MT5RealTickWorkflowRequest) -> dict[str, Any]:
-    result = run_real_tick_workflow(_body(request))
+    body = _body(request)
+    result = run_real_tick_workflow(body)
+    save_validation_result("mt5_real_tick_workflow", result, body)
     return _clean(result)
 
 
@@ -1281,6 +1380,38 @@ def api_final_approval_review(request: FinalApprovalRequest) -> dict[str, Any]:
 def api_list_mt5_report_imports(limit: int = Query(25, ge=1, le=200)) -> dict[str, Any]:
     imports = list_mt5_report_imports(limit)
     return _clean({"count": len(imports), "imports": imports})
+
+
+@app.get("/api/favorites")
+def api_list_favorites(item_type: str | None = None) -> dict[str, Any]:
+    items = list_favorites(item_type)
+    return _clean({"count": len(items), "favorites": items})
+
+
+@app.post("/api/favorites")
+def api_set_favorite(request: dict[str, Any]) -> dict[str, Any]:
+    try:
+        result = set_favorite(request.get("item_type", ""), request.get("item_id", ""), bool(request.get("is_favorite", True)))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return _clean(result)
+
+
+@app.get("/api/validation/runs")
+def api_list_validation_runs(
+    limit: int = Query(25, ge=1, le=200),
+    validation_type: str | None = None,
+) -> dict[str, Any]:
+    runs = list_validation_runs(limit=limit, validation_type=validation_type)
+    return _clean({"count": len(runs), "runs": runs})
+
+
+@app.get("/api/validation/runs/{validation_run_id}")
+def api_get_validation_run(validation_run_id: str) -> dict[str, Any]:
+    result = load_validation_run(validation_run_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Validation run not found.")
+    return _clean(result)
 
 
 @app.get("/api/backtests")

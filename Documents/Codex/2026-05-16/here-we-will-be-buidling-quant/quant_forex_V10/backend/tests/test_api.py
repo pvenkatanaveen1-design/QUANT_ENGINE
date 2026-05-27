@@ -4,6 +4,7 @@ import pandas as pd
 from backend.app import app
 from backend.backtest_engine import _apply_regime_hysteresis, _apply_research_mode_preset, _mae_mfe_analysis, _mae_mfe_for_trade
 from backend.database import save_backtest_result, save_candles
+from backend.institutional_data_engine import evaluate_institutional_data_quality
 
 
 def test_health_endpoint():
@@ -11,6 +12,27 @@ def test_health_endpoint():
     response = client.get("/api/health")
     assert response.status_code == 200
     assert response.json()["order_execution"] is False
+
+
+def test_favorites_endpoint_round_trips():
+    client = TestClient(app)
+    payload = {"item_type": "validation", "item_id": "pytest-favorite-validation", "is_favorite": True}
+
+    response = client.post("/api/favorites", json=payload)
+    assert response.status_code == 200
+    assert response.json()["is_favorite"] is True
+
+    listed = client.get("/api/favorites", params={"item_type": "validation"})
+    assert listed.status_code == 200
+    assert any(row["item_id"] == payload["item_id"] for row in listed.json()["favorites"])
+
+    response = client.post("/api/favorites", json={**payload, "is_favorite": False})
+    assert response.status_code == 200
+    assert response.json()["is_favorite"] is False
+
+    listed = client.get("/api/favorites", params={"item_type": "validation"})
+    assert listed.status_code == 200
+    assert all(row["item_id"] != payload["item_id"] for row in listed.json()["favorites"])
 
 
 def test_mode_presets_reference_endpoint_exposes_three_modes():
@@ -88,6 +110,52 @@ def test_mae_mfe_analysis_flags_tight_stops_when_winners_nearly_stop_first():
     assert result["by_regime_strategy"][0]["regime_strategy"] == "R01_T1"
 
 
+def test_institutional_data_quality_marks_mt5_candles_as_retail_proxy():
+    candles = pd.DataFrame(
+        {
+            "open": [1.1, 1.2],
+            "high": [1.11, 1.21],
+            "low": [1.09, 1.19],
+            "close": [1.105, 1.205],
+            "tick_volume": [100, 120],
+            "spread": [10, 12],
+            "real_volume": [0, 0],
+        }
+    )
+    features = pd.DataFrame({"data_quality_bad_data_flag": [0, 0], "data_quality_warmup_flag": [0, 0]})
+
+    result = evaluate_institutional_data_quality(candles, features, [], {"data_source_controls": {"data_source": "mt5_retail_candles"}})
+
+    assert result["data_grade"] == "RETAIL_PROXY_RESEARCH"
+    assert result["institutional_order_flow_available"] is False
+    assert any("No true institutional order-flow" in item for item in result["limitations"])
+
+
+def test_institutional_data_quality_accepts_declared_l2_order_flow_source():
+    candles = pd.DataFrame(
+        {
+            "open": [1.1, 1.2],
+            "high": [1.11, 1.21],
+            "low": [1.09, 1.19],
+            "close": [1.105, 1.205],
+            "tick_volume": [100, 120],
+            "spread": [10, 12],
+            "real_volume": [1000, 1200],
+        }
+    )
+    features = pd.DataFrame({"data_quality_bad_data_flag": [0, 0], "data_quality_warmup_flag": [0, 0]})
+
+    result = evaluate_institutional_data_quality(
+        candles,
+        features,
+        [{"result_R": 1.2}],
+        {"data_source_controls": {"data_source": "ecn_l2_order_book", "has_l2_order_book": True, "has_true_order_flow": True}},
+    )
+
+    assert result["data_grade"] == "INSTITUTIONAL_ORDER_FLOW_READY"
+    assert result["validation_status"] == "INSTITUTIONAL_RESEARCH_READY"
+
+
 def test_optimizer_grid_endpoint_returns_ui_ready_no_data_result():
     client = TestClient(app)
     payload = {
@@ -147,6 +215,15 @@ def test_monte_carlo_endpoint_returns_ui_ready_no_data_result():
     assert body["summary"]["status"] == "NO_DATA"
     assert body["summary"]["source_trades"] == 0
     assert body["equity_fan"] == []
+    assert body["validation_saved"] is True
+    assert body["validation_run_id"]
+
+    saved = client.get(f"/api/validation/runs/{body['validation_run_id']}")
+    assert saved.status_code == 200
+    saved_body = saved.json()
+    assert saved_body["validation_type"] == "monte_carlo"
+    assert saved_body["status"] == "NO_DATA"
+    assert saved_body["summary"]["source_trades"] == 0
 
 
 def test_validation_cockpit_endpoint_returns_scorecard_for_no_data_result():
