@@ -6,6 +6,7 @@ const state = {
   formulas: {},
   calibrationProfiles: [],
   apiStructure: null,
+  dataSources: [],
   backtest: null,
   walkForward: null,
   outOfSample: null,
@@ -30,6 +31,7 @@ const state = {
   savedExperiments: [],
   latestMarket: null,
   savedRuns: [],
+  savedValidationRuns: [],
   savedFeatures: [],
   jsonTesterResponses: {},
   selectedRegimeId: null,
@@ -38,6 +40,44 @@ const state = {
 const charts = {};
 
 const $ = (id) => document.getElementById(id);
+
+function selectedDataSourceMeta() {
+  const value = $("dataSourceType")?.value || "mt5_retail_candles";
+  return (state.dataSources || []).find((item) => item.value === value) || {};
+}
+
+function renderDataProviderHint() {
+  const meta = selectedDataSourceMeta();
+  const el = $("dataProviderHint");
+  if (!el) return;
+  const env = (meta.env || []).join(", ") || "none";
+  const configured = meta.configured_env?.length ? `Configured env: ${meta.configured_env.join(", ")}` : "No matching env key/path detected.";
+  el.innerHTML = `
+    <div><b>${escapeHtml(meta.label || $("dataSourceType")?.value || "Data source")}</b> - ${escapeHtml(meta.free || "")}</div>
+    <div class="mt-1">Env fallback: ${escapeHtml(env)}. ${escapeHtml(configured)}</div>
+  `;
+  if (meta.provider && !$("dataProviderName").value) $("dataProviderName").value = meta.provider;
+}
+
+function currentDataSourceControls(includeCredentials = false) {
+  const source = $("dataSourceType")?.value || "mt5_retail_candles";
+  const controls = {
+    data_source: source,
+    provider: $("dataProviderName")?.value || selectedDataSourceMeta().provider || "MT5 / SQLite",
+    require_real_tick_validation: $("requireRealTickValidation")?.checked ?? true,
+    require_institutional_order_flow: $("requireInstitutionalOrderFlow")?.checked ?? false,
+    has_true_order_flow: $("hasTrueOrderFlow")?.checked ?? false,
+    has_l2_order_book: $("hasL2OrderBook")?.checked ?? false,
+    has_external_tick_data: ["dukascopy_ticks", "csv_import", "cme_fx_futures_proxy", "prime_broker_ticks", "ecn_l2_order_book", "reuters_ebs_tick", "bloomberg_bpipe_tick", "institutional_order_flow"].includes(source),
+  };
+  if (includeCredentials) {
+    controls.api_key = $("dataProviderApiKey")?.value || "";
+    controls.url = $("dataProviderLocation")?.value || "";
+    controls.csv_url = $("dataProviderLocation")?.value || "";
+    controls.csv_path = $("dataProviderLocation")?.value || "";
+  }
+  return controls;
+}
 
 function setText(id, value) {
   const el = $(id);
@@ -92,6 +132,28 @@ function statusBadge(status) {
           ? "badge-red"
           : "badge-gray";
   return `<span class="badge ${cls}">${normalized}</span>`;
+}
+
+function favoriteButton(itemType, itemId, isFavorite) {
+  if (!itemId) return "";
+  const nextValue = isFavorite ? "0" : "1";
+  const title = isFavorite ? "Remove star" : "Star this result";
+  const symbol = isFavorite ? "&#9733;" : "&#9734;";
+  return `<button class="favorite-btn ${isFavorite ? "is-favorite" : ""}" title="${title}" aria-label="${title}" data-favorite-type="${escapeHtml(itemType)}" data-favorite-id="${escapeHtml(itemId)}" data-favorite-value="${nextValue}">${symbol}</button>`;
+}
+
+function sortFavoriteRows(rows, createdKey = "created_at") {
+  return [...(rows || [])].sort((a, b) => {
+    const favDiff = Number(b.is_favorite || 0) - Number(a.is_favorite || 0);
+    if (favDiff) return favDiff;
+    return String(b[createdKey] || "").localeCompare(String(a[createdKey] || ""));
+  });
+}
+
+function applyFavoriteState(rows, idKey, itemId, isFavorite) {
+  return sortFavoriteRows((rows || []).map((row) => (
+    String(row[idKey] || "") === String(itemId) ? { ...row, is_favorite: isFavorite ? 1 : 0 } : row
+  )));
 }
 
 const SECTION_HELP = {
@@ -562,7 +624,7 @@ function applyModePreset(name, announce = false) {
   setControlValue("hysteresisConfidenceMargin", preset.hysteresis_confidence_margin);
   setControlValue("mt5TesterModel", preset.mt5_tester_model);
   setControlChecked("mt5UsePythonSignals", preset.use_python_signals);
-  setControlChecked("mt5BuildPythonSignals", preset.use_python_signals);
+  setControlChecked("mt5BuildPythonSignals", preset.build_python_signals ?? false);
   renderModePresetSummary();
   if (announce) setLoading(`${name} preset applied. You can edit any value before running.`);
 }
@@ -929,6 +991,7 @@ function renderAbExperiment() {
   }
   $("savedExperimentsPanel").innerHTML = table(
     [
+      { label: "", render: (r) => favoriteButton("experiment", r.experiment_id, Number(r.is_favorite) === 1) },
       { label: "ID", render: (r) => `<button class="text-sky-700 underline" data-experiment-id="${escapeHtml(r.experiment_id)}">${escapeHtml(r.experiment_id)}</button>` },
       { label: "Name", key: "name" },
       { label: "Status", render: (r) => statusBadge(r.status) },
@@ -1002,6 +1065,25 @@ function renderSummary(summary = {}) {
 
 function renderResearchPanels() {
   const h = state.backtest?.data_health || {};
+  const dq = state.backtest?.institutional_data_quality || {};
+  $("institutionalDataPanel").innerHTML = metricItems([
+    ["Source", dq.source_type || "--"],
+    ["Provider", dq.provider || "--"],
+    ["Grade", dq.data_grade || "--"],
+    ["Score", dq.data_score],
+    ["Validation", dq.validation_status || "--"],
+    ["Semi Manual", dq.semi_manual_readiness === undefined ? "--" : dq.semi_manual_readiness ? "Ready for demo review" : "Not ready"],
+    ["Order Flow", dq.institutional_order_flow_available === undefined ? "--" : dq.institutional_order_flow_available ? "Yes" : "No"],
+    ["L2 Book", dq.level2_order_book_available === undefined ? "--" : dq.level2_order_book_available ? "Yes" : "No"],
+    ["External Tick", dq.external_tick_available === undefined ? "--" : dq.external_tick_available ? "Yes" : "No"],
+    ["MT5 Real Tick", dq.mt5_real_tick_validated === undefined ? "--" : dq.mt5_real_tick_validated ? "Yes" : "No"],
+    ["Spread Coverage", dq.coverage ? `${(Number(dq.coverage.spread || 0) * 100).toFixed(1)}%` : "--"],
+    ["Real Volume", dq.coverage ? `${(Number(dq.coverage.real_volume || 0) * 100).toFixed(1)}%` : "--"],
+  ]);
+  const dqWarnings = [...(dq.limitations || []), ...(dq.warnings || [])];
+  $("institutionalDataWarnings").innerHTML = dqWarnings.length
+    ? `<div class="rounded border border-amber-200 bg-amber-50 p-3 text-amber-950"><b>Data limitations:</b><ul class="mt-2 list-disc pl-5">${dqWarnings.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>`
+    : `<div class="rounded border border-slate-200 bg-white p-3">Run a backtest to grade data provenance and order-flow readiness.</div>`;
   $("dataHealthPanel").innerHTML = metricItems([
     ["Source", h.source],
     ["Bars Loaded", h.bars_loaded],
@@ -2187,6 +2269,7 @@ function renderRealTickWorkflow() {
 function renderSavedData() {
   $("savedRunsPanel").innerHTML = table(
     [
+      { label: "", render: (r) => favoriteButton("backtest", r.run_id, Number(r.is_favorite) === 1) },
       { label: "Run", render: (r) => `<button class="text-blue-700 underline" data-run-id="${escapeHtml(r.run_id)}">${escapeHtml(String(r.run_id || "").slice(0, 8))}</button>` },
       { label: "Created", render: (r) => String(r.created_at || "").slice(0, 19) },
       { label: "Symbol", key: "symbol" },
@@ -2204,8 +2287,31 @@ function renderSavedData() {
     "Load saved runs to review previous local research results."
   );
 
+  const savedValidationEl = $("savedValidationPanel");
+  if (savedValidationEl) {
+    savedValidationEl.innerHTML = table(
+      [
+        { label: "", render: (r) => favoriteButton("validation", r.validation_run_id, Number(r.is_favorite) === 1) },
+        { label: "Run", render: (r) => `<button class="text-blue-700 underline" data-validation-run-id="${escapeHtml(r.validation_run_id)}">${escapeHtml(String(r.validation_run_id || "").slice(0, 8))}</button>` },
+        { label: "Created", render: (r) => String(r.created_at || "").slice(0, 19) },
+        { label: "Type", key: "validation_type" },
+        { label: "Status", render: (r) => statusBadge(r.status || r.summary?.status || "--") },
+        { label: "Symbol", key: "symbol" },
+        { label: "TF", key: "timeframe" },
+        { label: "Regime", key: "regime_filter" },
+        { label: "Strategy", key: "strategy_filter" },
+        { label: "Trades", render: (r) => r.summary?.total_trades ?? r.summary?.source_trades ?? r.summary?.oos_trades ?? "--" },
+        { label: "PF", render: (r) => r.summary?.profit_factor ?? r.summary?.oos_profit_factor ?? r.summary?.oos_pf ?? "--" },
+        { label: "Stable", render: (r) => r.summary?.stable === undefined ? "--" : statusBadge(r.summary.stable ? "YES" : "NO") },
+      ],
+      state.savedValidationRuns || [],
+      "Load validation runs to review saved OOS, walk-forward, Monte Carlo, portfolio, and MT5 tester evidence."
+    );
+  }
+
   $("savedFeaturesPanel").innerHTML = table(
     [
+      { label: "", render: (r) => favoriteButton("feature", r.favorite_id, Number(r.is_favorite) === 1) },
       { label: "Time", render: (r) => String(r.timestamp || "").slice(0, 19) },
       { label: "Session", key: "session" },
       { label: "ADX", key: "adx" },
@@ -2344,10 +2450,12 @@ function renderSemiManualWatchlist() {
   const hasLatest = Boolean(state.latestMarket);
   const hasBacktest = Boolean(state.backtest?.summary);
   const hasHistory = focusedHistoryTrades(currentId, strategyIds).length > 0;
+  const dataQuality = state.backtest?.institutional_data_quality || {};
   const blocked = [];
   if (!hasBacktest) blocked.push("Run a local Python backtest so the panel can show historical evidence.");
   if (!hasLatest) blocked.push("Run Detect Latest so the panel can compare current regime with the validated setup.");
   if (!finalPass) blocked.push("Run Final Approval and pass all required gates before watchlist candidates are shown.");
+  if (hasBacktest && !dataQuality.semi_manual_readiness) blocked.push(`Data provenance is ${dataQuality.validation_status || "not graded"}; import/compare MT5 real ticks before semi-manual watchlist review.`);
   if (hardReasons.length) blocked.push(`Current market has hard block: ${hardReasons.join("; ")}.`);
   if (hasLatest && !active.is_active) blocked.push("Current regime is not active enough for a watchlist candidate.");
   if (hasLatest && !finalRegimeOk) blocked.push(`Validated regime is ${filters.regime}, but current regime is ${currentId}.`);
@@ -2369,6 +2477,8 @@ function renderSemiManualWatchlist() {
     ["Spread %", features.spread_percentile],
     ["HTF / LTF", `${features.htf_bias || "--"} / ${features.ltf_bias || "--"}`],
     ["Final Gate", state.finalApproval?.status || "--"],
+    ["Data Grade", dataQuality.data_grade || "--"],
+    ["Data Status", dataQuality.validation_status || "--"],
   ]);
 
   if (blocked.length) {
@@ -3495,6 +3605,7 @@ function currentPayload() {
     mt5_imported_cost_R: Number($("mt5ImportedCostR").value || 0.05),
     rollover_block: $("rolloverCostBlock").checked,
   };
+  const dataSourceControls = currentDataSourceControls(false);
   return {
     symbol: $("symbol").value,
     timeframe: $("timeframe").value,
@@ -3522,6 +3633,7 @@ function currentPayload() {
     strict_clean_trend: $("strictCleanTrend").checked,
     pattern_engine: patternEngine,
     statistical_regime: statisticalRegime,
+    data_source_controls: dataSourceControls,
     filters,
     costs,
     calibration: currentCalibrationPayload(),
@@ -3791,6 +3903,7 @@ function currentMt5TesterPayload() {
     payload,
     python_run_id: $("mt5BuildPythonSignals")?.checked ? ($("mt5ReportRunId")?.value || state.backtest?.run_id || null) : null,
     use_python_signals: $("mt5UsePythonSignals")?.checked ?? true,
+    build_python_signals: $("mt5BuildPythonSignals")?.checked ?? true,
     copy_python_signals_to_common: true,
     terminal_path: $("mt5TerminalPath").value || null,
     expert: $("mt5ExpertName").value || "QuantForexV10_ResearchEA.ex5",
@@ -3927,6 +4040,8 @@ async function detectLatestMarket(showStatus = true) {
       usd_bias: p.usd_bias,
       risk_sentiment: p.risk_sentiment,
       cb_divergence: p.cb_divergence,
+      macro_evidence: p.macro_evidence,
+      data_source_controls: p.data_source_controls,
     }),
   });
   renderLatest(result);
@@ -3935,7 +4050,7 @@ async function detectLatestMarket(showStatus = true) {
 }
 
 async function hydrate() {
-  const [health, market, regimes, strategies, modifiers, formulas, apiStructure, calibration] = await Promise.all([
+  const [health, market, regimes, strategies, modifiers, formulas, apiStructure, calibration, dataSources] = await Promise.all([
     api("/api/health"),
     api("/api/reference/market"),
     api("/api/reference/regimes"),
@@ -3944,6 +4059,7 @@ async function hydrate() {
     api("/api/reference/formulas"),
     api("/api/reference/api-structure"),
     api("/api/calibration/profiles"),
+    api("/api/data-sources"),
   ]);
   state.market = market;
   state.regimes = regimes;
@@ -3952,6 +4068,7 @@ async function hydrate() {
   state.formulas = formulas;
   state.apiStructure = apiStructure;
   state.calibrationProfiles = calibration.profiles || [];
+  state.dataSources = dataSources.providers || [];
   state.selectedRegimeId = null;
 
   $("apiStatus").textContent = `${health.app}: ${health.status}`;
@@ -3959,6 +4076,13 @@ async function hydrate() {
   selectOptions("modePreset", market.mode_presets || Object.keys(market.research_mode_presets || {}), market.default_mode_preset || "Strict Validation");
   selectOptions("symbol", market.symbols, market.default_symbol);
   selectOptions("timeframe", market.timeframes, market.default_timeframe);
+  if (state.dataSources.length) {
+    selectOptions("dataSourceType", state.dataSources.map((item) => item.value), dataSources.default || "mt5_retail_candles");
+    for (const option of $("dataSourceType").options) {
+      const meta = state.dataSources.find((item) => item.value === option.value);
+      if (meta) option.textContent = meta.label;
+    }
+  }
   selectOptions("riskPercent", market.risk_presets.map(String), "1");
   selectOptions("rr", market.rr_presets.map(String), "2");
   selectOptions("sentiment", market.sentiments, "NEUTRAL");
@@ -3981,6 +4105,8 @@ async function hydrate() {
   $("useSweeps").checked = market.research_switches?.use_sweeps ?? true;
   $("useAlpha").checked = market.research_switches?.use_alpha ?? true;
   $("useFeatureCache").checked = market.research_switches?.use_feature_cache ?? true;
+  $("dataProviderName").value = selectedDataSourceMeta().provider || "MT5 / SQLite";
+  renderDataProviderHint();
   $("strictCleanTrend").checked = market.research_switches?.strict_clean_trend ?? true;
   $("minAlphaScore").value = market.research_switches?.min_alpha_score ?? 8;
   $("maxSpreadPercentile").value = market.research_switches?.max_spread_percentile ?? 65;
@@ -4043,6 +4169,12 @@ async function hydrate() {
 }
 
 function bindEvents() {
+  $("dataSourceType")?.addEventListener("change", () => {
+    const meta = selectedDataSourceMeta();
+    $("dataProviderName").value = meta.provider || $("dataSourceType").value;
+    $("dataProviderApiKey").value = "";
+    renderDataProviderHint();
+  });
   $("modePreset").addEventListener("change", () => {
     applyModePreset($("modePreset").value, true);
     renderCalibration();
@@ -4172,6 +4304,37 @@ function bindEvents() {
     if (!button) return;
     sendRegimeStrategyJson(button);
   });
+  document.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-favorite-type][data-favorite-id]");
+    if (!button) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const itemType = button.getAttribute("data-favorite-type");
+    const itemId = button.getAttribute("data-favorite-id");
+    const isFavorite = button.getAttribute("data-favorite-value") === "1";
+    try {
+      await api("/api/favorites", {
+        method: "POST",
+        body: JSON.stringify({ item_type: itemType, item_id: itemId, is_favorite: isFavorite }),
+      });
+      if (itemType === "backtest") {
+        state.savedRuns = applyFavoriteState(state.savedRuns, "run_id", itemId, isFavorite);
+        renderSavedData();
+      } else if (itemType === "validation") {
+        state.savedValidationRuns = applyFavoriteState(state.savedValidationRuns, "validation_run_id", itemId, isFavorite);
+        renderSavedData();
+      } else if (itemType === "experiment") {
+        state.savedExperiments = applyFavoriteState(state.savedExperiments, "experiment_id", itemId, isFavorite);
+        renderAbExperiment();
+      } else if (itemType === "feature") {
+        state.savedFeatures = applyFavoriteState(state.savedFeatures, "favorite_id", itemId, isFavorite);
+        renderSavedData();
+      }
+      setLoading(`${isFavorite ? "Starred" : "Unstarred"} ${itemType} ${String(itemId).slice(0, 8)}.`);
+    } catch (err) {
+      setError(err);
+    }
+  });
   $("clearResults").addEventListener("click", () => {
     state.backtest = null;
     setText("lastAction", "Results cleared.");
@@ -4206,6 +4369,46 @@ function bindEvents() {
       setError(err);
     }
   });
+  $("loadSavedValidationRuns").addEventListener("click", async () => {
+    try {
+      setLoading("Loading saved validation runs...");
+      const result = await api("/api/validation/runs?limit=50");
+      state.savedValidationRuns = result.runs || [];
+      renderSavedData();
+      setLoading(`Loaded ${state.savedValidationRuns.length} saved validation runs.`);
+    } catch (err) {
+      setError(err);
+    }
+  });
+  $("savedValidationPanel").addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-validation-run-id]");
+    if (!button) return;
+    try {
+      const validationRunId = button.getAttribute("data-validation-run-id");
+      setLoading(`Loading validation run ${validationRunId}...`);
+      const saved = await api(`/api/validation/runs/${encodeURIComponent(validationRunId)}`);
+      const result = saved.result || {};
+      if (saved.validation_type === "out_of_sample") state.outOfSample = result;
+      else if (saved.validation_type === "walk_forward") state.walkForward = result;
+      else if (saved.validation_type === "monte_carlo") state.monteCarlo = result;
+      else if (saved.validation_type === "portfolio") state.portfolio = result;
+      else if (saved.validation_type === "validation_cockpit") {
+        state.validation = result;
+        if (result.backtest?.summary) state.backtest = result.backtest;
+        if (result.out_of_sample?.summary) state.outOfSample = result.out_of_sample;
+        if (result.walk_forward?.summary) state.walkForward = result.walk_forward;
+        if (result.monte_carlo?.summary) state.monteCarlo = result.monte_carlo;
+        if (result.portfolio?.summary && result.portfolio.summary.status !== "SKIPPED") state.portfolio = result.portfolio;
+      } else if (saved.validation_type === "mt5_tester") state.mt5Tester = result;
+      else if (saved.validation_type === "mt5_model_comparison") state.mt5Comparison = result;
+      else if (saved.validation_type === "mt5_report_import") state.mt5Import = result;
+      else if (saved.validation_type === "mt5_real_tick_workflow") state.realTickWorkflow = result;
+      renderAll();
+      setLoading(`Loaded ${saved.validation_type} validation run ${validationRunId}.`);
+    } catch (err) {
+      setError(err);
+    }
+  });
   $("loadSavedFeatures").addEventListener("click", async () => {
     try {
       const p = currentPayload();
@@ -4215,6 +4418,7 @@ function bindEvents() {
         timeframe: p.timeframe,
         start_date: p.start_date,
         end_date: p.end_date,
+        data_source: p.data_source_controls.data_source,
         limit: "100",
       });
       const result = await api(`/api/features?${params.toString()}`);
@@ -4239,9 +4443,9 @@ function bindEvents() {
   $("fetchCandles").addEventListener("click", async () => {
     try {
       const p = currentPayload();
-      setLoading("Fetching candles from MT5...");
-      const result = await api("/api/candles/fetch", { method: "POST", body: JSON.stringify({ symbol: p.symbol, timeframe: p.timeframe, start_date: p.start_date, end_date: p.end_date }) });
-      setLoading(result.error || `Saved ${result.saved} candles.`);
+      setLoading(`Fetching candles from ${p.data_source_controls.provider || p.data_source_controls.data_source}...`);
+      const result = await api("/api/candles/fetch", { method: "POST", body: JSON.stringify({ symbol: p.symbol, timeframe: p.timeframe, start_date: p.start_date, end_date: p.end_date, data_source_controls: currentDataSourceControls(true) }) });
+      setLoading(result.error || result.message || `Saved ${result.saved} candles from ${result.provider || p.data_source_controls.provider}.`);
     } catch (err) {
       setError(err);
     }
@@ -4250,7 +4454,7 @@ function bindEvents() {
     try {
       const p = currentPayload();
       setLoading("Calculating features...");
-      const result = await api("/api/features/calculate", { method: "POST", body: JSON.stringify({ symbol: p.symbol, timeframe: p.timeframe, start_date: p.start_date, end_date: p.end_date, sentiment: p.sentiment, usd_bias: p.usd_bias, risk_sentiment: p.risk_sentiment, cb_divergence: p.cb_divergence, macro_evidence: p.macro_evidence }) });
+      const result = await api("/api/features/calculate", { method: "POST", body: JSON.stringify({ symbol: p.symbol, timeframe: p.timeframe, start_date: p.start_date, end_date: p.end_date, sentiment: p.sentiment, usd_bias: p.usd_bias, risk_sentiment: p.risk_sentiment, cb_divergence: p.cb_divergence, macro_evidence: p.macro_evidence, data_source_controls: p.data_source_controls }) });
       const cacheLabel = result.cached ? "cache hit" : "cache refreshed";
       setLoading(`${cacheLabel}: saved ${result.saved || 0} feature rows.`);
     } catch (err) {
@@ -4376,6 +4580,7 @@ function bindEvents() {
           end_date: $("endDate").value,
           symbols,
           source: $("macroCsvSource").value || "cross_pair_candles",
+          data_source_controls: currentPayload().data_source_controls,
         }),
       });
       state.macroEvidence = result.latest?.resolved || state.macroEvidence;

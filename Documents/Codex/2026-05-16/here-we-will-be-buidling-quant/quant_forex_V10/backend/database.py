@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +12,28 @@ import pandas as pd
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "data" / "forex_regime.db"
+DEFAULT_DATA_SOURCE = "mt5_retail_candles"
+DEFAULT_PROVIDER_NAME = "MT5 / SQLite"
+
+
+def normalize_data_source(data_source: str | None = None) -> str:
+    value = str(data_source or DEFAULT_DATA_SOURCE).strip().lower()
+    aliases = {
+        "mt5": DEFAULT_DATA_SOURCE,
+        "sqlite": DEFAULT_DATA_SOURCE,
+        "sqlite_mt5_candles": DEFAULT_DATA_SOURCE,
+        "retail_broker_candles": DEFAULT_DATA_SOURCE,
+    }
+    return aliases.get(value, value or DEFAULT_DATA_SOURCE)
+
+
+def storage_symbol(symbol: str, data_source: str | None = None) -> str:
+    public = str(symbol or "").strip().upper()
+    source = normalize_data_source(data_source)
+    if source == DEFAULT_DATA_SOURCE:
+        return public
+    safe_source = "".join(ch if ch.isalnum() else "_" for ch in source.upper()).strip("_")
+    return f"{public}__SRC__{safe_source}"
 
 
 def get_connection() -> sqlite3.Connection:
@@ -35,6 +59,9 @@ def init_db() -> None:
                 tick_volume REAL,
                 spread REAL,
                 real_volume REAL,
+                display_symbol TEXT,
+                data_source TEXT,
+                provider TEXT,
                 UNIQUE(symbol, timeframe, timestamp)
             );
 
@@ -141,6 +168,9 @@ def init_db() -> None:
                 data_quality_warmup_reasons TEXT,
                 data_quality_bad_data_reasons TEXT,
                 data_quality_reasons TEXT,
+                display_symbol TEXT,
+                data_source TEXT,
+                provider TEXT,
                 UNIQUE(symbol, timeframe, timestamp)
             );
 
@@ -150,6 +180,8 @@ def init_db() -> None:
                 timeframe TEXT,
                 start_date TEXT,
                 end_date TEXT,
+                data_source TEXT,
+                provider TEXT,
                 params_hash TEXT,
                 candle_fingerprint TEXT,
                 candle_count INTEGER,
@@ -188,6 +220,7 @@ def init_db() -> None:
                 cost_summary_json TEXT,
                 calibration_summary_json TEXT,
                 spread_slippage_diagnostics_json TEXT,
+                institutional_data_quality_json TEXT,
                 data_health_json TEXT,
                 feature_summary_json TEXT,
                 regime_confidence_json TEXT,
@@ -338,6 +371,33 @@ def init_db() -> None:
                 comparison_json TEXT,
                 warnings_json TEXT
             );
+
+            CREATE TABLE IF NOT EXISTS validation_runs (
+                validation_run_id TEXT PRIMARY KEY,
+                validation_type TEXT,
+                status TEXT,
+                symbol TEXT,
+                timeframe TEXT,
+                start_date TEXT,
+                end_date TEXT,
+                regime_filter TEXT,
+                strategy_filter TEXT,
+                source_run_id TEXT,
+                created_at TEXT,
+                request_json TEXT,
+                summary_json TEXT,
+                result_json TEXT,
+                warnings_json TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS favorites (
+                item_type TEXT,
+                item_id TEXT,
+                is_favorite INTEGER DEFAULT 1,
+                created_at TEXT,
+                updated_at TEXT,
+                PRIMARY KEY (item_type, item_id)
+            );
             """
         )
         for table, columns in {
@@ -353,6 +413,7 @@ def init_db() -> None:
                 "cost_summary_json": "TEXT",
                 "calibration_summary_json": "TEXT",
                 "spread_slippage_diagnostics_json": "TEXT",
+                "institutional_data_quality_json": "TEXT",
                 "data_health_json": "TEXT",
                 "feature_summary_json": "TEXT",
                 "regime_confidence_json": "TEXT",
@@ -405,6 +466,9 @@ def init_db() -> None:
                 "created_at": "TEXT",
             },
             "features": {
+                "display_symbol": "TEXT",
+                "data_source": "TEXT",
+                "provider": "TEXT",
                 "usd_bias": "TEXT",
                 "risk_sentiment": "TEXT",
                 "cb_divergence": "TEXT",
@@ -497,6 +561,15 @@ def init_db() -> None:
                 "data_quality_warmup_reasons": "TEXT",
                 "data_quality_bad_data_reasons": "TEXT",
                 "data_quality_reasons": "TEXT",
+            },
+            "candles": {
+                "display_symbol": "TEXT",
+                "data_source": "TEXT",
+                "provider": "TEXT",
+            },
+            "feature_cache": {
+                "data_source": "TEXT",
+                "provider": "TEXT",
             },
         }.items():
             existing = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
@@ -610,12 +683,23 @@ def load_latest_macro_row(symbol: str | None = None, as_of: str | None = None) -
     return item
 
 
-def save_candles(symbol: str, timeframe: str, candles: list[dict[str, Any]]) -> int:
+def save_candles(
+    symbol: str,
+    timeframe: str,
+    candles: list[dict[str, Any]],
+    data_source: str | None = None,
+    provider: str | None = None,
+) -> int:
     if not candles:
         return 0
+    init_db()
+    source = normalize_data_source(data_source)
+    stored_symbol = storage_symbol(symbol, source)
+    public_symbol = str(symbol or "").strip().upper()
+    provider_name = str(provider or DEFAULT_PROVIDER_NAME).strip() or DEFAULT_PROVIDER_NAME
     rows = [
         (
-            symbol,
+            stored_symbol,
             timeframe,
             str(row["timestamp"]),
             float(row["open"]),
@@ -625,6 +709,9 @@ def save_candles(symbol: str, timeframe: str, candles: list[dict[str, Any]]) -> 
             float(row.get("tick_volume", 0) or 0),
             float(row.get("spread", 0) or 0),
             float(row.get("real_volume", 0) or 0),
+            public_symbol,
+            source,
+            provider_name,
         )
         for row in candles
     ]
@@ -632,17 +719,25 @@ def save_candles(symbol: str, timeframe: str, candles: list[dict[str, Any]]) -> 
         conn.executemany(
             """
             INSERT OR REPLACE INTO candles
-            (symbol, timeframe, timestamp, open, high, low, close, tick_volume, spread, real_volume)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (symbol, timeframe, timestamp, open, high, low, close, tick_volume, spread, real_volume, display_symbol, data_source, provider)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             rows,
         )
     return len(rows)
 
 
-def load_candles(symbol: str, timeframe: str, start_date: str | None = None, end_date: str | None = None) -> pd.DataFrame:
+def load_candles(
+    symbol: str,
+    timeframe: str,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    data_source: str | None = None,
+) -> pd.DataFrame:
+    source = normalize_data_source(data_source)
+    stored_symbol = storage_symbol(symbol, source)
     query = "SELECT * FROM candles WHERE symbol = ? AND timeframe = ?"
-    params: list[Any] = [symbol, timeframe]
+    params: list[Any] = [stored_symbol, timeframe]
     if start_date:
         query += " AND timestamp >= ?"
         params.append(start_date)
@@ -654,6 +749,10 @@ def load_candles(symbol: str, timeframe: str, start_date: str | None = None, end
         df = pd.read_sql_query(query, conn, params=params)
     if not df.empty:
         df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
+        df["symbol"] = str(symbol or "").strip().upper()
+        df["display_symbol"] = df.get("display_symbol").fillna(df["symbol"]) if "display_symbol" in df else df["symbol"]
+        df["data_source"] = df.get("data_source").fillna(source) if "data_source" in df else source
+        df["provider"] = df.get("provider").fillna(DEFAULT_PROVIDER_NAME) if "provider" in df else DEFAULT_PROVIDER_NAME
     return df
 
 
@@ -663,9 +762,12 @@ def load_features(
     start_date: str | None = None,
     end_date: str | None = None,
     limit: int | None = 250,
+    data_source: str | None = None,
 ) -> pd.DataFrame:
+    source = normalize_data_source(data_source)
+    stored_symbol = storage_symbol(symbol, source)
     query = "SELECT * FROM features WHERE symbol = ? AND timeframe = ?"
-    params: list[Any] = [symbol, timeframe]
+    params: list[Any] = [stored_symbol, timeframe]
     if start_date:
         query += " AND timestamp >= ?"
         params.append(start_date)
@@ -680,12 +782,16 @@ def load_features(
         df = pd.read_sql_query(query, conn, params=params)
     if not df.empty:
         df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
+        df["symbol"] = str(symbol or "").strip().upper()
+        df["display_symbol"] = df.get("display_symbol").fillna(df["symbol"]) if "display_symbol" in df else df["symbol"]
+        df["data_source"] = df.get("data_source").fillna(source) if "data_source" in df else source
+        df["provider"] = df.get("provider").fillna(DEFAULT_PROVIDER_NAME) if "provider" in df else DEFAULT_PROVIDER_NAME
         df = df.sort_values("timestamp").reset_index(drop=True)
     return df
 
 
-def load_features_for_cache(symbol: str, timeframe: str, start_date: str, end_date: str) -> pd.DataFrame:
-    return load_features(symbol, timeframe, start_date, end_date, limit=None)
+def load_features_for_cache(symbol: str, timeframe: str, start_date: str, end_date: str, data_source: str | None = None) -> pd.DataFrame:
+    return load_features(symbol, timeframe, start_date, end_date, limit=None, data_source=data_source)
 
 
 def save_feature_cache_metadata(metadata: dict[str, Any]) -> None:
@@ -695,6 +801,8 @@ def save_feature_cache_metadata(metadata: dict[str, Any]) -> None:
         "timeframe",
         "start_date",
         "end_date",
+        "data_source",
+        "provider",
         "params_hash",
         "candle_fingerprint",
         "candle_count",
@@ -736,10 +844,20 @@ def load_feature_cache_metadata(cache_key: str) -> dict[str, Any] | None:
     return dict(row) if row else None
 
 
-def save_features(symbol: str, timeframe: str, features: pd.DataFrame) -> int:
+def save_features(
+    symbol: str,
+    timeframe: str,
+    features: pd.DataFrame,
+    data_source: str | None = None,
+    provider: str | None = None,
+) -> int:
     if features.empty:
         return 0
     init_db()
+    source = normalize_data_source(data_source)
+    stored_symbol = storage_symbol(symbol, source)
+    public_symbol = str(symbol or "").strip().upper()
+    provider_name = str(provider or DEFAULT_PROVIDER_NAME).strip() or DEFAULT_PROVIDER_NAME
     columns = [
         "ema20",
         "ema50",
@@ -870,16 +988,20 @@ def save_features(symbol: str, timeframe: str, features: pd.DataFrame) -> int:
     ]
     frame = features.reindex(columns=["timestamp", *columns]).copy()
     frame["timestamp"] = pd.to_datetime(frame["timestamp"], utc=True).map(lambda value: value.isoformat())
+    frame["display_symbol"] = public_symbol
+    frame["data_source"] = source
+    frame["provider"] = provider_name
     frame.insert(0, "timeframe", timeframe)
-    frame.insert(0, "symbol", symbol)
+    frame.insert(0, "symbol", stored_symbol)
     rows = list(frame.itertuples(index=False, name=None))
-    placeholders = ",".join(["?"] * (3 + len(columns)))
-    update_clause = ",".join([f"{col}=excluded.{col}" for col in columns])
+    source_columns = ["display_symbol", "data_source", "provider"]
+    placeholders = ",".join(["?"] * (3 + len(columns) + len(source_columns)))
+    update_clause = ",".join([f"{col}=excluded.{col}" for col in [*columns, *source_columns]])
     with get_connection() as conn:
         conn.executemany(
             f"""
             INSERT INTO features
-            (symbol, timeframe, timestamp, {",".join(columns)})
+            (symbol, timeframe, timestamp, {",".join(columns)}, {",".join(source_columns)})
             VALUES ({placeholders})
             ON CONFLICT(symbol, timeframe, timestamp)
             DO UPDATE SET {update_clause}
@@ -900,9 +1022,9 @@ def save_backtest_result(result: dict[str, Any]) -> None:
              risk_percent, rr, initial_equity, created_at, summary_json, regime_performance_json,
              strategy_performance_json, combination_performance_json, unique_combination_performance_json,
              modifier_impact_json, session_performance_json, monthly_performance_json, pattern_performance_json,
-             pattern_summary_json, mae_mfe_analysis_json, mt5_model_comparison_json, cost_summary_json, calibration_summary_json, spread_slippage_diagnostics_json, data_health_json, feature_summary_json, regime_confidence_json, skipped_setups_json, equity_curve_json,
+             pattern_summary_json, mae_mfe_analysis_json, mt5_model_comparison_json, cost_summary_json, calibration_summary_json, spread_slippage_diagnostics_json, institutional_data_quality_json, data_health_json, feature_summary_json, regime_confidence_json, skipped_setups_json, equity_curve_json,
              drawdown_curve_json, approval_checklist_json, explanation_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 result["run_id"],
@@ -931,6 +1053,7 @@ def save_backtest_result(result: dict[str, Any]) -> None:
                 json.dumps(result.get("cost_summary", {})),
                 json.dumps(result.get("calibration_summary", {})),
                 json.dumps(result.get("spread_slippage_diagnostics", {})),
+                json.dumps(result.get("institutional_data_quality", {})),
                 json.dumps(result.get("data_health", {})),
                 json.dumps(result.get("feature_summary", {})),
                 json.dumps(result.get("regime_confidence", [])),
@@ -1010,15 +1133,59 @@ def save_backtest_result(result: dict[str, Any]) -> None:
             )
 
 
+def set_favorite(item_type: str, item_id: str, is_favorite: bool = True) -> dict[str, Any]:
+    init_db()
+    kind = str(item_type or "").strip().lower()
+    ident = str(item_id or "").strip()
+    if not kind or not ident:
+        raise ValueError("item_type and item_id are required.")
+    now = datetime.now(timezone.utc).isoformat()
+    with get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO favorites (item_type, item_id, is_favorite, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(item_type, item_id)
+            DO UPDATE SET is_favorite = excluded.is_favorite, updated_at = excluded.updated_at
+            """,
+            (kind, ident, 1 if is_favorite else 0, now, now),
+        )
+    return {"item_type": kind, "item_id": ident, "is_favorite": bool(is_favorite), "updated_at": now}
+
+
+def list_favorites(item_type: str | None = None) -> list[dict[str, Any]]:
+    init_db()
+    params: list[Any] = []
+    where = "WHERE is_favorite = 1"
+    if item_type:
+        where += " AND item_type = ?"
+        params.append(str(item_type).strip().lower())
+    with get_connection() as conn:
+        rows = conn.execute(
+            f"""
+            SELECT item_type, item_id, is_favorite, created_at, updated_at
+            FROM favorites
+            {where}
+            ORDER BY updated_at DESC
+            """,
+            params,
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
 def list_backtest_runs(limit: int = 25) -> list[dict[str, Any]]:
     safe_limit = max(1, min(int(limit or 25), 200))
     with get_connection() as conn:
         rows = conn.execute(
             """
-            SELECT run_id, symbol, timeframe, start_date, end_date, regime_filter, strategy_filter,
-                   risk_percent, rr, initial_equity, created_at, summary_json, regime_confidence_json
+            SELECT backtest_runs.run_id, backtest_runs.symbol, backtest_runs.timeframe, backtest_runs.start_date,
+                   backtest_runs.end_date, backtest_runs.regime_filter, backtest_runs.strategy_filter,
+                   backtest_runs.risk_percent, backtest_runs.rr, backtest_runs.initial_equity,
+                   backtest_runs.created_at, summary_json, regime_confidence_json,
+                   COALESCE(f.is_favorite, 0) AS is_favorite
             FROM backtest_runs
-            ORDER BY created_at DESC
+            LEFT JOIN favorites f ON f.item_type = 'backtest' AND f.item_id = backtest_runs.run_id AND f.is_favorite = 1
+            ORDER BY is_favorite DESC, backtest_runs.created_at DESC
             LIMIT ?
             """,
             (safe_limit,),
@@ -1079,6 +1246,7 @@ def load_backtest(run_id: str) -> dict[str, Any] | None:
         "cost_summary": json.loads(row["cost_summary_json"] or "{}"),
         "calibration_summary": json.loads(row["calibration_summary_json"] or "{}"),
         "spread_slippage_diagnostics": json.loads(row["spread_slippage_diagnostics_json"] or "{}"),
+        "institutional_data_quality": json.loads(row["institutional_data_quality_json"] or "{}"),
         "data_health": json.loads(row["data_health_json"] or "{}"),
         "feature_summary": json.loads(row["feature_summary_json"] or "{}"),
         "regime_confidence": json.loads(row["regime_confidence_json"] or "[]"),
@@ -1171,11 +1339,14 @@ def list_ab_experiments(limit: int = 25) -> list[dict[str, Any]]:
     with get_connection() as conn:
         rows = conn.execute(
             """
-            SELECT experiment_id, name, hypothesis, symbol, timeframe, start_date, end_date,
-                   regime_filter, strategy_filter, baseline_label, best_variant_label, status,
-                   created_at, summary_json
+            SELECT ab_experiments.experiment_id, ab_experiments.name, ab_experiments.hypothesis,
+                   ab_experiments.symbol, ab_experiments.timeframe, ab_experiments.start_date,
+                   ab_experiments.end_date, ab_experiments.regime_filter, ab_experiments.strategy_filter,
+                   ab_experiments.baseline_label, ab_experiments.best_variant_label, ab_experiments.status,
+                   ab_experiments.created_at, summary_json, COALESCE(f.is_favorite, 0) AS is_favorite
             FROM ab_experiments
-            ORDER BY created_at DESC
+            LEFT JOIN favorites f ON f.item_type = 'experiment' AND f.item_id = ab_experiments.experiment_id AND f.is_favorite = 1
+            ORDER BY is_favorite DESC, ab_experiments.created_at DESC
             LIMIT ?
             """,
             (safe_limit,),
@@ -1272,8 +1443,10 @@ def list_mt5_report_imports(limit: int = 25) -> list[dict[str, Any]]:
     with get_connection() as conn:
         rows = conn.execute(
             """
-            SELECT * FROM mt5_report_imports
-            ORDER BY created_at DESC
+            SELECT mt5_report_imports.*, COALESCE(f.is_favorite, 0) AS is_favorite
+            FROM mt5_report_imports
+            LEFT JOIN favorites f ON f.item_type = 'mt5_report' AND f.item_id = mt5_report_imports.import_id AND f.is_favorite = 1
+            ORDER BY is_favorite DESC, mt5_report_imports.created_at DESC
             LIMIT ?
             """,
             (safe_limit,),
@@ -1304,4 +1477,162 @@ def load_mt5_report_import(import_id: str) -> dict[str, Any] | None:
         deal["raw"] = json.loads(deal.pop("raw_json") or "{}")
         deals.append(deal)
     item["deals"] = deals
+    return item
+
+
+def _validation_request(result: dict[str, Any], request: dict[str, Any] | None = None) -> dict[str, Any]:
+    if isinstance(request, dict) and request:
+        return request
+    for key in ("request", "payload_received", "payload"):
+        value = result.get(key)
+        if isinstance(value, dict):
+            return value
+    return {}
+
+
+def _validation_summary(validation_type: str, result: dict[str, Any]) -> dict[str, Any]:
+    summary = result.get("summary") if isinstance(result.get("summary"), dict) else {}
+    if summary:
+        return summary
+    if validation_type == "mt5_tester":
+        bridge = result.get("bridge") if isinstance(result.get("bridge"), dict) else {}
+        tester = bridge.get("mt5_strategy_tester") if isinstance(bridge.get("mt5_strategy_tester"), dict) else {}
+        return {
+            "status": result.get("status"),
+            "order_execution": result.get("order_execution", False),
+            "tester_status": tester.get("runner_layer_status") or result.get("status"),
+            "terminal_path": result.get("terminal_path"),
+            "report_found_path": result.get("report_found_path"),
+        }
+    if validation_type == "mt5_model_comparison":
+        return {
+            "status": result.get("status"),
+            "symbol": result.get("symbol"),
+            "timeframe": result.get("timeframe"),
+            "missing_models": result.get("missing_models", []),
+            "checks_passed": sum(1 for row in result.get("checks", []) if row.get("passed")),
+            "checks_total": len(result.get("checks", [])),
+        }
+    return {"status": result.get("status", "UNKNOWN")}
+
+
+def _validation_status(validation_type: str, result: dict[str, Any], summary: dict[str, Any]) -> str:
+    status = summary.get("status") or result.get("status")
+    if status:
+        return str(status)
+    if validation_type == "walk_forward":
+        return "PASS" if summary.get("stable") else "FAIL"
+    if validation_type == "out_of_sample":
+        return "PASS" if summary.get("stable") else "WATCHLIST"
+    return "UNKNOWN"
+
+
+def save_validation_result(validation_type: str, result: dict[str, Any], request: dict[str, Any] | None = None) -> dict[str, Any]:
+    init_db()
+    req = _validation_request(result, request)
+    if "payload" in req and isinstance(req.get("payload"), dict):
+        base_req = req["payload"]
+    else:
+        base_req = req
+    summary = _validation_summary(validation_type, result)
+    warnings = result.get("warnings") if isinstance(result.get("warnings"), list) else []
+    validation_run_id = str(result.get("validation_run_id") or result.get("comparison_id") or result.get("run_id") or uuid.uuid4())
+    created_at = str(result.get("created_at") or datetime.now(timezone.utc).isoformat())
+    status = _validation_status(validation_type, result, summary)
+    backtest = result.get("backtest") if isinstance(result.get("backtest"), dict) else {}
+    source_run_id = result.get("run_id") or result.get("python_run_id") or backtest.get("run_id")
+    row = {
+        "validation_run_id": validation_run_id,
+        "validation_type": validation_type,
+        "status": status,
+        "symbol": base_req.get("symbol"),
+        "timeframe": base_req.get("timeframe"),
+        "start_date": base_req.get("start_date"),
+        "end_date": base_req.get("end_date"),
+        "regime_filter": base_req.get("regime_filter", "ALL"),
+        "strategy_filter": base_req.get("strategy_filter", "ALL"),
+        "source_run_id": source_run_id,
+        "created_at": created_at,
+        "request": req,
+        "summary": summary,
+        "result": result,
+        "warnings": warnings,
+    }
+    with get_connection() as conn:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO validation_runs
+            (validation_run_id, validation_type, status, symbol, timeframe, start_date, end_date,
+             regime_filter, strategy_filter, source_run_id, created_at, request_json, summary_json,
+             result_json, warnings_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                row["validation_run_id"],
+                row["validation_type"],
+                row["status"],
+                row["symbol"],
+                row["timeframe"],
+                row["start_date"],
+                row["end_date"],
+                row["regime_filter"],
+                row["strategy_filter"],
+                row["source_run_id"],
+                row["created_at"],
+                json.dumps(row["request"]),
+                json.dumps(row["summary"]),
+                json.dumps(row["result"]),
+                json.dumps(row["warnings"]),
+            ),
+        )
+    result["validation_run_id"] = validation_run_id
+    result["validation_saved"] = True
+    return row
+
+
+def list_validation_runs(limit: int = 25, validation_type: str | None = None) -> list[dict[str, Any]]:
+    init_db()
+    safe_limit = max(1, min(int(limit or 25), 200))
+    params: list[Any] = []
+    where = ""
+    if validation_type:
+        where = "WHERE validation_type = ?"
+        params.append(validation_type)
+    params.append(safe_limit)
+    with get_connection() as conn:
+        rows = conn.execute(
+            f"""
+            SELECT validation_runs.validation_run_id, validation_runs.validation_type, validation_runs.status,
+                   validation_runs.symbol, validation_runs.timeframe, validation_runs.start_date, validation_runs.end_date,
+                   validation_runs.regime_filter, validation_runs.strategy_filter, validation_runs.source_run_id,
+                   validation_runs.created_at, summary_json, warnings_json,
+                   COALESCE(f.is_favorite, 0) AS is_favorite
+            FROM validation_runs
+            LEFT JOIN favorites f ON f.item_type = 'validation' AND f.item_id = validation_runs.validation_run_id AND f.is_favorite = 1
+            {where}
+            ORDER BY is_favorite DESC, validation_runs.created_at DESC
+            LIMIT ?
+            """,
+            params,
+        ).fetchall()
+    items = []
+    for row in rows:
+        item = dict(row)
+        item["summary"] = json.loads(item.pop("summary_json") or "{}")
+        item["warnings"] = json.loads(item.pop("warnings_json") or "[]")
+        items.append(item)
+    return items
+
+
+def load_validation_run(validation_run_id: str) -> dict[str, Any] | None:
+    init_db()
+    with get_connection() as conn:
+        row = conn.execute("SELECT * FROM validation_runs WHERE validation_run_id = ?", (validation_run_id,)).fetchone()
+    if row is None:
+        return None
+    item = dict(row)
+    item["request"] = json.loads(item.pop("request_json") or "{}")
+    item["summary"] = json.loads(item.pop("summary_json") or "{}")
+    item["result"] = json.loads(item.pop("result_json") or "{}")
+    item["warnings"] = json.loads(item.pop("warnings_json") or "[]")
     return item

@@ -147,7 +147,14 @@ def _row_to_candle(row) -> dict[str, Any]:
     }
 
 
-def fetch_candles(symbol: str, timeframe: str, start_date: str, end_date: str) -> dict[str, Any]:
+def fetch_candles(
+    symbol: str,
+    timeframe: str,
+    start_date: str,
+    end_date: str,
+    data_source: str | None = None,
+    provider: str | None = None,
+) -> dict[str, Any]:
     mt5 = _load_mt5()
     if not mt5.initialize():
         return {"saved": 0, "error": "MT5 terminal not connected or credentials invalid."}
@@ -158,7 +165,7 @@ def fetch_candles(symbol: str, timeframe: str, start_date: str, end_date: str) -
     if rates is None:
         return {"saved": 0, "error": "MT5 terminal not connected or credentials invalid.", "details": str(mt5.last_error())}
     candles = [_row_to_candle(row) for row in rates]
-    return {"saved": save_candles(symbol, timeframe, candles), "symbol": symbol, "timeframe": timeframe}
+    return {"saved": save_candles(symbol, timeframe, candles, data_source=data_source, provider=provider), "symbol": symbol, "timeframe": timeframe}
 
 
 def fetch_recent_bars(symbol: str, timeframe: str, bars: int) -> dict[str, Any]:
