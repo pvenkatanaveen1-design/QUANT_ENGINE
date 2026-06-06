@@ -5,6 +5,7 @@ from backend.app import app
 from backend.backtest_engine import _apply_regime_hysteresis, _apply_research_mode_preset, _mae_mfe_analysis, _mae_mfe_for_trade
 from backend.database import save_backtest_result, save_candles
 from backend.institutional_data_engine import evaluate_institutional_data_quality
+from backend.walk_forward_engine import _failure_diagnostics
 
 
 def test_health_endpoint():
@@ -156,6 +157,27 @@ def test_institutional_data_quality_accepts_declared_l2_order_flow_source():
     assert result["validation_status"] == "INSTITUTIONAL_RESEARCH_READY"
 
 
+def test_walk_forward_failure_diagnostics_pinpoint_failed_windows():
+    windows = [
+        {
+            "window": 1,
+            "status": "FAIL",
+            "test": {"total_trades": 3, "profit_factor": 0.8, "expectancy_R": -0.1, "total_R": -0.3},
+            "reasons": [
+                "Only 3 out-of-sample trades; minimum is 8.",
+                "Out-of-sample expectancy is not positive.",
+                "Out-of-sample profit factor is below 1.05.",
+            ],
+        }
+    ]
+
+    result = _failure_diagnostics(windows, min_test_trades=8, min_pf=1.05)
+
+    assert result["weakest_windows"][0]["window"] == 1
+    assert result["failure_reason_counts"]["Out-of-sample expectancy is not positive."] == 1
+    assert any("Trade sample is too thin" in item for item in result["suggestions"])
+
+
 def test_optimizer_grid_endpoint_returns_ui_ready_no_data_result():
     client = TestClient(app)
     payload = {
@@ -285,6 +307,62 @@ def test_portfolio_backtest_endpoint_returns_ui_ready_no_data_result():
     assert body["risk_diagnostics"]["checks"][0]["check"] == "portfolio_has_trades"
     assert len(body["symbol_timeframe_matrix"]) == 4
     assert body["symbol_performance"] == []
+
+
+def test_monthly_regime_sweep_returns_ui_ready_no_data_result():
+    client = TestClient(app)
+    payload = {
+        "symbol": "NO_SUCH_MONTHLY",
+        "timeframe": "M15",
+        "start_date": "2026-01-01",
+        "end_date": "2026-03-01",
+        "months_back": 2,
+        "regime_filters": ["R01", "R02"],
+        "strategy_filters": "ALL",
+        "risk_percent": 1.0,
+        "rr": 2.0,
+        "initial_equity": 100000,
+        "max_combinations_per_regime_month": 2,
+        "stop_atr_grid": [0.25, 1.0],
+        "min_effective_stop_spread_mult": [10],
+    }
+    response = client.post("/api/research/monthly-regime-sweep", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["summary"]["status"] == "NO_WORKING_CANDIDATES"
+    assert body["summary"]["worked_candidates"] == 0
+    assert body["month_summaries"]
+    assert body["failure_diagnostics"][0]["failure_bucket"] == "data_not_found"
+
+
+def test_monthly_regime_sweep_accepts_months_back_without_dates():
+    client = TestClient(app)
+    response = client.post(
+        "/api/research/monthly-regime-sweep",
+        json={
+            "symbol": "NO_SUCH_MONTHLY_AUTO",
+            "timeframe": "M15",
+            "months_back": 1,
+            "regime_filters": ["R01"],
+            "strategy_filters": ["T1"],
+            "max_combinations_per_regime_month": 1,
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["summary"]["months_tested"] == 1
+    assert body["summary"]["regimes_tested"] == 1
+    assert body["failure_diagnostics"][0]["failure_bucket"] == "data_not_found"
+    assert body["monthly_sweep_saved"] is True
+    assert body["monthly_sweep_run_id"]
+
+    listed = client.get("/api/research/monthly-regime-sweeps?limit=5")
+    assert listed.status_code == 200
+    assert any(item["monthly_sweep_run_id"] == body["monthly_sweep_run_id"] for item in listed.json()["monthly_sweeps"])
+
+    loaded = client.get(f"/api/research/monthly-regime-sweeps/{body['monthly_sweep_run_id']}")
+    assert loaded.status_code == 200
+    assert loaded.json()["monthly_sweep_run_id"] == body["monthly_sweep_run_id"]
 
 
 def test_macro_evidence_endpoint_resolves_macro_biases():
@@ -917,3 +995,42 @@ def test_regime_hysteresis_allows_danger_regime_immediate_override():
     assert stable[1]["stable_regime_id"] == "R40"
     assert stable[1]["regime_hysteresis_applied"] == 0
     assert "overrode" in stable[1]["regime_hysteresis_reason"]
+
+
+def test_research_value_profiles_save_list_load_round_trip():
+    client = TestClient(app)
+    payload = {
+        "name": "R01 T1 edited values",
+        "description": "pytest editable research profile",
+        "payload": {
+            "symbol": "EURUSD",
+            "timeframe": "M15",
+            "regime_filter": "R01",
+            "strategy_filter": "T1",
+            "filters": {"min_alpha_score": 8, "max_spread_percentile": 65},
+            "pattern_engine": {"use_patterns": True, "pattern_score_mode": "hard_minimum", "min_pattern_score": 2},
+            "calibration": {"profile": "balanced", "overrides": {"R01": {"er_min": 0.25}}},
+            "strategy_controls": {"stop_atr_override": 0.75, "min_effective_stop_spread_mult": 10},
+            "costs": {"cost_mode": "stress_adjusted", "cost_r_per_trade": 0.05},
+        },
+        "metrics": {"profit_factor": 1.25, "expectancy_R": 0.12},
+        "tags": ["R01", "T1", "pytest"],
+    }
+
+    response = client.post("/api/research/value-profiles", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "SAVED"
+    profile_id = body["profile"]["profile_id"]
+
+    listed = client.get("/api/research/value-profiles", params={"limit": 10})
+    assert listed.status_code == 200
+    assert any(item["profile_id"] == profile_id for item in listed.json()["profiles"])
+
+    loaded = client.get(f"/api/research/value-profiles/{profile_id}")
+    assert loaded.status_code == 200
+    profile = loaded.json()["profile"]
+    assert profile["payload"]["filters"]["min_alpha_score"] == 8
+    assert profile["payload"]["pattern_engine"]["min_pattern_score"] == 2
+    assert profile["payload"]["strategy_controls"]["stop_atr_override"] == 0.75
+    assert profile["metrics"]["profit_factor"] == 1.25

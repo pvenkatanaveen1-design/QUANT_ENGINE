@@ -337,6 +337,7 @@ def _calculate_htf(df: pd.DataFrame, timeframe: str) -> pd.DataFrame:
 
 
 def _add_opening_ranges(df: pd.DataFrame, timeframe: str) -> pd.DataFrame:
+    df = df.copy()
     minutes = TIMEFRAME_MINUTES.get(timeframe.upper(), 15)
     opening_bars = max(1, int(np.ceil(30 / minutes)))
     tradable_sessions = {"Asia", "London", "NewYork", "Overlap"}
@@ -596,7 +597,7 @@ def calculate_features(
         & (df["close"] > df["prev_swing_low"])
         & (df["lower_wick_ratio"] >= 0.35)
     ).astype(int)
-    df = _add_opening_ranges(df, timeframe)
+    df = _add_opening_ranges(df, timeframe).copy()
 
     df["chop_score"] = (
         (df["adx"] <= 18).astype(int)

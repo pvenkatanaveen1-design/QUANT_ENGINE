@@ -390,6 +390,79 @@ def init_db() -> None:
                 warnings_json TEXT
             );
 
+            CREATE TABLE IF NOT EXISTS monthly_regime_sweep_runs (
+                monthly_sweep_run_id TEXT PRIMARY KEY,
+                validation_run_id TEXT,
+                status TEXT,
+                symbol TEXT,
+                timeframe TEXT,
+                start_date TEXT,
+                end_date TEXT,
+                months_back INTEGER,
+                regimes_tested INTEGER,
+                optimizer_runs INTEGER,
+                worked_candidate_count INTEGER,
+                failed_regime_months INTEGER,
+                created_at TEXT,
+                request_json TEXT,
+                summary_json TEXT,
+                month_summaries_json TEXT,
+                failure_diagnostics_json TEXT,
+                regime_robustness_json TEXT,
+                warnings_json TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS monthly_regime_sweep_candidates (
+                id INTEGER PRIMARY KEY,
+                monthly_sweep_run_id TEXT,
+                validation_run_id TEXT,
+                month TEXT,
+                start_date TEXT,
+                end_date TEXT,
+                symbol TEXT,
+                timeframe TEXT,
+                regime_id TEXT,
+                regime_name TEXT,
+                strategy_id TEXT,
+                strategy_name TEXT,
+                status TEXT,
+                optimizer_status TEXT,
+                rank INTEGER,
+                total_trades INTEGER,
+                win_rate REAL,
+                profit_factor REAL,
+                expectancy_R REAL,
+                max_drawdown_R REAL,
+                net_profit REAL,
+                roi_percent REAL,
+                optimizer_score REAL,
+                stop_atr REAL,
+                min_effective_stop_spread_mult REAL,
+                pattern_mode TEXT,
+                min_pattern_score REAL,
+                calibration_profile TEXT,
+                settings_json TEXT,
+                reasons_json TEXT,
+                created_at TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS research_value_profiles (
+                profile_id TEXT PRIMARY KEY,
+                name TEXT,
+                description TEXT,
+                symbol TEXT,
+                timeframe TEXT,
+                regime_filter TEXT,
+                strategy_filter TEXT,
+                source_type TEXT,
+                source_id TEXT,
+                created_at TEXT,
+                updated_at TEXT,
+                payload_json TEXT,
+                metrics_json TEXT,
+                tags_json TEXT
+            );
+
             CREATE TABLE IF NOT EXISTS favorites (
                 item_type TEXT,
                 item_id TEXT,
@@ -1635,4 +1708,310 @@ def load_validation_run(validation_run_id: str) -> dict[str, Any] | None:
     item["summary"] = json.loads(item.pop("summary_json") or "{}")
     item["result"] = json.loads(item.pop("result_json") or "{}")
     item["warnings"] = json.loads(item.pop("warnings_json") or "[]")
+    return item
+
+
+def save_monthly_regime_sweep_result(result: dict[str, Any], request: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Persist monthly sweep runs and worked candidates as first-class SQLite rows."""
+    init_db()
+    summary = result.get("summary") if isinstance(result.get("summary"), dict) else {}
+    month_summaries = result.get("month_summaries") if isinstance(result.get("month_summaries"), list) else []
+    worked_candidates = result.get("worked_candidates") if isinstance(result.get("worked_candidates"), list) else []
+    warnings = result.get("warnings") if isinstance(result.get("warnings"), list) else []
+    req = request or (result.get("request") if isinstance(result.get("request"), dict) else {})
+    monthly_sweep_run_id = str(result.get("monthly_sweep_run_id") or uuid.uuid4())
+    validation_run_id = result.get("validation_run_id")
+    created_at = str(result.get("created_at") or datetime.now(timezone.utc).isoformat())
+    start_dates = [str(row.get("start_date")) for row in month_summaries if row.get("start_date")]
+    end_dates = [str(row.get("end_date")) for row in month_summaries if row.get("end_date")]
+    run_row = {
+        "monthly_sweep_run_id": monthly_sweep_run_id,
+        "validation_run_id": validation_run_id,
+        "status": summary.get("status"),
+        "symbol": summary.get("symbol") or req.get("symbol"),
+        "timeframe": summary.get("timeframe") or req.get("timeframe"),
+        "start_date": min(start_dates) if start_dates else req.get("start_date"),
+        "end_date": max(end_dates) if end_dates else req.get("end_date"),
+        "months_back": summary.get("months_tested") or req.get("months_back"),
+        "regimes_tested": summary.get("regimes_tested"),
+        "optimizer_runs": summary.get("optimizer_runs"),
+        "worked_candidate_count": len(worked_candidates),
+        "failed_regime_months": summary.get("failed_regime_months"),
+        "created_at": created_at,
+        "request": req,
+        "summary": summary,
+        "month_summaries": month_summaries,
+        "failure_diagnostics": result.get("failure_diagnostics", []),
+        "regime_robustness": result.get("regime_robustness", []),
+        "warnings": warnings,
+    }
+    candidate_columns = [
+        "monthly_sweep_run_id",
+        "validation_run_id",
+        "month",
+        "start_date",
+        "end_date",
+        "symbol",
+        "timeframe",
+        "regime_id",
+        "regime_name",
+        "strategy_id",
+        "strategy_name",
+        "status",
+        "optimizer_status",
+        "rank",
+        "total_trades",
+        "win_rate",
+        "profit_factor",
+        "expectancy_R",
+        "max_drawdown_R",
+        "net_profit",
+        "roi_percent",
+        "optimizer_score",
+        "stop_atr",
+        "min_effective_stop_spread_mult",
+        "pattern_mode",
+        "min_pattern_score",
+        "calibration_profile",
+        "settings_json",
+        "reasons_json",
+        "created_at",
+    ]
+    candidate_values = []
+    for candidate in worked_candidates:
+        candidate_values.append(
+            (
+                monthly_sweep_run_id,
+                validation_run_id,
+                candidate.get("month"),
+                candidate.get("start_date"),
+                candidate.get("end_date"),
+                candidate.get("symbol"),
+                candidate.get("timeframe"),
+                candidate.get("regime_id"),
+                candidate.get("regime_name"),
+                candidate.get("strategy_id"),
+                candidate.get("strategy_name"),
+                candidate.get("status"),
+                candidate.get("optimizer_status"),
+                candidate.get("rank"),
+                candidate.get("total_trades"),
+                candidate.get("win_rate"),
+                candidate.get("profit_factor"),
+                candidate.get("expectancy_R"),
+                candidate.get("max_drawdown_R"),
+                candidate.get("net_profit"),
+                candidate.get("roi_percent"),
+                candidate.get("optimizer_score"),
+                candidate.get("stop_atr"),
+                candidate.get("min_effective_stop_spread_mult"),
+                candidate.get("pattern_mode"),
+                candidate.get("min_pattern_score"),
+                candidate.get("calibration_profile"),
+                json.dumps(candidate.get("settings", {})),
+                json.dumps(candidate.get("reasons", [])),
+                created_at,
+            )
+        )
+    with get_connection() as conn:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO monthly_regime_sweep_runs
+            (monthly_sweep_run_id, validation_run_id, status, symbol, timeframe, start_date, end_date,
+             months_back, regimes_tested, optimizer_runs, worked_candidate_count, failed_regime_months,
+             created_at, request_json, summary_json, month_summaries_json, failure_diagnostics_json,
+             regime_robustness_json, warnings_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                run_row["monthly_sweep_run_id"],
+                run_row["validation_run_id"],
+                run_row["status"],
+                run_row["symbol"],
+                run_row["timeframe"],
+                run_row["start_date"],
+                run_row["end_date"],
+                run_row["months_back"],
+                run_row["regimes_tested"],
+                run_row["optimizer_runs"],
+                run_row["worked_candidate_count"],
+                run_row["failed_regime_months"],
+                run_row["created_at"],
+                json.dumps(run_row["request"]),
+                json.dumps(run_row["summary"]),
+                json.dumps(run_row["month_summaries"]),
+                json.dumps(run_row["failure_diagnostics"]),
+                json.dumps(run_row["regime_robustness"]),
+                json.dumps(run_row["warnings"]),
+            ),
+        )
+        conn.execute("DELETE FROM monthly_regime_sweep_candidates WHERE monthly_sweep_run_id = ?", (monthly_sweep_run_id,))
+        if candidate_values:
+            placeholders = ",".join(["?"] * len(candidate_columns))
+            conn.executemany(
+                f"INSERT INTO monthly_regime_sweep_candidates ({','.join(candidate_columns)}) VALUES ({placeholders})",
+                candidate_values,
+            )
+    result["monthly_sweep_run_id"] = monthly_sweep_run_id
+    result["monthly_sweep_saved"] = True
+    result["saved_candidate_count"] = len(worked_candidates)
+    return run_row
+
+
+def list_monthly_regime_sweep_runs(limit: int = 25) -> list[dict[str, Any]]:
+    init_db()
+    safe_limit = max(1, min(int(limit or 25), 200))
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT monthly_regime_sweep_runs.*,
+                   COALESCE(f.is_favorite, 0) AS is_favorite
+            FROM monthly_regime_sweep_runs
+            LEFT JOIN favorites f ON f.item_type = 'monthly_sweep' AND f.item_id = monthly_regime_sweep_runs.monthly_sweep_run_id AND f.is_favorite = 1
+            ORDER BY is_favorite DESC, created_at DESC
+            LIMIT ?
+            """,
+            (safe_limit,),
+        ).fetchall()
+    items = []
+    for row in rows:
+        item = dict(row)
+        item["summary"] = json.loads(item.pop("summary_json") or "{}")
+        item["warnings"] = json.loads(item.pop("warnings_json") or "[]")
+        item.pop("request_json", None)
+        item.pop("month_summaries_json", None)
+        item.pop("failure_diagnostics_json", None)
+        item.pop("regime_robustness_json", None)
+        items.append(item)
+    return items
+
+
+def load_monthly_regime_sweep_run(monthly_sweep_run_id: str) -> dict[str, Any] | None:
+    init_db()
+    with get_connection() as conn:
+        row = conn.execute("SELECT * FROM monthly_regime_sweep_runs WHERE monthly_sweep_run_id = ?", (monthly_sweep_run_id,)).fetchone()
+        candidates = conn.execute(
+            """
+            SELECT * FROM monthly_regime_sweep_candidates
+            WHERE monthly_sweep_run_id = ?
+            ORDER BY month, regime_id, rank
+            """,
+            (monthly_sweep_run_id,),
+        ).fetchall()
+    if row is None:
+        return None
+    item = dict(row)
+    result = {
+        "monthly_sweep_run_id": item["monthly_sweep_run_id"],
+        "monthly_sweep_saved": True,
+        "validation_run_id": item["validation_run_id"],
+        "validation_saved": bool(item["validation_run_id"]),
+        "created_at": item["created_at"],
+        "summary": json.loads(item.pop("summary_json") or "{}"),
+        "month_summaries": json.loads(item.pop("month_summaries_json") or "[]"),
+        "worked_candidates": [],
+        "failed_regimes": [],
+        "failure_diagnostics": json.loads(item.pop("failure_diagnostics_json") or "[]"),
+        "regime_robustness": json.loads(item.pop("regime_robustness_json") or "[]"),
+        "optimizer_runs": [],
+        "warnings": json.loads(item.pop("warnings_json") or "[]"),
+        "request": json.loads(item.pop("request_json") or "{}"),
+    }
+    for row in candidates:
+        candidate = dict(row)
+        candidate["settings"] = json.loads(candidate.pop("settings_json") or "{}")
+        candidate["reasons"] = json.loads(candidate.pop("reasons_json") or "[]")
+        candidate.pop("id", None)
+        result["worked_candidates"].append(candidate)
+    result["saved_candidate_count"] = len(result["worked_candidates"])
+    return result
+
+
+def save_research_value_profile(profile: dict[str, Any]) -> dict[str, Any]:
+    init_db()
+    payload = profile.get("payload") if isinstance(profile.get("payload"), dict) else {}
+    metrics = profile.get("metrics") if isinstance(profile.get("metrics"), dict) else {}
+    tags = profile.get("tags") if isinstance(profile.get("tags"), list) else []
+    now = datetime.now(timezone.utc).isoformat()
+    profile_id = str(profile.get("profile_id") or uuid.uuid4())
+    name = str(profile.get("name") or f"{payload.get('regime_filter', 'ALL')} {payload.get('strategy_filter', 'ALL')} values").strip()
+    row = {
+        "profile_id": profile_id,
+        "name": name,
+        "description": profile.get("description") or "",
+        "symbol": payload.get("symbol") or profile.get("symbol"),
+        "timeframe": payload.get("timeframe") or profile.get("timeframe"),
+        "regime_filter": payload.get("regime_filter") or profile.get("regime_filter", "ALL"),
+        "strategy_filter": payload.get("strategy_filter") or profile.get("strategy_filter", "ALL"),
+        "source_type": profile.get("source_type") or "manual_ui",
+        "source_id": profile.get("source_id"),
+        "created_at": profile.get("created_at") or now,
+        "updated_at": now,
+        "payload": payload,
+        "metrics": metrics,
+        "tags": tags,
+    }
+    with get_connection() as conn:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO research_value_profiles
+            (profile_id, name, description, symbol, timeframe, regime_filter, strategy_filter,
+             source_type, source_id, created_at, updated_at, payload_json, metrics_json, tags_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                row["profile_id"],
+                row["name"],
+                row["description"],
+                row["symbol"],
+                row["timeframe"],
+                row["regime_filter"],
+                row["strategy_filter"],
+                row["source_type"],
+                row["source_id"],
+                row["created_at"],
+                row["updated_at"],
+                json.dumps(row["payload"]),
+                json.dumps(row["metrics"]),
+                json.dumps(row["tags"]),
+            ),
+        )
+    return row
+
+
+def list_research_value_profiles(limit: int = 25) -> list[dict[str, Any]]:
+    init_db()
+    safe_limit = max(1, min(int(limit or 25), 200))
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT research_value_profiles.*,
+                   COALESCE(f.is_favorite, 0) AS is_favorite
+            FROM research_value_profiles
+            LEFT JOIN favorites f ON f.item_type = 'research_values' AND f.item_id = research_value_profiles.profile_id AND f.is_favorite = 1
+            ORDER BY is_favorite DESC, updated_at DESC
+            LIMIT ?
+            """,
+            (safe_limit,),
+        ).fetchall()
+    items = []
+    for row in rows:
+        item = dict(row)
+        item["payload"] = json.loads(item.pop("payload_json") or "{}")
+        item["metrics"] = json.loads(item.pop("metrics_json") or "{}")
+        item["tags"] = json.loads(item.pop("tags_json") or "[]")
+        items.append(item)
+    return items
+
+
+def load_research_value_profile(profile_id: str) -> dict[str, Any] | None:
+    init_db()
+    with get_connection() as conn:
+        row = conn.execute("SELECT * FROM research_value_profiles WHERE profile_id = ?", (profile_id,)).fetchone()
+    if row is None:
+        return None
+    item = dict(row)
+    item["payload"] = json.loads(item.pop("payload_json") or "{}")
+    item["metrics"] = json.loads(item.pop("metrics_json") or "{}")
+    item["tags"] = json.loads(item.pop("tags_json") or "[]")
     return item

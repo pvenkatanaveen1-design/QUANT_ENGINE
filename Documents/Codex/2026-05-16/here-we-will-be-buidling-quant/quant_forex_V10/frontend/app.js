@@ -27,6 +27,11 @@ const state = {
   llmReview: null,
   finalApproval: null,
   regimeLab: null,
+  monthlyResearch: null,
+  savedMonthlySweeps: [],
+  savedValueProfiles: [],
+  activeValueProfile: null,
+  activeValuePayloadOverride: null,
   abExperiment: null,
   savedExperiments: [],
   latestMarket: null,
@@ -691,6 +696,27 @@ function parseJsonValue(id, fallback = {}) {
   return JSON.parse(raw);
 }
 
+function deepMerge(base, override) {
+  if (!override || typeof override !== "object" || Array.isArray(override)) return base;
+  const merged = { ...(base || {}) };
+  Object.entries(override).forEach(([key, value]) => {
+    if (value && typeof value === "object" && !Array.isArray(value) && merged[key] && typeof merged[key] === "object" && !Array.isArray(merged[key])) {
+      merged[key] = deepMerge(merged[key], value);
+    } else if (value !== undefined) {
+      merged[key] = value;
+    }
+  });
+  return merged;
+}
+
+function parseJsonEditor(id, fallback = {}) {
+  try {
+    return parseJsonValue(id, fallback);
+  } catch (err) {
+    throw new Error(`${id} contains invalid JSON: ${err.message}`);
+  }
+}
+
 function labDefaultResearchValues(regimeId) {
   const mapped = strategiesForRegime(regimeId);
   const rrValues = numericValues([...mapped.map((s) => s.default_rr), 1.5, 2.0]).filter((v) => v > 0);
@@ -703,6 +729,10 @@ function labDefaultResearchValues(regimeId) {
     pattern_score_modes: ["score_only", "hard_minimum"],
     min_pattern_scores: [0, 2, 3],
     calibration_profiles: ["balanced", "conservative", "funded_style"],
+    stop_atr_values: [0.25, 0.35, 0.5, 0.75, 1.0, 1.25],
+    stop_override_modes: ["widen_only"],
+    min_effective_stop_spread_mult_values: [10],
+    use_symbol_session_stop_profile_values: [true],
     adx_min_values: [],
     adx_max_values: [],
     er_min_values: [],
@@ -768,6 +798,8 @@ function renderRegimeLabResult() {
     ["Min Trades", summary.min_trades],
     ["Min PF", summary.min_profit_factor],
     ["Max DD R", summary.max_drawdown_r],
+    ["Validated", summary.validated_candidates],
+    ["Saved Passed", summary.saved_validated_candidates],
   ]);
   $("labCandidateTable").innerHTML = table(
     [
@@ -780,12 +812,20 @@ function renderRegimeLabResult() {
       { label: "KZ", key: "killzone_mode" },
       { label: "Spread Mode", key: "spread_filter_mode" },
       { label: "Pattern", render: (r) => `${r.pattern_score_mode} / ${r.min_pattern_score}` },
+      { label: "Stop ATR", key: "stop_atr" },
+      { label: "Stop/Spread", key: "min_effective_stop_spread_mult" },
       { label: "Trades", key: "total_trades" },
       { label: "Win", render: (r) => r.win_rate !== undefined ? `${(Number(r.win_rate) * 100).toFixed(1)}%` : "--" },
       { label: "PF", key: "profit_factor" },
       { label: "Exp R", key: "expectancy_R" },
+      { label: "T", key: "edge_t_stat" },
+      { label: "P", key: "edge_p_value_approx" },
       { label: "DD R", key: "max_drawdown_R" },
       { label: "Score", key: "optimizer_score" },
+      { label: "OOS", render: (r) => r.oos_status ? `${r.oos_status} PF:${fmt(r.oos_pf)}` : "--" },
+      { label: "WF", render: (r) => r.wf_pass_rate !== undefined ? `${(Number(r.wf_pass_rate) * 100).toFixed(0)}% / ${fmt(r.wf_efficiency)}` : "--" },
+      { label: "MC", render: (r) => r.mc_status ? `${r.mc_status} loss:${r.mc_loss_probability !== undefined ? `${(Number(r.mc_loss_probability) * 100).toFixed(0)}%` : "--"}` : "--" },
+      { label: "Validated", render: (r) => r.validation_status ? statusBadge(r.validation_status) : "--" },
       { label: "Status", render: (r) => statusBadge(r.status) },
     ],
     (result.results || []).slice(0, 12),
@@ -873,6 +913,10 @@ function currentRegimeLabPayload() {
     "confidence_min_values",
     "max_spread_percentile_values",
     "range_edge_tolerance_values",
+    "stop_atr_values",
+    "stop_override_modes",
+    "min_effective_stop_spread_mult_values",
+    "use_symbol_session_stop_profile_values",
   ].forEach((key) => {
     if (Array.isArray(researchValues[key]) && researchValues[key].length) grid[key] = researchValues[key];
   });
@@ -884,7 +928,42 @@ function currentRegimeLabPayload() {
     min_trades: Number($("labMinTrades").value || 20),
     min_profit_factor: Number($("labMinPf").value || 1.15),
     max_drawdown_r: Number($("labMaxDd").value || 12),
+    validate_top_n: Number($("labValidateTopN")?.value || 0),
+    persist_validated_candidates: $("labPersistValidated")?.checked ?? true,
+    validation: optimizerValidationSettings(),
     grid,
+  };
+}
+
+function currentMonthlyResearchPayload() {
+  const base = currentPayload();
+  const regimes = parseCsv("monthlySweepRegimes", ["ALL"]);
+  return {
+    ...base,
+    timeframe: "M15",
+    start_date: null,
+    end_date: base.end_date,
+    months_back: Number($("monthlySweepMonthsBack")?.value || 6),
+    regime_filters: regimes.length ? regimes : "ALL",
+    strategy_filters: "ALL",
+    stop_atr_grid: parseNumberCsv("monthlySweepStopGrid", [0.25, 0.35, 0.5, 0.75, 1.0, 1.25]),
+    min_effective_stop_spread_mult: parseNumberCsv("monthlySweepMinStopSpread", [10]),
+    use_symbol_session_stop_profile: $("monthlySweepUseProfiles")?.checked ?? true,
+    stop_override_mode: "widen_only",
+    min_effective_stop_mode: "widen",
+    max_combinations_per_regime_month: Number($("monthlySweepMaxCombos")?.value || 24),
+    top_candidates_per_regime_month: Number($("monthlySweepTopN")?.value || 3),
+    min_monthly_trades: Number($("monthlySweepMinTrades")?.value || 1),
+    min_monthly_profit_factor: Number($("monthlySweepMinPf")?.value || 1.05),
+    max_monthly_drawdown_r: Number($("monthlySweepMaxDd")?.value || 8),
+    require_positive_monthly_profit: true,
+    save_only_working: $("monthlySweepSaveOnlyWorking")?.checked ?? true,
+    strategy_controls: {
+      ...base.strategy_controls,
+      use_stop_realism: true,
+      use_symbol_session_stop_profile: $("monthlySweepUseProfiles")?.checked ?? true,
+      min_effective_stop_mode: "widen",
+    },
   };
 }
 
@@ -1198,6 +1277,18 @@ function renderResearchPanels() {
     d.symbol || [],
     "Run a backtest to show symbol spread diagnostics."
   );
+  const failure = state.backtest?.execution_failure_summary || {};
+  $("executionFailureDiagnostics").innerHTML = table(
+    [
+      { label: "Failure Type", key: "failure_type" },
+      { label: "Trade Checks", key: "trade_checks" },
+      { label: "Trade Warnings", key: "trade_warnings" },
+      { label: "Skipped Blocks", key: "skipped_blocks" },
+      { label: "Status", render: (r) => statusBadge(r.status || "INFO") },
+    ],
+    failure.rows || [],
+    "Run a backtest with stop/execution realism to show live-market failure diagnostics."
+  );
 
   const rows = selectedId ? (state.backtest?.regime_confidence || []).filter((r) => r.regime_id === selectedId) : [];
   $("regimeConfidencePanel").innerHTML = table(
@@ -1252,6 +1343,17 @@ function renderWalkForward() {
   );
   if ((result.warnings || []).length) {
     $("walkForwardTable").innerHTML += `<div class="mt-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><b>Warnings:</b> ${escapeHtml(result.warnings.join(" "))}</div>`;
+  }
+  const diagnostics = result.diagnostics || {};
+  const suggestions = diagnostics.suggestions || [];
+  if (suggestions.length || Object.keys(diagnostics.failure_reason_counts || {}).length) {
+    const reasonRows = Object.entries(diagnostics.failure_reason_counts || {}).map(([reason, count]) => ({ reason, count }));
+    $("walkForwardTable").innerHTML += `
+      <div class="mt-3 border border-slate-200 bg-slate-50 p-3 text-sm">
+        <div class="mb-2 font-semibold text-slate-700">Walk-forward failure review</div>
+        ${reasonRows.length ? table([{ label: "Count", key: "count" }, { label: "Reason", key: "reason" }], reasonRows) : ""}
+        ${suggestions.length ? `<ul class="mt-2 list-disc space-y-1 pl-5">${suggestions.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
+      </div>`;
   }
 }
 
@@ -1574,6 +1676,167 @@ function renderCalibration() {
     </details>`;
 }
 
+function setJsonEditor(id, value) {
+  const el = $(id);
+  if (el) el.value = JSON.stringify(value || {}, null, 2);
+}
+
+function splitRiskCostPayload(payload) {
+  return {
+    costs: payload.costs || {},
+    risk_controls: payload.risk_controls || {},
+    execution_assumption: payload.execution_assumption || {},
+    statistical_regime: payload.statistical_regime || {},
+    data_source_controls: payload.data_source_controls || {},
+  };
+}
+
+function loadCurrentValuesIntoProfileEditor(payload = currentPayload()) {
+  $("valueProfileName").value = `${payload.regime_filter || "ALL"} ${payload.strategy_filter || "ALL"} ${payload.symbol || ""} ${payload.timeframe || ""}`.trim();
+  setJsonEditor("valueProfileFiltersJson", payload.filters || {});
+  setJsonEditor("valueProfilePatternJson", payload.pattern_engine || {});
+  setJsonEditor("valueProfileRegimeControlsJson", payload.regime_controls || {});
+  setJsonEditor("valueProfileStrategyControlsJson", payload.strategy_controls || {});
+  setJsonEditor("valueProfileCalibrationJson", payload.calibration || {});
+  setJsonEditor("valueProfileRiskCostJson", splitRiskCostPayload(payload));
+  renderValueProfiles();
+}
+
+function editedValueProfilePayload() {
+  const base = currentPayload();
+  const riskCost = parseJsonEditor("valueProfileRiskCostJson", {});
+  return {
+    ...base,
+    filters: parseJsonEditor("valueProfileFiltersJson", base.filters || {}),
+    pattern_engine: parseJsonEditor("valueProfilePatternJson", base.pattern_engine || {}),
+    regime_controls: parseJsonEditor("valueProfileRegimeControlsJson", base.regime_controls || {}),
+    strategy_controls: parseJsonEditor("valueProfileStrategyControlsJson", base.strategy_controls || {}),
+    calibration: parseJsonEditor("valueProfileCalibrationJson", base.calibration || {}),
+    costs: riskCost.costs || base.costs || {},
+    risk_controls: riskCost.risk_controls || base.risk_controls || {},
+    execution_assumption: riskCost.execution_assumption || base.execution_assumption || {},
+    statistical_regime: riskCost.statistical_regime || base.statistical_regime || {},
+    data_source_controls: riskCost.data_source_controls || base.data_source_controls || {},
+  };
+}
+
+function profileMetricsSnapshot() {
+  return {
+    backtest_summary: state.backtest?.summary || {},
+    optimizer_summary: state.optimizer?.summary || {},
+    monthly_sweep_summary: state.monthlyResearch?.summary || {},
+    final_approval: state.finalApproval?.summary || state.finalApproval || {},
+  };
+}
+
+function applyProfilePayloadToVisibleControls(payload) {
+  if (!payload || typeof payload !== "object") return;
+  if (payload.symbol && $("symbol")) $("symbol").value = payload.symbol;
+  if (payload.timeframe && $("timeframe")) $("timeframe").value = payload.timeframe;
+  if (payload.start_date && $("startDate")) $("startDate").value = String(payload.start_date).slice(0, 10);
+  if (payload.end_date && $("endDate")) $("endDate").value = String(payload.end_date).slice(0, 10);
+  if (payload.regime_filter && $("regimeFilter")) {
+    $("regimeFilter").value = payload.regime_filter;
+    updateStrategyFilterForRegime(payload.regime_filter, payload.strategy_filter || "ALL");
+  }
+  if (payload.strategy_filter && $("strategyFilter")) $("strategyFilter").value = payload.strategy_filter;
+  if (payload.rr !== undefined && $("rr")) $("rr").value = String(payload.rr);
+  if (payload.risk_percent !== undefined && $("riskPercent")) $("riskPercent").value = String(payload.risk_percent);
+  if (payload.initial_equity !== undefined && $("initialEquity")) $("initialEquity").value = String(payload.initial_equity);
+  if (payload.sentiment && $("sentiment")) $("sentiment").value = payload.sentiment;
+  if (payload.usd_bias && $("usdBias")) $("usdBias").value = payload.usd_bias;
+  if (payload.risk_sentiment && $("riskSentiment")) $("riskSentiment").value = payload.risk_sentiment;
+  if (payload.cb_divergence && $("cbDivergence")) $("cbDivergence").value = payload.cb_divergence;
+
+  const f = payload.filters || {};
+  if (f.use_killzone !== undefined) $("useKillzone").checked = Boolean(f.use_killzone);
+  if (f.killzone_mode && $("killzoneMode")) $("killzoneMode").value = f.killzone_mode;
+  if (f.use_spread_filter !== undefined) $("useSpreadFilter").checked = Boolean(f.use_spread_filter);
+  if (f.spread_filter_mode && $("spreadFilterMode")) $("spreadFilterMode").value = f.spread_filter_mode;
+  if (f.max_spread_percentile !== undefined) $("maxSpreadPercentile").value = f.max_spread_percentile;
+  if (f.use_alpha !== undefined) $("useAlpha").checked = Boolean(f.use_alpha);
+  if (f.alpha_mode && $("alphaMode")) $("alphaMode").value = f.alpha_mode;
+  if (f.min_alpha_score !== undefined) $("minAlphaScore").value = f.min_alpha_score;
+  if (f.strict_regime_validation !== undefined) $("strictRegimeValidation").checked = Boolean(f.strict_regime_validation);
+  if (f.strict_regime_max_failed_conditions !== undefined) $("strictRegimeMaxFailed").value = f.strict_regime_max_failed_conditions;
+  if (f.strict_regime_min_confidence !== undefined) $("strictRegimeMinConfidence").value = f.strict_regime_min_confidence;
+  if (f.min_clean_trend_er !== undefined) $("minCleanTrendEr").value = f.min_clean_trend_er;
+  if (f.clean_trend_adx_min !== undefined) $("cleanTrendAdxMin").value = f.clean_trend_adx_min;
+  if (f.clean_trend_adx_max !== undefined) $("cleanTrendAdxMax").value = f.clean_trend_adx_max;
+
+  const p = payload.pattern_engine || {};
+  if (p.use_patterns !== undefined) $("usePatterns").checked = Boolean(p.use_patterns);
+  if (p.use_ict !== undefined) $("useIct").checked = Boolean(p.use_ict);
+  if (p.use_fvg !== undefined) $("useFvg").checked = Boolean(p.use_fvg);
+  if (p.use_order_blocks !== undefined) $("useOrderBlocks").checked = Boolean(p.use_order_blocks);
+  if (p.use_bos !== undefined) $("useBos").checked = Boolean(p.use_bos);
+  if (p.use_mss !== undefined) $("useMss").checked = Boolean(p.use_mss);
+  if (p.use_liquidity_pools !== undefined) $("useLiquidityPools").checked = Boolean(p.use_liquidity_pools);
+  if (p.use_round_numbers !== undefined) $("useRoundNumbers").checked = Boolean(p.use_round_numbers);
+  if (p.use_vwap !== undefined) $("useVwap").checked = Boolean(p.use_vwap);
+  if (p.use_mvwap !== undefined || p.use_moving_vwap !== undefined) $("useMvwap").checked = Boolean(p.use_mvwap ?? p.use_moving_vwap);
+  if (p.use_session_vwap !== undefined) $("useSessionVwap").checked = Boolean(p.use_session_vwap);
+  if (p.pattern_score_mode && $("patternScoreMode")) $("patternScoreMode").value = p.pattern_score_mode;
+  if (p.min_pattern_score !== undefined) $("minPatternScore").value = p.min_pattern_score;
+  if (p.fvg_min_size_atr !== undefined) $("fvgMinSizeAtr").value = p.fvg_min_size_atr;
+  if (p.fvg_max_age_bars !== undefined) $("fvgMaxAgeBars").value = p.fvg_max_age_bars;
+
+  const rc = payload.regime_controls || {};
+  if (rc.use_regime_hysteresis !== undefined) $("useRegimeHysteresis").checked = Boolean(rc.use_regime_hysteresis);
+  if (rc.hysteresis_confirm_bars !== undefined) $("hysteresisConfirmBars").value = rc.hysteresis_confirm_bars;
+  if (rc.hysteresis_confidence_margin !== undefined) $("hysteresisConfidenceMargin").value = rc.hysteresis_confidence_margin;
+
+  const sc = payload.strategy_controls || {};
+  if (sc.use_stop_realism !== undefined) $("useStopRealism").checked = Boolean(sc.use_stop_realism);
+  if (sc.use_symbol_session_stop_profile !== undefined) $("useSymbolSessionStopProfile").checked = Boolean(sc.use_symbol_session_stop_profile);
+  if (sc.stop_atr_override !== undefined && sc.stop_atr_override !== null) $("stopAtrOverride").value = sc.stop_atr_override;
+  if (sc.stop_override_mode && $("stopOverrideMode")) $("stopOverrideMode").value = sc.stop_override_mode;
+  if (sc.min_effective_stop_spread_mult !== undefined) $("minEffectiveStopSpreadMult").value = sc.min_effective_stop_spread_mult;
+  if (sc.min_effective_stop_mode && $("minEffectiveStopMode")) $("minEffectiveStopMode").value = sc.min_effective_stop_mode;
+
+  const c = payload.costs || {};
+  if (c.cost_mode && $("costMode")) $("costMode").value = c.cost_mode;
+  if (c.cost_r_per_trade !== undefined) $("fixedCostR").value = c.cost_r_per_trade;
+  if (c.commission_R !== undefined) $("commissionR").value = c.commission_R;
+  if (c.slippage_points !== undefined) $("slippagePoints").value = c.slippage_points;
+  if (c.spread_round_trip_factor !== undefined) $("spreadRoundTripFactor").value = c.spread_round_trip_factor;
+  if (c.news_cost_multiplier !== undefined) $("newsCostMultiplier").value = c.news_cost_multiplier;
+  if (c.mt5_imported_cost_R !== undefined) $("mt5ImportedCostR").value = c.mt5_imported_cost_R;
+  if (c.rollover_block !== undefined) $("rolloverCostBlock").checked = Boolean(c.rollover_block);
+
+  const cal = payload.calibration || {};
+  if (cal.profile && $("calibrationProfile")) $("calibrationProfile").value = cal.profile;
+  renderCalibration();
+}
+
+function renderValueProfiles() {
+  const active = state.activeValueProfile;
+  $("activeValueProfileBadge").innerHTML = active
+    ? `<b>Active:</b> ${escapeHtml(active.name || active.profile_id)}<br><span class="text-xs">${escapeHtml(active.profile_id || "")}</span>`
+    : "No active saved values profile.";
+  let preview = {};
+  try {
+    preview = editedValueProfilePayload();
+  } catch (err) {
+    $("valueProfilePayloadPreview").innerHTML = `<div class="text-red-700">${escapeHtml(err.message)}</div>`;
+    return;
+  }
+  $("valueProfilePayloadPreview").innerHTML = jsonBlock(preview);
+  $("savedValueProfilesPanel").innerHTML = table(
+    [
+      { label: "Profile", render: (r) => `<button class="text-blue-700 underline" data-value-profile-id="${escapeHtml(r.profile_id)}">${escapeHtml(r.name || String(r.profile_id || "").slice(0, 8))}</button>` },
+      { label: "Regime", key: "regime_filter" },
+      { label: "Strategy", key: "strategy_filter" },
+      { label: "Symbol", key: "symbol" },
+      { label: "TF", key: "timeframe" },
+      { label: "Source", key: "source_type" },
+      { label: "Updated", key: "updated_at" },
+    ],
+    state.savedValueProfiles || [],
+    "Save or load research value profiles to reuse edited strategy/regime/pattern values."
+  );
+}
+
 function renderOptimizer() {
   const result = state.optimizer || {};
   const summary = result.summary || {};
@@ -1588,6 +1851,9 @@ function renderOptimizer() {
     ["Min Trades", summary.min_trades],
     ["Min PF", summary.min_profit_factor],
     ["Max DD R", summary.max_drawdown_r],
+    ["Validated", summary.validated_candidates],
+    ["Validation Runs", summary.validation_runs],
+    ["Saved Passed", summary.saved_validated_candidates],
     ["Cache Hits", summary.feature_cache_hits],
     ["Cache Misses", summary.feature_cache_misses],
     ["Cache Hit Rate", summary.feature_cache_hit_rate !== undefined ? `${(Number(summary.feature_cache_hit_rate) * 100).toFixed(1)}%` : "--"],
@@ -1608,9 +1874,18 @@ function renderOptimizer() {
       { label: "Win", render: (r) => r.win_rate !== undefined ? `${(Number(r.win_rate) * 100).toFixed(1)}%` : "--" },
       { label: "PF", key: "profit_factor" },
       { label: "Exp R", key: "expectancy_R" },
+      { label: "T", key: "edge_t_stat" },
+      { label: "P", key: "edge_p_value_approx" },
+      { label: "Wilson", render: (r) => r.win_rate_wilson_lower_95 !== undefined ? `${(Number(r.win_rate_wilson_lower_95) * 100).toFixed(1)}%` : "--" },
+      { label: "Stat", key: "statistical_edge" },
       { label: "Total R", key: "total_R" },
       { label: "DD", key: "max_drawdown_R" },
       { label: "Score", key: "optimizer_score" },
+      { label: "OOS", render: (r) => r.oos_status ? `${r.oos_status} PF:${fmt(r.oos_pf)} E:${fmt(r.oos_expectancy_R)}` : "--" },
+      { label: "WF", render: (r) => r.wf_pass_rate !== undefined ? `${(Number(r.wf_pass_rate) * 100).toFixed(0)}% / ${fmt(r.wf_efficiency)}` : "--" },
+      { label: "MC", render: (r) => r.mc_status ? `${r.mc_status} loss:${r.mc_loss_probability !== undefined ? `${(Number(r.mc_loss_probability) * 100).toFixed(0)}%` : "--"} dd:${r.mc_drawdown_breach_probability !== undefined ? `${(Number(r.mc_drawdown_breach_probability) * 100).toFixed(0)}%` : "--"}` : "--" },
+      { label: "Validated", render: (r) => r.validation_status ? statusBadge(r.validation_status) : "--" },
+      { label: "Failed Checks", render: (r) => (r.validation_failed_check_names || []).join(", ") || fmt(r.failed_validation_checks) },
       { label: "Status", render: (r) => statusBadge(r.status) },
     ],
     result.results || [],
@@ -1619,6 +1894,85 @@ function renderOptimizer() {
   if ((result.warnings || []).length) {
     $("optimizerTable").innerHTML += `<div class="mt-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><b>Warnings:</b> ${escapeHtml(result.warnings.join(" "))}</div>`;
   }
+}
+
+function renderMonthlyResearch() {
+  const result = state.monthlyResearch || {};
+  const summary = result.summary || {};
+  $("monthlySweepSummary").innerHTML = metricItems([
+    ["DB Run", result.monthly_sweep_run_id ? String(result.monthly_sweep_run_id).slice(0, 8) : "--"],
+    ["DB Saved", result.monthly_sweep_saved === undefined ? "--" : result.monthly_sweep_saved ? "Yes" : "No"],
+    ["Saved Rows", result.saved_candidate_count],
+    ["Status", summary.status],
+    ["Symbol", summary.symbol],
+    ["TF", summary.timeframe],
+    ["Months", summary.months_tested],
+    ["Regimes", summary.regimes_tested],
+    ["Optimizer Runs", summary.optimizer_runs],
+    ["Worked", summary.worked_candidates],
+    ["Failed", summary.failed_regime_months],
+    ["Best Month", summary.best_month],
+    ["Best Regime", summary.best_regime],
+    ["Best Strategy", summary.best_strategy],
+    ["Best Profit", summary.best_net_profit],
+  ]);
+  $("monthlySweepWorkedTable").innerHTML = table(
+    [
+      { label: "Month", key: "month" },
+      { label: "Regime", render: (r) => `${r.regime_id} ${r.regime_name || ""}` },
+      { label: "Strategy", render: (r) => `${r.strategy_id} ${r.strategy_name || ""}` },
+      { label: "Trades", key: "total_trades" },
+      { label: "Win", render: (r) => r.win_rate !== undefined ? `${(Number(r.win_rate) * 100).toFixed(1)}%` : "--" },
+      { label: "PF", key: "profit_factor" },
+      { label: "Exp R", key: "expectancy_R" },
+      { label: "DD R", key: "max_drawdown_R" },
+      { label: "Net", key: "net_profit" },
+      { label: "Stop ATR", key: "stop_atr" },
+      { label: "Stop/Spread", key: "min_effective_stop_spread_mult" },
+      { label: "Pattern", render: (r) => `${r.pattern_mode || "--"} / ${r.min_pattern_score ?? "--"}` },
+      { label: "Profile", key: "calibration_profile" },
+      { label: "Status", render: (r) => statusBadge(r.status || r.optimizer_status) },
+    ],
+    (result.worked_candidates || []).slice(0, 80),
+    "Run Monthly Sweep to save and display only month/regime candidates that passed profitability and sample gates."
+  );
+  $("monthlySweepFailureTable").innerHTML = table(
+    [
+      { label: "Failure", key: "failure_bucket" },
+      { label: "Count", key: "count" },
+    ],
+    result.failure_diagnostics || [],
+    "No failure diagnostics yet."
+  );
+  $("monthlySweepRobustnessTable").innerHTML = table(
+    [
+      { label: "Regime", render: (r) => `${r.regime_id} ${r.regime_name || ""}` },
+      { label: "Worked Months", key: "months_with_candidate" },
+      { label: "Failed Months", key: "months_failed" },
+      { label: "Pass Rate", render: (r) => `${(Number(r.monthly_pass_rate || 0) * 100).toFixed(1)}%` },
+    ],
+    (result.regime_robustness || []).slice(0, 80),
+    "Run Monthly Sweep to see month-by-month robustness by regime."
+  );
+  if ((result.warnings || []).length) {
+    $("monthlySweepWorkedTable").innerHTML += `<div class="mt-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><b>Warnings:</b> ${escapeHtml(result.warnings.join(" "))}</div>`;
+  }
+  $("savedMonthlySweepsPanel").innerHTML = table(
+    [
+      { label: "Run", render: (r) => `<button class="text-blue-700 underline" data-monthly-sweep-run-id="${escapeHtml(r.monthly_sweep_run_id)}">${escapeHtml(String(r.monthly_sweep_run_id || "").slice(0, 8))}</button>` },
+      { label: "Status", render: (r) => statusBadge(r.status || r.summary?.status) },
+      { label: "Symbol", key: "symbol" },
+      { label: "TF", key: "timeframe" },
+      { label: "Dates", render: (r) => `${r.start_date || "--"} -> ${r.end_date || "--"}` },
+      { label: "Months", key: "months_back" },
+      { label: "Regimes", key: "regimes_tested" },
+      { label: "Worked", key: "worked_candidate_count" },
+      { label: "Failed", key: "failed_regime_months" },
+      { label: "Created", key: "created_at" },
+    ],
+    state.savedMonthlySweeps || [],
+    "Run or load saved monthly sweeps to review persisted DB research rows."
+  );
 }
 
 function renderMonteCarlo() {
@@ -3454,6 +3808,7 @@ function renderAll() {
   renderPortfolio();
   renderCalibration();
   renderOptimizer();
+  renderMonthlyResearch();
   renderMonteCarlo();
   renderMt5Tester();
   renderMt5Parity();
@@ -3478,6 +3833,7 @@ function renderAll() {
   renderReferences();
   renderApiStructure();
   renderRegimeLab();
+  renderValueProfiles();
   renderAbExperiment();
   setupSectionHelp();
   setupCollapsibleSections();
@@ -3605,8 +3961,16 @@ function currentPayload() {
     mt5_imported_cost_R: Number($("mt5ImportedCostR").value || 0.05),
     rollover_block: $("rolloverCostBlock").checked,
   };
+  const strategyControls = {
+    use_stop_realism: $("useStopRealism")?.checked ?? false,
+    use_symbol_session_stop_profile: $("useSymbolSessionStopProfile")?.checked ?? false,
+    stop_atr_override: $("useStopRealism")?.checked && $("stopAtrOverride")?.value !== "" ? Number($("stopAtrOverride").value) : null,
+    stop_override_mode: $("useStopRealism")?.checked ? ($("stopOverrideMode")?.value || "widen_only") : "off",
+    min_effective_stop_spread_mult: $("useStopRealism")?.checked ? Number($("minEffectiveStopSpreadMult")?.value || 0) : 0,
+    min_effective_stop_mode: $("minEffectiveStopMode")?.value || "widen",
+  };
   const dataSourceControls = currentDataSourceControls(false);
-  return {
+  const payload = {
     symbol: $("symbol").value,
     timeframe: $("timeframe").value,
     start_date: $("startDate").value,
@@ -3638,7 +4002,9 @@ function currentPayload() {
     costs,
     calibration: currentCalibrationPayload(),
     regime_controls: regimeControls,
+    strategy_controls: strategyControls,
   };
+  return state.activeValuePayloadOverride ? deepMerge(payload, state.activeValuePayloadOverride) : payload;
 }
 
 function currentWalkForwardPayload() {
@@ -3682,6 +4048,42 @@ function currentPortfolioPayload() {
   };
 }
 
+function optimizerValidationSettings() {
+  return {
+    out_of_sample: {
+      split_date: $("oosSplitDate")?.value || null,
+      oos_percent: Number($("oosPercent")?.value || 30),
+      min_oos_trades: Number($("oosMinTrades")?.value || 20),
+      min_oos_profit_factor: Number($("oosMinPf")?.value || 1.1),
+    },
+    walk_forward: {
+      train_months: Number($("wfTrainMonths")?.value || 2),
+      test_months: Number($("wfTestMonths")?.value || 1),
+      step_months: Number($("wfStepMonths")?.value || 1),
+      min_test_trades: Number($("wfMinTestTrades")?.value || 20),
+      min_test_profit_factor: Number($("wfMinTestPf")?.value || 1.1),
+    },
+    monte_carlo: {
+      simulations: Number($("mcSimulations")?.value || 1000),
+      sample_mode: $("mcSampleMode")?.value || "bootstrap",
+      seed: $("mcSeed")?.value === "" ? null : Number($("mcSeed")?.value || 42),
+      min_trades: Number($("mcMinTrades")?.value || 30),
+      max_total_drawdown_percent: Number($("mcMaxDdPercent")?.value || 10),
+      max_losing_streak_limit: Number($("mcMaxLosingStreak")?.value || 5),
+    },
+    thresholds: {
+      min_backtest_trades: Number($("optMinTrades")?.value || $("labMinTrades")?.value || 30),
+      min_backtest_pf: Number($("optMinPf")?.value || $("labMinPf")?.value || 1.2),
+      min_oos_trades: Number($("oosMinTrades")?.value || 20),
+      min_oos_pf: Number($("oosMinPf")?.value || 1.1),
+      min_walk_forward_pass_rate: 0.6,
+      min_walk_forward_efficiency: 0.5,
+      max_mc_drawdown_breach_probability: 0.1,
+      max_mc_loss_probability: 0.25,
+    },
+  };
+}
+
 function currentOptimizerPayload() {
   const base = currentPayload();
   const regimeFallback = base.regime_filter && base.regime_filter !== "ALL" ? [base.regime_filter] : ["ALL"];
@@ -3692,6 +4094,9 @@ function currentOptimizerPayload() {
     min_trades: Number($("optMinTrades").value || 30),
     min_profit_factor: Number($("optMinPf").value || 1.2),
     max_drawdown_r: Number($("optMaxDd").value || 10),
+    validate_top_n: Number($("optValidateTopN")?.value || 0),
+    persist_validated_candidates: $("optPersistValidated")?.checked ?? true,
+    validation: optimizerValidationSettings(),
     grid: {
       regime_filters: parseCsv("optRegimes", regimeFallback),
       strategy_filters: parseCsv("optStrategies", strategyFallback),
@@ -3716,6 +4121,10 @@ function currentOptimizerPayload() {
       lower_wick_min_values: parseNumberCsv("optCalWickMinValues", []),
       macro_confidence_min_values: parseNumberCsv("optCalMacroConfidenceValues", []),
       confidence_min_values: parseNumberCsv("optCalConfidenceValues", []),
+      stop_atr_values: parseNumberCsv("monthlySweepStopGrid", []),
+      stop_override_modes: ["widen_only"],
+      min_effective_stop_spread_mult_values: parseNumberCsv("monthlySweepMinStopSpread", []),
+      use_symbol_session_stop_profile_values: [$("monthlySweepUseProfiles")?.checked ?? true],
     },
   };
 }
@@ -4130,6 +4539,12 @@ async function hydrate() {
   $("newsCostMultiplier").value = market.research_switches?.news_cost_multiplier ?? 2;
   $("mt5ImportedCostR").value = market.research_switches?.mt5_imported_cost_R ?? 0.05;
   $("rolloverCostBlock").checked = market.research_switches?.rollover_block ?? true;
+  $("useStopRealism").checked = market.research_switches?.use_stop_realism ?? false;
+  $("useSymbolSessionStopProfile").checked = market.research_switches?.use_symbol_session_stop_profile ?? false;
+  $("stopAtrOverride").value = market.research_switches?.stop_atr_override ?? "";
+  $("stopOverrideMode").value = market.research_switches?.stop_override_mode ?? "off";
+  $("minEffectiveStopSpreadMult").value = market.research_switches?.min_effective_stop_spread_mult ?? 0;
+  $("minEffectiveStopMode").value = market.research_switches?.min_effective_stop_mode ?? "widen";
   $("usePatterns").checked = market.research_switches?.use_patterns ?? true;
   $("useIct").checked = market.research_switches?.use_ict ?? true;
   $("useFvg").checked = market.research_switches?.use_fvg ?? true;
@@ -4162,6 +4577,18 @@ async function hydrate() {
   start.setMonth(start.getMonth() - 6);
   $("startDate").value = start.toISOString().slice(0, 10);
   $("endDate").value = end.toISOString().slice(0, 10);
+  try {
+    const savedSweeps = await api("/api/research/monthly-regime-sweeps?limit=25");
+    state.savedMonthlySweeps = savedSweeps.monthly_sweeps || [];
+  } catch {
+    state.savedMonthlySweeps = [];
+  }
+  try {
+    const savedProfiles = await api("/api/research/value-profiles?limit=25");
+    state.savedValueProfiles = savedProfiles.profiles || [];
+  } catch {
+    state.savedValueProfiles = [];
+  }
   renderAll();
   detectLatestMarket(false).catch(() => {
     setText("latestRegime", "Run Detect Latest to show the current market regime.");
@@ -4244,6 +4671,119 @@ function bindEvents() {
     } catch (err) {
       setError(err);
     }
+  });
+  $("runMonthlyRegimeSweep").addEventListener("click", async () => {
+    try {
+      setLoading("Running monthly regime sweep. This can take time when ALL regimes are selected...");
+      const result = await api("/api/research/monthly-regime-sweep", { method: "POST", body: JSON.stringify(currentMonthlyResearchPayload()) });
+      state.monthlyResearch = result;
+      const saved = await api("/api/research/monthly-regime-sweeps?limit=25");
+      state.savedMonthlySweeps = saved.monthly_sweeps || [];
+      renderMonthlyResearch();
+      const s = result.summary || {};
+      setLoading(`Monthly sweep complete and saved to DB. Worked candidates: ${s.worked_candidates || 0}, saved rows: ${result.saved_candidate_count || 0}, failed regime-months: ${s.failed_regime_months || 0}.`);
+    } catch (err) {
+      setError(err);
+    }
+  });
+  $("loadSavedMonthlySweeps").addEventListener("click", async () => {
+    try {
+      setLoading("Loading saved monthly regime sweeps from SQLite...");
+      const result = await api("/api/research/monthly-regime-sweeps?limit=50");
+      state.savedMonthlySweeps = result.monthly_sweeps || [];
+      renderMonthlyResearch();
+      setLoading(`Loaded ${state.savedMonthlySweeps.length} saved monthly sweep runs.`);
+    } catch (err) {
+      setError(err);
+    }
+  });
+  $("loadCurrentValueProfile").addEventListener("click", () => {
+    try {
+      loadCurrentValuesIntoProfileEditor(currentPayload());
+      setLoading("Current research values loaded into the editable profile.");
+    } catch (err) {
+      setError(err);
+    }
+  });
+  $("applyEditedValueProfile").addEventListener("click", () => {
+    try {
+      const payload = editedValueProfilePayload();
+      state.activeValuePayloadOverride = payload;
+      state.activeValueProfile = {
+        profile_id: "edited_not_saved",
+        name: $("valueProfileName").value || "Edited unsaved values",
+        description: $("valueProfileDescription").value || "",
+        payload,
+      };
+      applyProfilePayloadToVisibleControls(payload);
+      renderValueProfiles();
+      setLoading("Edited research values applied to future runs. Save the profile to reuse it later.");
+    } catch (err) {
+      setError(err);
+    }
+  });
+  $("saveValueProfile").addEventListener("click", async () => {
+    try {
+      const payload = editedValueProfilePayload();
+      const result = await api("/api/research/value-profiles", {
+        method: "POST",
+        body: JSON.stringify({
+          name: $("valueProfileName").value || `${payload.regime_filter || "ALL"} ${payload.strategy_filter || "ALL"} values`,
+          description: $("valueProfileDescription").value || "",
+          payload,
+          metrics: profileMetricsSnapshot(),
+          source_type: state.monthlyResearch?.monthly_sweep_run_id ? "monthly_sweep" : state.backtest?.run_id ? "backtest" : "manual_ui",
+          source_id: state.monthlyResearch?.monthly_sweep_run_id || state.backtest?.run_id || null,
+          tags: [payload.regime_filter || "ALL", payload.strategy_filter || "ALL", payload.symbol || "SYMBOL", payload.timeframe || "TF"],
+        }),
+      });
+      state.activeValueProfile = result.profile;
+      state.activeValuePayloadOverride = result.profile?.payload || payload;
+      const saved = await api("/api/research/value-profiles?limit=50");
+      state.savedValueProfiles = saved.profiles || [];
+      renderValueProfiles();
+      setLoading(`Saved values profile ${result.profile?.profile_id || ""}.`);
+    } catch (err) {
+      setError(err);
+    }
+  });
+  $("loadSavedValueProfiles").addEventListener("click", async () => {
+    try {
+      setLoading("Loading saved research value profiles from SQLite...");
+      const result = await api("/api/research/value-profiles?limit=50");
+      state.savedValueProfiles = result.profiles || [];
+      renderValueProfiles();
+      setLoading(`Loaded ${state.savedValueProfiles.length} saved value profiles.`);
+    } catch (err) {
+      setError(err);
+    }
+  });
+  $("savedValueProfilesPanel").addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-value-profile-id]");
+    if (!button) return;
+    try {
+      const profileId = button.getAttribute("data-value-profile-id");
+      setLoading(`Loading values profile ${profileId}...`);
+      const result = await api(`/api/research/value-profiles/${encodeURIComponent(profileId)}`);
+      const profile = result.profile || {};
+      const payload = profile.payload || {};
+      state.activeValueProfile = profile;
+      state.activeValuePayloadOverride = payload;
+      $("valueProfileName").value = profile.name || "";
+      $("valueProfileDescription").value = profile.description || "";
+      loadCurrentValuesIntoProfileEditor(payload);
+      applyProfilePayloadToVisibleControls(payload);
+      renderValueProfiles();
+      setLoading(`Loaded and applied values profile ${profile.name || profileId}.`);
+    } catch (err) {
+      setError(err);
+    }
+  });
+  $("clearActiveValueProfile").addEventListener("click", () => {
+    state.activeValueProfile = null;
+    state.activeValuePayloadOverride = null;
+    renderValueProfiles();
+    setLoading("Active research values profile cleared. Current visible controls will be used.");
   });
   $("loadAbFromLab").addEventListener("click", () => {
     const regimeId = $("labRegimeSelect")?.value || $("regimeFilter").value;
@@ -4403,8 +4943,22 @@ function bindEvents() {
       else if (saved.validation_type === "mt5_model_comparison") state.mt5Comparison = result;
       else if (saved.validation_type === "mt5_report_import") state.mt5Import = result;
       else if (saved.validation_type === "mt5_real_tick_workflow") state.realTickWorkflow = result;
+      else if (saved.validation_type === "monthly_regime_research") state.monthlyResearch = result;
       renderAll();
       setLoading(`Loaded ${saved.validation_type} validation run ${validationRunId}.`);
+    } catch (err) {
+      setError(err);
+    }
+  });
+  $("savedMonthlySweepsPanel").addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-monthly-sweep-run-id]");
+    if (!button) return;
+    try {
+      const runId = button.getAttribute("data-monthly-sweep-run-id");
+      setLoading(`Loading monthly sweep ${runId} from SQLite...`);
+      state.monthlyResearch = await api(`/api/research/monthly-regime-sweeps/${encodeURIComponent(runId)}`);
+      renderMonthlyResearch();
+      setLoading(`Loaded monthly sweep ${runId}.`);
     } catch (err) {
       setError(err);
     }

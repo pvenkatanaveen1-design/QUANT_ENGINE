@@ -1120,10 +1120,10 @@ def evaluate_strategy(df: pd.DataFrame, idx: int, strategy_id: str, rr: float) -
     if strategy_id == "EC1" and row.get("regime_id") == "R50" and row.get("htf_bias") == row.get("ltf_bias") and row.get("htf_bias") in {"bullish", "bearish"}:
         if row.get("htf_bias") == "bullish" and _num(row, "close") > _num(row, "ema20"):
             sl = min(_num(row, "low"), _num(row, "ema20")) - atr * 0.70
-            return _signal_payload(row, "EC1", "long", entry, sl, entry + (entry - sl) * 2.0, "Cost-adjusted wide-stop long research test triggered in R50.")
+            return _signal_payload(row, "EC1", "long", entry, sl, entry + (entry - sl) * rr, "Cost-adjusted wide-stop long research test triggered in R50.")
         if row.get("htf_bias") == "bearish" and _num(row, "close") < _num(row, "ema20"):
             sl = max(_num(row, "high"), _num(row, "ema20")) + atr * 0.70
-            return _signal_payload(row, "EC1", "short", entry, sl, entry - (sl - entry) * 2.0, "Cost-adjusted wide-stop short research test triggered in R50.")
+            return _signal_payload(row, "EC1", "short", entry, sl, entry - (sl - entry) * rr, "Cost-adjusted wide-stop short research test triggered in R50.")
 
     if strategy_id == "DQ1":
         return {"triggered": False, "reason": f"Manual review only. {row.get('data_quality_reasons') or 'Data-quality regime blocks executable strategies.'}"}

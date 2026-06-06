@@ -65,6 +65,51 @@ def _window_status(test: dict[str, Any], min_test_trades: int, min_pf: float) ->
     return "FAIL", reasons
 
 
+def _failure_diagnostics(windows: list[dict[str, Any]], min_test_trades: int, min_pf: float) -> dict[str, Any]:
+    reason_counts: dict[str, int] = {}
+    weak_windows: list[dict[str, Any]] = []
+    for row in windows:
+        test = row.get("test") if isinstance(row.get("test"), dict) else {}
+        for reason in row.get("reasons") or []:
+            reason_counts[str(reason)] = reason_counts.get(str(reason), 0) + 1
+        weak_windows.append(
+            {
+                "window": row.get("window"),
+                "status": row.get("status"),
+                "test_trades": int(test.get("total_trades") or 0),
+                "test_profit_factor": float(test.get("profit_factor") or 0),
+                "test_expectancy_R": float(test.get("expectancy_R") or 0),
+                "test_total_R": float(test.get("total_R") or 0),
+                "reasons": row.get("reasons") or [],
+            }
+        )
+    weak_windows.sort(key=lambda item: (item["status"] == "PASS", item["test_expectancy_R"], item["test_profit_factor"], item["test_trades"]))
+
+    suggestions: list[str] = []
+    if any("Only " in reason for reason in reason_counts):
+        suggestions.append(f"Trade sample is too thin for the current filter stack. For research, lower min_test_trades from {min_test_trades} only if the total backtest has enough trades; otherwise broaden regime/strategy, loosen alpha/pattern hard minimums, or extend the date range.")
+    if any("expectancy is not positive" in reason for reason in reason_counts):
+        suggestions.append("OOS expectancy is negative in at least one window. Test lower RR for mean-reversion regimes, stricter session filters, and higher pattern/alpha confirmation before considering approval.")
+    if any("profit factor" in reason for reason in reason_counts):
+        suggestions.append(f"OOS PF is below {min_pf}. Review spread/slippage cost, session performance, and pattern families; do not approve until PF survives future windows, not only the full-sample backtest.")
+    if not suggestions and windows:
+        suggestions.append("Walk-forward windows are acceptable under the current rules; next checks are Monte Carlo tails and MT5 real-tick model comparison.")
+    if not windows:
+        suggestions.append("No windows were created. Extend the date range or reduce train/test months.")
+
+    return {
+        "failure_reason_counts": reason_counts,
+        "weakest_windows": weak_windows[:3],
+        "suggestions": suggestions,
+        "review_order": [
+            "Confirm enough saved candles for every train/test segment.",
+            "Compare failed windows by session, spread percentile, and pattern score.",
+            "Run optimizer with validate_top_n enabled so OOS/WF/MC results are shown on candidate rows.",
+            "Keep only candidates that pass anti-overfit validation; rejected rows are research notes, not working setups.",
+        ],
+    }
+
+
 def run_walk_forward(request: dict[str, Any]) -> dict[str, Any]:
     train_months = int(request.get("train_months") or 2)
     test_months = int(request.get("test_months") or 1)
@@ -170,6 +215,7 @@ def run_walk_forward(request: dict[str, Any]) -> dict[str, Any]:
             "min_test_profit_factor": min_test_profit_factor,
         },
         "windows": windows,
+        "diagnostics": _failure_diagnostics(windows, min_test_trades, min_test_profit_factor),
         "warnings": warnings,
         "request": {
             "symbol": request.get("symbol"),

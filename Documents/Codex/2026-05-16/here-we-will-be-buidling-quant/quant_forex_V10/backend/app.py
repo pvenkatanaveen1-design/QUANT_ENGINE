@@ -20,6 +20,7 @@ from backend.experiment_engine import run_ab_experiment
 from backend.final_approval_engine import final_approval_review
 from backend.monte_carlo_engine import run_monte_carlo
 from backend.macro_data_engine import import_cot_evidence, import_cross_pair_evidence, import_macro_csv, import_macro_feed_text, list_macro_evidence, macro_pipeline_diagnostics, resolve_macro_context
+from backend.monthly_regime_research_engine import run_monthly_regime_research
 from backend.ollama_reviewer import run_ollama_review
 from backend.out_of_sample_engine import run_out_of_sample
 from backend.optimizer_engine import run_optimizer_grid
@@ -75,6 +76,8 @@ from backend.common.models.schemas import (
     MT5ReportImportResponse,
     MT5TesterRunRequest,
     MT5TesterRunResponse,
+    MonthlyRegimeResearchRequest,
+    MonthlyRegimeResearchResponse,
     MacroDiagnosticsResponse,
     MacroEvidenceRequest,
     MacroEvidenceResponse,
@@ -105,15 +108,21 @@ from backend.database import (
     list_ab_experiments,
     list_backtest_runs,
     list_favorites,
+    list_monthly_regime_sweep_runs,
     list_mt5_report_imports,
+    list_research_value_profiles,
     list_validation_runs,
     load_ab_experiment,
     load_backtest,
     load_backtest_trades,
     load_candles,
     load_features,
+    load_monthly_regime_sweep_run,
+    load_research_value_profile,
     load_validation_run,
     set_favorite,
+    save_monthly_regime_sweep_result,
+    save_research_value_profile,
     save_validation_result,
 )
 from backend.feature_cache_engine import feature_cache_status, feature_params, load_or_calculate_features
@@ -175,7 +184,7 @@ def index() -> FileResponse:
 
 @app.get("/api/health", response_model=HealthResponse)
 def health() -> dict[str, Any]:
-    return {"status": "ok", "app": "quant_forex_V10", "scope": "40-regime Tab 1 research API only", "order_execution": False}
+    return {"status": "ok", "app": "quant_forex_V10", "scope": "50-regime Tab 1 research API only", "order_execution": False}
 
 
 @app.post("/api/mt5/connect", response_model=MT5ConnectResponse)
@@ -460,7 +469,7 @@ def api_reference_api_structure() -> dict[str, Any]:
             {
                 "method": "POST",
                 "path": "/api/backtest/run",
-                "purpose": "Run a 40-regime research backtest.",
+                "purpose": "Run a 50-regime research backtest.",
                 "request_body": {
                     "symbol": "EURUSD",
                     "timeframe": "M15",
@@ -651,7 +660,7 @@ def api_reference_api_structure() -> dict[str, Any]:
             {
                 "method": "POST",
                 "path": "/api/optimizer/grid",
-                "purpose": "Run controlled regime/strategy/filter/pattern permutations and rank candidates. This is optimization research, not approval.",
+                "purpose": "Run controlled regime/strategy/filter/pattern permutations, rank candidates, optionally validate top rows with OOS/WF/MC, and save only candidates that pass the anti-overfit gate.",
                 "request_body": {
                     "symbol": "EURUSD",
                     "timeframe": "M15",
@@ -666,6 +675,13 @@ def api_reference_api_structure() -> dict[str, Any]:
                     "min_trades": 30,
                     "min_profit_factor": 1.2,
                     "max_drawdown_r": 10,
+                    "validate_top_n": 3,
+                    "persist_validated_candidates": True,
+                    "validation": {
+                        "out_of_sample": {"oos_percent": 30, "min_oos_trades": 20, "min_oos_profit_factor": 1.1},
+                        "walk_forward": {"train_months": 2, "test_months": 1, "step_months": 1, "min_test_trades": 20},
+                        "monte_carlo": {"simulations": 1000, "min_trades": 30, "max_total_drawdown_percent": 10},
+                    },
                     "grid": {
                         "regime_filters": ["R01"],
                         "strategy_filters": ["T1", "T2"],
@@ -680,7 +696,7 @@ def api_reference_api_structure() -> dict[str, Any]:
                     },
                 },
                 "query_params": None,
-                "response_shape": {"summary": {"combinations_run": 16, "approved_candidates": 2}, "results": [], "top_candidates": [], "warnings": []},
+                "response_shape": {"summary": {"combinations_run": 16, "approved_candidates": 2, "validated_candidates": 1, "saved_validated_candidates": 1}, "results": [], "top_candidates": [], "validated_candidates": [], "warnings": []},
             },
             {
                 "method": "POST",
@@ -1117,6 +1133,53 @@ def api_run_optimizer_grid(request: OptimizerGridRequest) -> dict[str, Any]:
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return _clean(result)
+
+
+@app.post("/api/research/monthly-regime-sweep", response_model=MonthlyRegimeResearchResponse)
+def api_monthly_regime_research(request: MonthlyRegimeResearchRequest) -> dict[str, Any]:
+    body = _body(request)
+    try:
+        result = run_monthly_regime_research(body)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    save_validation_result("monthly_regime_research", result, body)
+    save_monthly_regime_sweep_result(result, body)
+    return _clean(result)
+
+
+@app.get("/api/research/monthly-regime-sweeps")
+def api_list_monthly_regime_sweeps(limit: int = Query(25, ge=1, le=200)) -> dict[str, Any]:
+    return {"monthly_sweeps": list_monthly_regime_sweep_runs(limit)}
+
+
+@app.get("/api/research/monthly-regime-sweeps/{monthly_sweep_run_id}", response_model=MonthlyRegimeResearchResponse)
+def api_get_monthly_regime_sweep(monthly_sweep_run_id: str) -> dict[str, Any]:
+    result = load_monthly_regime_sweep_run(monthly_sweep_run_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Monthly regime sweep run not found.")
+    return _clean(result)
+
+
+@app.post("/api/research/value-profiles")
+def api_save_research_value_profile(profile: dict[str, Any]) -> dict[str, Any]:
+    payload = profile.get("payload")
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="payload must be an object containing the research values to reuse.")
+    saved = save_research_value_profile(profile)
+    return _clean({"status": "SAVED", "profile": saved})
+
+
+@app.get("/api/research/value-profiles")
+def api_list_research_value_profiles(limit: int = Query(25, ge=1, le=200)) -> dict[str, Any]:
+    return {"profiles": list_research_value_profiles(limit)}
+
+
+@app.get("/api/research/value-profiles/{profile_id}")
+def api_get_research_value_profile(profile_id: str) -> dict[str, Any]:
+    profile = load_research_value_profile(profile_id)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Research value profile not found.")
+    return {"profile": profile}
 
 
 @app.post("/api/experiments/ab/run", response_model=ABExperimentResponse)
