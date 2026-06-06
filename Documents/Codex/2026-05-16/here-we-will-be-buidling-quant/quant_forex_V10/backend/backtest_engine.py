@@ -25,7 +25,7 @@ from backend.calibration_engine import (
     inject_calibration_columns,
     resolve_calibration,
 )
-from backend.cost_model_engine import DEFAULT_FIXED_COST_R, calculate_trade_cost, resolve_cost_model
+from backend.cost_model_engine import DEFAULT_FIXED_COST_R, POINT_SIZE_BY_SYMBOL, calculate_trade_cost, resolve_cost_model
 from backend.database import save_backtest_result
 from backend.feature_cache_engine import load_or_calculate_features
 from backend.institutional_data_engine import evaluate_institutional_data_quality
@@ -357,6 +357,221 @@ def _simulate_exit(df: pd.DataFrame, entry_idx: int, signal: dict[str, Any]) -> 
             return j, tp, "Take profit hit."
     last = df.iloc[-1]
     return len(df) - 1, float(last["close"]), "Closed at final available candle."
+
+
+def _float(value: Any, default: float = 0.0) -> float:
+    try:
+        if value is None:
+            return default
+        number = float(value)
+        if math.isnan(number) or math.isinf(number):
+            return default
+        return number
+    except (TypeError, ValueError):
+        return default
+
+
+def _point_size(symbol: str, controls: dict[str, Any] | None = None) -> float:
+    overrides = (controls or {}).get("symbol_point_size")
+    symbol_u = str(symbol or "").upper()
+    if isinstance(overrides, dict) and symbol_u in overrides:
+        return max(_float(overrides[symbol_u], POINT_SIZE_BY_SYMBOL.get(symbol_u, 0.00001)), 0.00000001)
+    for key, point in POINT_SIZE_BY_SYMBOL.items():
+        if symbol_u.startswith(key):
+            return point
+    if "JPY" in symbol_u:
+        return 0.001
+    if "XAU" in symbol_u or "GOLD" in symbol_u:
+        return 0.01
+    return 0.00001
+
+
+def _profile_stop_atr(symbol: str, row: pd.Series, strategy_id: str) -> tuple[float, str]:
+    symbol_u = str(symbol or "").upper()
+    session = str(row.get("session") or "OffSession")
+    regime_id = str(row.get("regime_id") or "")
+    atr_percentile = _float(row.get("atr_percentile"))
+    spread_percentile = _float(row.get("spread_percentile"))
+    base = 0.50
+    reason = "Default institutional M15 profile."
+
+    if "XAU" in symbol_u or "GOLD" in symbol_u:
+        base = 1.00
+        reason = "XAU/GOLD profile uses wider stops for larger intrabar noise."
+        if session in {"NewYork", "Overlap"} or atr_percentile >= 75 or spread_percentile >= 70:
+            base = 1.25
+            reason = "XAU/GOLD NY/high-vol/spread profile uses the widest stop bucket."
+    elif "JPY" in symbol_u:
+        base = 0.75 if atr_percentile >= 75 else 0.50
+        reason = "JPY profile allows wider stops when volatility is elevated."
+    elif symbol_u.startswith(("GBP", "EURGBP")) or symbol_u in {"GBPUSD", "GBPJPY"}:
+        base = 0.75 if session in {"NewYork", "Overlap"} or atr_percentile >= 75 else 0.50
+        reason = "GBP profile uses moderate/wide stops for session whipsaw risk."
+    elif symbol_u in {"EURUSD", "USDCHF"}:
+        base = 0.35 if session in {"London", "Overlap"} and atr_percentile < 75 else 0.50
+        reason = "EURUSD/USDCHF liquid-session profile permits tighter stops only outside stress."
+
+    if regime_id in {"R04", "R05", "R19", "R20", "R21", "R46", "R47"}:
+        base = max(base, 0.75)
+        reason += " Breakout/session impulse regime widened to reduce path-noise stop-outs."
+    if regime_id in {"R09", "R10", "R23", "R30", "R38", "R39", "R40", "R50"}:
+        base = max(base, 1.00)
+        reason += " Stress/defensive regime requires wider validation stop if traded."
+    if strategy_id in {"S1", "S2", "E1", "E3", "LS1", "LS4", "AR3", "AR4"}:
+        base = max(base, 0.50)
+        reason += " Sweep strategy uses wick-plus-buffer protection."
+    return round(base, 4), reason
+
+
+def _retarget_signal_stop(signal: dict[str, Any], sl: float, rr: float) -> dict[str, Any]:
+    updated = dict(signal)
+    entry = _float(updated.get("entry"))
+    direction = str(updated.get("direction"))
+    risk_distance = entry - sl if direction == "long" else sl - entry
+    if risk_distance <= 0:
+        updated["triggered"] = False
+        updated["reason"] = "Invalid stop override; SL is not beyond entry."
+        return updated
+    updated["sl"] = float(sl)
+    updated["risk_distance"] = float(risk_distance)
+    updated["tp"] = float(entry + risk_distance * rr if direction == "long" else entry - risk_distance * rr)
+    return updated
+
+
+def _apply_stop_realism_controls(
+    symbol: str,
+    row: pd.Series,
+    signal: dict[str, Any],
+    rr: float,
+    strategy_controls: dict[str, Any] | None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Optionally apply ATR stop grids and spread-multiple safety without changing default backtests."""
+    controls = dict(strategy_controls or {})
+    updated = dict(signal)
+    atr = _float(row.get("atr"))
+    entry = _float(updated.get("entry"))
+    original_sl = _float(updated.get("sl"))
+    direction = str(updated.get("direction") or "")
+    strategy_id = str(updated.get("strategy_id") or "")
+    diagnostics: dict[str, Any] = {
+        "enabled": bool(controls),
+        "stop_adjusted": False,
+        "stop_blocked": False,
+        "reasons": [],
+        "original_sl": round(original_sl, 8),
+        "original_risk_distance": round(_float(updated.get("risk_distance")), 8),
+    }
+    if atr <= 0 or entry <= 0 or direction not in {"long", "short"}:
+        diagnostics["reasons"].append("Stop realism skipped because ATR/entry/direction is unavailable.")
+        return updated, diagnostics
+
+    override_mode = str(controls.get("stop_override_mode") or "off").lower()
+    stop_atr = controls.get("stop_atr_override", controls.get("stop_atr"))
+    if controls.get("use_symbol_session_stop_profile") and stop_atr in {None, "", 0, 0.0}:
+        stop_atr, profile_reason = _profile_stop_atr(symbol, row, strategy_id)
+        override_mode = str(controls.get("stop_profile_override_mode") or "widen_only").lower()
+        diagnostics["profile_reason"] = profile_reason
+
+    stop_atr_float = _float(stop_atr, 0.0)
+    if stop_atr_float > 0 and override_mode != "off":
+        target_sl = entry - atr * stop_atr_float if direction == "long" else entry + atr * stop_atr_float
+        if override_mode == "replace":
+            new_sl = target_sl
+        elif override_mode == "tighten_only":
+            new_sl = max(original_sl, target_sl) if direction == "long" else min(original_sl, target_sl)
+        else:
+            new_sl = min(original_sl, target_sl) if direction == "long" else max(original_sl, target_sl)
+        retargeted = _retarget_signal_stop(updated, new_sl, rr)
+        if not retargeted.get("triggered", True):
+            diagnostics["stop_blocked"] = True
+            diagnostics["reasons"].append(retargeted.get("reason", "Invalid stop override."))
+            return retargeted, diagnostics
+        if abs(_float(retargeted.get("sl")) - original_sl) > 1e-12:
+            diagnostics["stop_adjusted"] = True
+            diagnostics["reasons"].append(f"Stop {override_mode} applied at {stop_atr_float:.2f} ATR.")
+        updated = retargeted
+        diagnostics["stop_atr"] = stop_atr_float
+        diagnostics["stop_override_mode"] = override_mode
+
+    spread_points = _float(row.get("spread"))
+    point_size = _point_size(symbol, controls)
+    spread_price = spread_points * point_size
+    risk_distance = _float(updated.get("risk_distance"))
+    effective_multiple = risk_distance / spread_price if spread_price > 0 else None
+    min_mult = _float(controls.get("min_effective_stop_spread_mult"), 0.0)
+    min_mode = str(controls.get("min_effective_stop_mode") or "widen").lower()
+    diagnostics.update(
+        {
+            "spread_points": round(spread_points, 4),
+            "point_size": point_size,
+            "spread_price": round(spread_price, 8),
+            "effective_stop_spread_mult": round(effective_multiple, 4) if effective_multiple is not None else None,
+            "min_effective_stop_spread_mult": min_mult,
+            "min_effective_stop_mode": min_mode,
+        }
+    )
+    if min_mult > 0:
+        if spread_price <= 0:
+            diagnostics["reasons"].append("Minimum effective stop check could not use spread because spread is missing or zero.")
+        elif risk_distance < spread_price * min_mult:
+            if min_mode == "block":
+                diagnostics["stop_blocked"] = True
+                diagnostics["reasons"].append(f"Stop distance is below {min_mult:.1f}x spread; blocked to avoid bid/ask candle noise.")
+                return {**updated, "triggered": False, "reason": diagnostics["reasons"][-1]}, diagnostics
+            new_distance = spread_price * min_mult
+            new_sl = entry - new_distance if direction == "long" else entry + new_distance
+            updated = _retarget_signal_stop(updated, new_sl, rr)
+            diagnostics["stop_adjusted"] = True
+            diagnostics["reasons"].append(f"Stop widened to minimum {min_mult:.1f}x spread.")
+            risk_distance = _float(updated.get("risk_distance"))
+            diagnostics["effective_stop_spread_mult"] = round(risk_distance / spread_price, 4) if spread_price > 0 else None
+
+    diagnostics["final_sl"] = round(_float(updated.get("sl")), 8)
+    diagnostics["final_risk_distance"] = round(_float(updated.get("risk_distance")), 8)
+    updated["stop_realism"] = diagnostics
+    return updated, diagnostics
+
+
+def _execution_failure_checks(
+    row: pd.Series,
+    signal: dict[str, Any],
+    cost_breakdown: dict[str, Any],
+    position_size: float,
+    equity: float,
+    strategy_controls: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    controls = dict(strategy_controls or {})
+    checks: list[dict[str, Any]] = []
+    stop = signal.get("stop_realism") if isinstance(signal.get("stop_realism"), dict) else {}
+    spread_pct = _float(row.get("spread_percentile"))
+    total_cost_r = _float(cost_breakdown.get("total_cost_R"))
+    slippage_r = _float(cost_breakdown.get("slippage_R"))
+    effective_mult = stop.get("effective_stop_spread_mult")
+    min_mult = _float(stop.get("min_effective_stop_spread_mult"), _float(controls.get("min_effective_stop_spread_mult"), 0.0))
+
+    def add(name: str, status: str, reason: str) -> None:
+        checks.append({"check": name, "status": status, "reason": reason})
+
+    add("spread_failure", "WARN" if spread_pct >= 70 else "PASS", f"Spread percentile is {spread_pct:.1f}.")
+    add("slippage_failure", "WARN" if slippage_r >= 0.10 or total_cost_r >= 0.25 else "PASS", f"Estimated cost is {total_cost_r:.3f}R and slippage is {slippage_r:.3f}R.")
+    if effective_mult is None:
+        add("bid_ask_candle_problem", "WARN", "Spread multiple is unavailable; bid/ask path cannot be validated from candles.")
+    else:
+        add(
+            "bid_ask_candle_problem",
+            "WARN" if min_mult > 0 and float(effective_mult) < min_mult else "PASS",
+            f"Stop is {float(effective_mult):.1f}x spread; minimum configured is {min_mult:.1f}x.",
+        )
+    session = str(row.get("session") or "OffSession")
+    tick_volume = _float(row.get("tick_volume"))
+    add("liquidity_failure", "WARN" if session in {"Rollover", "OffSession"} or tick_volume <= 0 else "PASS", f"Session {session}, tick volume {tick_volume:.0f}.")
+    add("margin_leverage_failure", "WARN" if position_size <= 0 or equity <= 0 else "PASS", f"Backtest position size {position_size:.2f}; equity {equity:.2f}.")
+    mtf_score = _float(row.get("mtf_conflict_score"))
+    htf_unavailable = int(row.get("htf_unavailable") or 0)
+    add("multi_timeframe_sync_failure", "WARN" if htf_unavailable or mtf_score > 0 else "PASS", f"HTF unavailable={htf_unavailable}, MTF conflict score={mtf_score:.1f}.")
+    data_bad = int(row.get("data_quality_bad_data_flag") or 0)
+    add("data_quality_failure", "WARN" if data_bad else "PASS", str(row.get("data_quality_reasons") or "Data quality flags are clear."))
+    return checks
 
 
 def _mae_mfe_for_trade(df: pd.DataFrame, entry_idx: int, exit_idx: int, signal: dict[str, Any]) -> dict[str, Any]:
@@ -1202,6 +1417,54 @@ def _spread_slippage_diagnostics(
     }
 
 
+def _execution_failure_summary(trades: list[dict[str, Any]], skipped_setups: list[dict[str, Any]]) -> dict[str, Any]:
+    counts: Counter[str] = Counter()
+    warning_counts: Counter[str] = Counter()
+    for trade in trades:
+        for check in trade.get("execution_failure_checks") or []:
+            name = str(check.get("check") or "unknown")
+            counts[name] += 1
+            if str(check.get("status") or "").upper() != "PASS":
+                warning_counts[name] += 1
+    skipped_reason_counts = Counter()
+    failure_words = {
+        "spread": "spread_failure",
+        "slippage": "slippage_failure",
+        "bid/ask": "bid_ask_candle_problem",
+        "liquidity": "liquidity_failure",
+        "rollover": "liquidity_failure",
+        "margin": "margin_leverage_failure",
+        "leverage": "margin_leverage_failure",
+        "mtf": "multi_timeframe_sync_failure",
+        "multi-timeframe": "multi_timeframe_sync_failure",
+        "data": "data_quality_failure",
+    }
+    for skipped in skipped_setups:
+        text = str(skipped.get("block_reason") or skipped.get("failed_condition") or "").lower()
+        for needle, bucket in failure_words.items():
+            if needle in text:
+                skipped_reason_counts[bucket] += 1
+    rows = []
+    for name in sorted(set(counts) | set(warning_counts) | set(skipped_reason_counts)):
+        rows.append(
+            {
+                "failure_type": name,
+                "trade_checks": counts.get(name, 0),
+                "trade_warnings": warning_counts.get(name, 0),
+                "skipped_blocks": skipped_reason_counts.get(name, 0),
+                "status": "REVIEW" if warning_counts.get(name, 0) or skipped_reason_counts.get(name, 0) else "PASS",
+            }
+        )
+    return {
+        "rows": rows,
+        "warning_count": int(sum(warning_counts.values()) + sum(skipped_reason_counts.values())),
+        "notes": [
+            "These checks flag candle-backtest risks that often fail in live/demo execution: spread, slippage, bid/ask path, liquidity, margin/leverage, MTF sync, and data quality.",
+            "A PASS here does not replace MT5 real-tick validation; it only prevents obvious candle-model blind spots from being hidden.",
+        ],
+    }
+
+
 def _mt5_model_comparison(request: dict[str, Any]) -> list[dict[str, Any]]:
     mt5_backtest = request.get("mt5_backtest") if isinstance(request.get("mt5_backtest"), dict) else {}
     supplied = mt5_backtest.get("model_comparison") or request.get("mt5_model_comparison")
@@ -1319,6 +1582,7 @@ def run_backtest(request: dict[str, Any], persist: bool = True) -> dict[str, Any
     cb_divergence = request.get("cb_divergence", "NEUTRAL")
     macro_evidence = request.get("macro_evidence") if isinstance(request.get("macro_evidence"), dict) else {}
     regime_controls = request.get("regime_controls") if isinstance(request.get("regime_controls"), dict) else {}
+    strategy_controls = request.get("strategy_controls") if isinstance(request.get("strategy_controls"), dict) else {}
     regime_filter = request.get("regime_filter", "ALL")
     strategy_filter = request.get("strategy_filter", "ALL")
     pattern_options = _pattern_options(request)
@@ -1338,7 +1602,7 @@ def run_backtest(request: dict[str, Any], persist: bool = True) -> dict[str, Any
     options = {
         "killzone_mode": killzone_mode if use_killzone else "off",
         "spread_filter_mode": spread_mode if use_spread_filter else "off",
-        "alpha_mode": request.get("alpha_mode", "hard_minimum"),
+        "alpha_mode": filters.get("alpha_mode", request.get("alpha_mode", "hard_minimum")),
         "strict_clean_trend": bool(request.get("strict_clean_trend", True)),
         "use_alpha": use_alpha,
         "allowed_sessions": filters.get("allowed_sessions", ["London", "NewYork", "Overlap"]),
@@ -1466,10 +1730,13 @@ def run_backtest(request: dict[str, Any], persist: bool = True) -> dict[str, Any
             if not signal.get("triggered"):
                 continue
             signal["symbol"] = symbol
+            signal, stop_realism = _apply_stop_realism_controls(symbol, row, signal, rr, strategy_controls)
             modifiers = detect_modifiers(row.to_dict(), signal["direction"])
             alpha = calculate_alpha(row, signal, modifiers)
             pattern_result = detect_patterns(df, i, signal, pattern_options)
             block_reasons = _strict_block_reasons(row, modifiers, alpha, options) + _pattern_block_reasons(pattern_result, pattern_options)
+            if stop_realism.get("stop_blocked"):
+                block_reasons.extend(stop_realism.get("reasons") or ["Stop realism controls blocked this candidate."])
             if bool(costs.get("rollover_block", True)) and row.get("session") == "Rollover":
                 block_reasons.append("Rollover blocked by transaction-cost model.")
             if block_reasons:
@@ -1499,6 +1766,7 @@ def run_backtest(request: dict[str, Any], persist: bool = True) -> dict[str, Any
                 costs=costs,
                 initial_risk=initial_risk,
             )
+            execution_failure_checks = _execution_failure_checks(row, signal, cost_breakdown, position_size, equity, strategy_controls)
             trade_cost_r = float(cost_breakdown.get("total_cost_R") or 0.0)
             result_r = gross_result_r - trade_cost_r
             profit -= trade_cost_r * initial_risk
@@ -1530,6 +1798,7 @@ def run_backtest(request: dict[str, Any], persist: bool = True) -> dict[str, Any
                 "max_favorable_price": mae_mfe["max_favorable_price"],
                 "bars_held": mae_mfe["bars_held"],
                 "stop_distance": mae_mfe["stop_distance"],
+                "stop_realism": signal.get("stop_realism", {}),
                 "gross_result_R": round(gross_result_r, 4),
                 "gross_profit": round(gross_profit, 2),
                 "spread_at_entry": round(float(row.get("spread") or 0), 4),
@@ -1539,6 +1808,7 @@ def run_backtest(request: dict[str, Any], persist: bool = True) -> dict[str, Any
                 "total_cost_R": round(trade_cost_r, 6),
                 "cost_model": cost_breakdown.get("cost_model", costs.get("cost_mode", "fixed_r")),
                 "cost_breakdown": cost_breakdown,
+                "execution_failure_checks": execution_failure_checks,
                 "result_R": round(result_r, 4),
                 "profit": round(profit, 2),
                 "alpha_score": alpha["alpha_score"],
@@ -1725,6 +1995,7 @@ def run_backtest(request: dict[str, Any], persist: bool = True) -> dict[str, Any
     data_health = _data_health(candles, df, {**request, "symbol": symbol, "timeframe": timeframe}, tradable_rows)
     feature_summary = _feature_summary(df)
     spread_slippage_diagnostics = _spread_slippage_diagnostics(symbol, df, trades, skipped_setups)
+    execution_failure_summary = _execution_failure_summary(trades, skipped_setups)
     calibration_info = calibration_summary(calibration, regime_filter)
     macro_context = {
         "source": df.get("macro_source", pd.Series(["manual"])).iloc[-1] if len(df) else "manual",
@@ -1826,6 +2097,7 @@ def run_backtest(request: dict[str, Any], persist: bool = True) -> dict[str, Any
         "data_health": data_health,
         "feature_summary": feature_summary,
         "spread_slippage_diagnostics": spread_slippage_diagnostics,
+        "execution_failure_summary": execution_failure_summary,
         "institutional_data_quality": institutional_data_quality,
         "macro_context": macro_context,
         "regime_confidence": regime_confidence,

@@ -372,6 +372,43 @@
           <div id="brokerCostCalibrationPanel" class="mt-3"></div>
         </div>
 
+        <div class="mt-4 border border-rose-200 bg-rose-50 p-3 text-sm">
+          <div class="mb-3">
+            <h3 class="text-sm font-semibold uppercase text-rose-950">Stop / Execution Realism</h3>
+            <p class="text-xs text-rose-900">Optional controls for stop calibration, spread-multiple safety, and live-market failure diagnostics. Defaults are conservative and only affect tests when enabled or when a sweep grid supplies stop values.</p>
+          </div>
+          <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
+            <label class="flex items-center gap-2 font-semibold text-slate-700">
+              <input id="useStopRealism" type="checkbox" class="h-4 w-4" />
+              Stop realism
+            </label>
+            <label class="flex items-center gap-2 font-semibold text-slate-700">
+              <input id="useSymbolSessionStopProfile" type="checkbox" class="h-4 w-4" />
+              Symbol/session stop profile
+            </label>
+            <label class="field-label">Stop ATR override
+              <input id="stopAtrOverride" class="field-input" type="number" min="0" max="5" step="0.05" placeholder="off" />
+            </label>
+            <label class="field-label">Stop mode
+              <select id="stopOverrideMode" class="field-input">
+                <option value="off">off</option>
+                <option value="widen_only">widen_only</option>
+                <option value="replace">replace</option>
+                <option value="tighten_only">tighten_only</option>
+              </select>
+            </label>
+            <label class="field-label">Min stop/spread x
+              <input id="minEffectiveStopSpreadMult" class="field-input" type="number" min="0" max="100" step="0.5" value="0" />
+            </label>
+            <label class="field-label">Min stop action
+              <select id="minEffectiveStopMode" class="field-input">
+                <option value="widen">widen</option>
+                <option value="block">block</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
         <div class="mt-4 grid gap-2 border border-slate-200 bg-white p-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
           <label class="flex items-center gap-2 font-semibold text-slate-700">
             <input id="usePatterns" type="checkbox" class="h-4 w-4" />
@@ -538,9 +575,16 @@
               <label class="field-label">Max DD R
                 <input id="labMaxDd" class="field-input" type="number" min="0.1" step="0.5" value="12" />
               </label>
+              <label class="field-label">Validate Top N
+                <input id="labValidateTopN" class="field-input" type="number" min="0" max="25" value="3" />
+              </label>
               <label class="flex items-center gap-2 font-semibold text-slate-700 sm:col-span-2">
                 <input id="labRunBestCandidateBacktest" type="checkbox" class="h-4 w-4" checked />
                 Backtest best candidate after optimizer
+              </label>
+              <label class="flex items-center gap-2 font-semibold text-slate-700 sm:col-span-2">
+                <input id="labPersistValidated" type="checkbox" class="h-4 w-4" checked />
+                Save only candidates that pass OOS + walk-forward + Monte Carlo
               </label>
               <label class="flex items-center gap-2 font-semibold text-slate-700">
                 <input id="labRunOos" type="checkbox" class="h-4 w-4" />
@@ -560,6 +604,74 @@
         <div class="mt-4 grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
           <div id="labRunSummary" class="metric-grid text-sm"></div>
           <div id="labCandidateTable" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section class="mb-5 border border-amber-200 bg-amber-50/70 p-4">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-semibold">Monthly Regime Sweep</h2>
+            <p class="text-sm text-slate-600">Runs each selected regime and mapped strategy month-by-month on M15, applies stop ATR grids and spread safety, then saves only candidates that actually worked for that month.</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button id="loadSavedMonthlySweeps" class="action-btn muted-btn">Load Saved Sweeps</button>
+            <button id="runMonthlyRegimeSweep" class="action-btn primary-btn">Run Monthly Sweep</button>
+          </div>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+          <label class="field-label">Months Back
+            <input id="monthlySweepMonthsBack" class="field-input" type="number" min="1" max="12" value="6" />
+          </label>
+          <label class="field-label">Regimes
+            <input id="monthlySweepRegimes" class="field-input" value="ALL" />
+          </label>
+          <label class="field-label">Max Combos / Regime-Month
+            <input id="monthlySweepMaxCombos" class="field-input" type="number" min="1" max="500" value="24" />
+          </label>
+          <label class="field-label">Min Monthly Trades
+            <input id="monthlySweepMinTrades" class="field-input" type="number" min="1" value="1" />
+          </label>
+          <label class="field-label">Min Monthly PF
+            <input id="monthlySweepMinPf" class="field-input" type="number" min="0.1" step="0.05" value="1.05" />
+          </label>
+          <label class="field-label">Max Monthly DD R
+            <input id="monthlySweepMaxDd" class="field-input" type="number" min="0.1" step="0.5" value="8" />
+          </label>
+          <label class="field-label lg:col-span-2">Stop ATR Grid
+            <input id="monthlySweepStopGrid" class="field-input" value="0.25,0.35,0.50,0.75,1.00,1.25" />
+          </label>
+          <label class="field-label">Min Stop / Spread
+            <input id="monthlySweepMinStopSpread" class="field-input" value="10" />
+          </label>
+          <label class="field-label">Top Per Regime
+            <input id="monthlySweepTopN" class="field-input" type="number" min="1" max="25" value="3" />
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="monthlySweepUseProfiles" type="checkbox" class="h-4 w-4" checked />
+            Use symbol/session stops
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="monthlySweepSaveOnlyWorking" type="checkbox" class="h-4 w-4" checked />
+            Save worked only
+          </label>
+        </div>
+        <div class="mt-4 grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
+          <div id="monthlySweepSummary" class="metric-grid text-sm"></div>
+          <div id="monthlySweepWorkedTable" class="table-wrap"></div>
+        </div>
+        <div class="mt-4 lab-panel">
+          <h3 class="table-title">Saved Monthly Sweeps From DB</h3>
+          <div id="savedMonthlySweepsPanel" class="table-wrap"></div>
+        </div>
+        <div class="mt-4 grid gap-4 xl:grid-cols-2">
+          <div class="lab-panel">
+            <h3 class="table-title">Failure Diagnostics</h3>
+            <div id="monthlySweepFailureTable" class="table-wrap"></div>
+          </div>
+          <div class="lab-panel">
+            <h3 class="table-title">Regime Monthly Robustness</h3>
+            <div id="monthlySweepRobustnessTable" class="table-wrap"></div>
+          </div>
         </div>
       </section>
 
@@ -731,6 +843,61 @@
           </label>
         </div>
         <div id="calibrationPreview" class="mt-4 rounded border border-emerald-200 bg-white p-3 text-sm text-slate-700">Select a regime or keep ALL, then preview the active calibration payload.</div>
+      </section>
+
+      <section class="mb-5 border border-fuchsia-200 bg-fuchsia-50/60 p-4">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-semibold">Editable Research Values</h2>
+            <p class="text-sm text-slate-600">Edit and save the exact regime, strategy, pattern, condition-threshold, risk, cost, and execution values used for research. Saved profiles can be applied back to future backtests and sweeps.</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button id="loadCurrentValueProfile" class="action-btn muted-btn">Load Current Values</button>
+            <button id="applyEditedValueProfile" class="action-btn">Apply Edited Values</button>
+            <button id="saveValueProfile" class="action-btn primary-btn">Save Values Profile</button>
+            <button id="loadSavedValueProfiles" class="action-btn muted-btn">Load Saved Profiles</button>
+            <button id="clearActiveValueProfile" class="action-btn muted-btn">Clear Active</button>
+          </div>
+        </div>
+        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <label class="field-label">Profile Name
+            <input id="valueProfileName" class="field-input" value="Research values profile" />
+          </label>
+          <label class="field-label xl:col-span-2">Description
+            <input id="valueProfileDescription" class="field-input" placeholder="What changed and why" />
+          </label>
+          <div id="activeValueProfileBadge" class="rounded border border-fuchsia-200 bg-white p-3 text-sm text-fuchsia-950">No active saved values profile.</div>
+        </div>
+        <div class="mt-4 grid gap-4 xl:grid-cols-2">
+          <label class="field-label">Filters JSON
+            <textarea id="valueProfileFiltersJson" class="json-editor min-h-[180px]" spellcheck="false">{}</textarea>
+          </label>
+          <label class="field-label">Pattern Engine JSON
+            <textarea id="valueProfilePatternJson" class="json-editor min-h-[180px]" spellcheck="false">{}</textarea>
+          </label>
+          <label class="field-label">Regime Controls JSON
+            <textarea id="valueProfileRegimeControlsJson" class="json-editor min-h-[180px]" spellcheck="false">{}</textarea>
+          </label>
+          <label class="field-label">Strategy Controls JSON
+            <textarea id="valueProfileStrategyControlsJson" class="json-editor min-h-[180px]" spellcheck="false">{}</textarea>
+          </label>
+          <label class="field-label">Calibration / Condition Thresholds JSON
+            <textarea id="valueProfileCalibrationJson" class="json-editor min-h-[220px]" spellcheck="false">{}</textarea>
+          </label>
+          <label class="field-label">Costs / Risk JSON
+            <textarea id="valueProfileRiskCostJson" class="json-editor min-h-[220px]" spellcheck="false">{}</textarea>
+          </label>
+        </div>
+        <div class="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <div>
+            <h3 class="table-title">Saved Value Profiles</h3>
+            <div id="savedValueProfilesPanel" class="table-wrap"></div>
+          </div>
+          <div>
+            <h3 class="table-title">Current Full Payload Preview</h3>
+            <div id="valueProfilePayloadPreview" class="max-h-[360px] overflow-auto rounded border border-fuchsia-200 bg-white p-3 text-xs"></div>
+          </div>
+        </div>
       </section>
 
       <section class="mb-5 border border-slate-200 bg-white p-4">
@@ -1087,6 +1254,13 @@
           <label class="field-label">Max DD R
             <input id="optMaxDd" class="field-input" type="number" min="0.1" step="0.5" value="10" />
           </label>
+          <label class="field-label">Validate Top N
+            <input id="optValidateTopN" class="field-input" type="number" min="0" max="25" value="3" />
+          </label>
+          <label class="flex items-center gap-2 font-semibold text-slate-700">
+            <input id="optPersistValidated" type="checkbox" class="h-4 w-4" checked />
+            Save passed candidates only
+          </label>
         </div>
         <div class="mt-4 grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
           <div id="optimizerSummary" class="metric-grid text-sm"></div>
@@ -1218,7 +1392,7 @@
         </div>
       </section>
 
-      <section class="mb-5 grid gap-5 xl:grid-cols-3">
+      <section class="mb-5 grid gap-5 xl:grid-cols-4">
         <div class="table-panel">
           <h2 class="panel-title">Spread / Slippage By Session</h2>
           <div id="spreadSessionDiagnostics" class="table-wrap"></div>
@@ -1230,6 +1404,10 @@
         <div class="table-panel">
           <h2 class="panel-title">Symbol Spread Diagnostics</h2>
           <div id="spreadSymbolDiagnostics" class="table-wrap"></div>
+        </div>
+        <div class="table-panel">
+          <h2 class="panel-title">Live Failure Diagnostics</h2>
+          <div id="executionFailureDiagnostics" class="table-wrap"></div>
         </div>
       </section>
 

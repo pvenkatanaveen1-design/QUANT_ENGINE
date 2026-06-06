@@ -506,6 +506,7 @@ class BacktestRunResponse(BaseModel):
     cost_summary: dict[str, Any] = Field(default_factory=dict)
     calibration_summary: dict[str, Any] = Field(default_factory=dict)
     spread_slippage_diagnostics: dict[str, Any] = Field(default_factory=dict)
+    execution_failure_summary: dict[str, Any] = Field(default_factory=dict)
     institutional_data_quality: dict[str, Any] = Field(default_factory=dict)
     data_health: dict[str, Any] = Field(default_factory=dict)
     feature_summary: dict[str, Any] = Field(default_factory=dict)
@@ -580,6 +581,7 @@ class WalkForwardResponse(BaseModel):
     validation_saved: bool = False
     summary: dict[str, Any]
     windows: list[dict[str, Any]]
+    diagnostics: dict[str, Any] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
     request: dict[str, Any]
 
@@ -701,6 +703,9 @@ class OptimizerGridRequest(BacktestRequest):
     min_trades: int = Field(default=30, ge=1)
     min_profit_factor: float = Field(default=1.2, gt=0)
     max_drawdown_r: float = Field(default=10.0, gt=0)
+    validate_top_n: int = Field(default=0, ge=0, le=25)
+    persist_validated_candidates: bool = True
+    validation: dict[str, Any] = Field(default_factory=dict)
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -718,6 +723,13 @@ class OptimizerGridRequest(BacktestRequest):
                 "min_trades": 30,
                 "min_profit_factor": 1.2,
                 "max_drawdown_r": 10,
+                "validate_top_n": 3,
+                "persist_validated_candidates": True,
+                "validation": {
+                    "out_of_sample": {"oos_percent": 30, "min_oos_trades": 20, "min_oos_profit_factor": 1.1},
+                    "walk_forward": {"train_months": 2, "test_months": 1, "step_months": 1, "min_test_trades": 10},
+                    "monte_carlo": {"simulations": 1000, "min_trades": 30, "max_total_drawdown_percent": 10},
+                },
                 "grid": {
                     "regime_filters": ["R01"],
                     "strategy_filters": ["T1", "T2"],
@@ -739,6 +751,67 @@ class OptimizerGridResponse(BaseModel):
     summary: dict[str, Any]
     results: list[dict[str, Any]]
     top_candidates: list[dict[str, Any]]
+    validated_candidates: list[dict[str, Any]] = Field(default_factory=list)
+    saved_validated_candidates: list[dict[str, Any]] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    request: dict[str, Any]
+
+
+class MonthlyRegimeResearchRequest(BacktestRequest):
+    start_date: str | None = None
+    end_date: str | None = None
+    months_back: int = Field(default=6, ge=1, le=12)
+    regime_filters: list[str] | str = "ALL"
+    strategy_filters: list[str] | str = "ALL"
+    stop_atr_grid: list[float] | str = Field(default_factory=lambda: [0.25, 0.35, 0.50, 0.75, 1.00, 1.25])
+    min_effective_stop_spread_mult: list[float] | str = Field(default_factory=lambda: [10.0])
+    use_symbol_session_stop_profile: bool = True
+    stop_override_mode: str = "widen_only"
+    min_effective_stop_mode: str = "widen"
+    max_combinations_per_regime_month: int = Field(default=24, ge=1, le=500)
+    top_candidates_per_regime_month: int = Field(default=3, ge=1, le=25)
+    min_monthly_trades: int = Field(default=1, ge=1)
+    min_monthly_profit_factor: float = Field(default=1.05, gt=0)
+    max_monthly_drawdown_r: float = Field(default=8.0, gt=0)
+    require_positive_monthly_profit: bool = True
+    include_no_trade_strategies: bool = False
+    save_only_working: bool = True
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "symbol": "EURUSD",
+                "timeframe": "M15",
+                "start_date": "2025-11-01",
+                "end_date": "2026-05-01",
+                "months_back": 6,
+                "regime_filters": "ALL",
+                "strategy_filters": "ALL",
+                "stop_atr_grid": [0.25, 0.35, 0.50, 0.75, 1.00, 1.25],
+                "min_effective_stop_spread_mult": [10],
+                "use_symbol_session_stop_profile": True,
+                "max_combinations_per_regime_month": 24,
+                "min_monthly_trades": 1,
+                "min_monthly_profit_factor": 1.05,
+            }
+        }
+    )
+
+
+class MonthlyRegimeResearchResponse(BaseModel):
+    monthly_sweep_run_id: str | None = None
+    monthly_sweep_saved: bool = False
+    saved_candidate_count: int = 0
+    validation_run_id: str | None = None
+    validation_saved: bool = False
+    created_at: str
+    summary: dict[str, Any]
+    month_summaries: list[dict[str, Any]]
+    worked_candidates: list[dict[str, Any]]
+    failed_regimes: list[dict[str, Any]]
+    failure_diagnostics: list[dict[str, Any]]
+    regime_robustness: list[dict[str, Any]]
+    optimizer_runs: list[dict[str, Any]] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     request: dict[str, Any]
 
