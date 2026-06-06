@@ -186,6 +186,14 @@ const SECTION_HELP = {
     combinations: ["Baseline R01/T1 vs hard killzone + alpha 8.", "Baseline R36/VW1 vs pattern hard minimum.", "Baseline R22/AR1 vs stricter spread and conservative calibration."],
     values: ["Min trades: 30+ for early A/B, 50-100 preferred.", "Min PF: 1.20 for candidate.", "Min expectancy gain: 0.02R or higher.", "Max DD worsening: keep small unless profit factor and OOS improve."]
   },
+  "Editable Research Values": {
+    what: "A reusable profile editor for the exact values sent to research APIs: filters, pattern engine, regime controls, strategy controls, calibration thresholds, costs, risk, and execution assumptions.",
+    why: "After a backtest, monthly sweep, optimizer, or A/B result works, you need to preserve the exact tested values rather than trying to remember which sliders and JSON settings created the edge.",
+    how: ["Run a backtest or monthly sweep.", "Click Load Current Values.", "Edit only the values you intentionally want to test.", "Click Apply Edited Values to use them in future runs.", "Click Save Values Profile once the tested setup is worth reusing."],
+    when: ["Use after finding a candidate in Regime Lab, Optimizer, Monthly Sweep, or A/B Testing.", "Use before running OOS, walk-forward, Monte Carlo, MT5 parity, and real-tick validation on the same values."],
+    combinations: ["R01 + T1 with alpha 8, spread 65, pattern hard minimum 2, stop ATR 0.75.", "R36 + VW1/VW2 with VWAP enabled, RR 1.5, ADX/ER mean-reversion thresholds.", "R22 + AR1/AR2 with Asia-only range settings and conservative cost model."],
+    values: ["Save only tested values, not guesses.", "Use profile descriptions to record why the change was made.", "Loaded profiles override future payloads until Clear Active is clicked.", "The baseline regime/strategy library remains unchanged for reference integrity."]
+  },
   "MT5 Strategy Tester Automation": {
     what: "Builds MT5 .set and .ini files from the current UI controls and can launch MT5 Strategy Tester.",
     why: "Local Python backtest is research; MT5 Strategy Tester checks execution model, spread, slippage, tick sequence, and broker data behavior.",

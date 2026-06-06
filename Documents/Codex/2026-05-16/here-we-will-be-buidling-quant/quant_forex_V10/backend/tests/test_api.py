@@ -3,7 +3,7 @@ import pandas as pd
 
 from backend.app import app
 from backend.backtest_engine import _apply_regime_hysteresis, _apply_research_mode_preset, _mae_mfe_analysis, _mae_mfe_for_trade
-from backend.database import save_backtest_result, save_candles
+from backend.database import get_connection, save_backtest_result, save_candles
 from backend.institutional_data_engine import evaluate_institutional_data_quality
 from backend.walk_forward_engine import _failure_diagnostics
 
@@ -999,6 +999,7 @@ def test_regime_hysteresis_allows_danger_regime_immediate_override():
 
 def test_research_value_profiles_save_list_load_round_trip():
     client = TestClient(app)
+    profile_id = None
     payload = {
         "name": "R01 T1 edited values",
         "description": "pytest editable research profile",
@@ -1017,20 +1018,25 @@ def test_research_value_profiles_save_list_load_round_trip():
         "tags": ["R01", "T1", "pytest"],
     }
 
-    response = client.post("/api/research/value-profiles", json=payload)
-    assert response.status_code == 200
-    body = response.json()
-    assert body["status"] == "SAVED"
-    profile_id = body["profile"]["profile_id"]
+    try:
+        response = client.post("/api/research/value-profiles", json=payload)
+        assert response.status_code == 200
+        body = response.json()
+        assert body["status"] == "SAVED"
+        profile_id = body["profile"]["profile_id"]
 
-    listed = client.get("/api/research/value-profiles", params={"limit": 10})
-    assert listed.status_code == 200
-    assert any(item["profile_id"] == profile_id for item in listed.json()["profiles"])
+        listed = client.get("/api/research/value-profiles", params={"limit": 10})
+        assert listed.status_code == 200
+        assert any(item["profile_id"] == profile_id for item in listed.json()["profiles"])
 
-    loaded = client.get(f"/api/research/value-profiles/{profile_id}")
-    assert loaded.status_code == 200
-    profile = loaded.json()["profile"]
-    assert profile["payload"]["filters"]["min_alpha_score"] == 8
-    assert profile["payload"]["pattern_engine"]["min_pattern_score"] == 2
-    assert profile["payload"]["strategy_controls"]["stop_atr_override"] == 0.75
-    assert profile["metrics"]["profit_factor"] == 1.25
+        loaded = client.get(f"/api/research/value-profiles/{profile_id}")
+        assert loaded.status_code == 200
+        profile = loaded.json()["profile"]
+        assert profile["payload"]["filters"]["min_alpha_score"] == 8
+        assert profile["payload"]["pattern_engine"]["min_pattern_score"] == 2
+        assert profile["payload"]["strategy_controls"]["stop_atr_override"] == 0.75
+        assert profile["metrics"]["profit_factor"] == 1.25
+    finally:
+        if profile_id:
+            with get_connection() as conn:
+                conn.execute("DELETE FROM research_value_profiles WHERE profile_id = ?", (profile_id,))
